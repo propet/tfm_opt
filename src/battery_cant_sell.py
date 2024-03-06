@@ -1,18 +1,8 @@
-from pyoptsparse import (
-    SLSQP,
-    Optimization,
-)
 import numpy as np
-from utils import (
-    get_solar_field_powers,
-    get_grid_prices_mwh,
-    get_electric_demand_powers,
-    generic_plot,
-)
+from pyoptsparse import SLSQP, Optimization
+from utils import get_solar_field_powers, get_grid_prices_mwh, get_electric_demand_powers, generic_plot
 from parameters import PARAMS
-from custom_types import (
-    PlotData,
-)
+from custom_types import PlotData
 
 
 def objfunc(xdict):
@@ -26,10 +16,7 @@ def objfunc(xdict):
     # funcs["cost"] = np.sum( 1 / PARAMS["DK_RHO"] * np.log(1 + np.exp(PARAMS["DK_RHO"] * (grid_prices_mwh * (-p_gen + p_bat + p_electric_demand)))) )
 
     stored_battery_energy = []
-    for h in range(
-        1,
-        PARAMS["N_HOURS"] + 1,
-    ):
+    for h in range(1, PARAMS["N_HOURS"] + 1):
         stored_battery_energy.append(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h]))
     funcs["stored_battery_energy"] = stored_battery_energy
 
@@ -45,10 +32,7 @@ def objfunc(xdict):
 
 def run_optimization():
     # Optimization Object
-    optProb = Optimization(
-        "All year battery powers",
-        objfunc,
-    )
+    optProb = Optimization("All year battery powers", objfunc)
 
     # Design Variables
     optProb.addVarGroup(
@@ -93,14 +77,8 @@ def run_optimization():
 if __name__ == "__main__":
     # Retrieve data
     grid_prices_mwh = get_grid_prices_mwh(PARAMS["N_HOURS"])
-    p_gen = get_solar_field_powers(
-        PARAMS["MAX_SOLAR_RADIATION"],
-        PARAMS["N_HOURS"],
-    )
-    p_electric_demand = get_electric_demand_powers(
-        PARAMS["MAX_ELECTRIC_DEMAND"],
-        PARAMS["N_HOURS"],
-    )
+    p_gen = get_solar_field_powers(PARAMS["MAX_SOLAR_RADIATION"], PARAMS["N_HOURS"])
+    p_electric_demand = get_electric_demand_powers(PARAMS["MAX_ELECTRIC_DEMAND"], PARAMS["N_HOURS"])
     hours = np.arange(len(p_gen))
 
     # Run optimization

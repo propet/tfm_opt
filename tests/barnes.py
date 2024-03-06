@@ -1,8 +1,5 @@
 # First party modules
-from pyoptsparse import (
-    SLSQP,
-    Optimization,
-)
+from pyoptsparse import SLSQP, Optimization
 import numpy as np
 
 a = np.array(
@@ -72,7 +69,6 @@ def objfunc(xdict):
     ]
 
     fail = False
-
     return funcs, fail
 
 
@@ -85,12 +81,7 @@ optProb.addVarGroup("xvars", 2, "c", value=0)
 # Constraints
 # Equality constraints are specified using the same values for lower and upper bounds
 # None equals to -infinity to lower, and +infinity to upper
-optProb.addConGroup(
-    "cons",
-    3,
-    lower=None,
-    upper=0.0,
-)
+optProb.addConGroup("cons", 3, lower=None, upper=0.0)
 
 # rst begin addObj
 # Objective

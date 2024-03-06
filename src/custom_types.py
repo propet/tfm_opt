@@ -1,13 +1,6 @@
 import numpy as np
-from typing import (
-    TypedDict,
-    List,
-    Union,
-    Optional,
-)
-from numpy.typing import (
-    NDArray,
-)
+from typing import TypedDict, List, Union, Optional
+from numpy.typing import NDArray
 
 
 """
@@ -16,18 +9,8 @@ Plot types: PlotData its dependencies
 
 
 class ArrayData(TypedDict):
-    x: Union[
-        List[int],
-        List[float],
-        NDArray[np.int_],
-        NDArray[np.float_],
-    ]
-    y: Union[
-        List[int],
-        List[float],
-        NDArray[np.int_],
-        NDArray[np.float_],
-    ]
+    x: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float_]]
+    y: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float_]]
     label: Union[str, None]
 
 
@@ -37,10 +20,7 @@ class RequiredAxesData(TypedDict):
     arrays_data: List[ArrayData]
 
 
-class AxesData(
-    RequiredAxesData,
-    total=False,
-):
+class AxesData(RequiredAxesData, total=False):
     title: Optional[str]
     xlabel: Optional[str]
     ylabel: Optional[str]

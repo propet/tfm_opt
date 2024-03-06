@@ -1,8 +1,5 @@
 # First party modules
-from pyoptsparse import (
-    SLSQP,
-    Optimization,
-)
+from pyoptsparse import SLSQP, Optimization
 
 
 # rst begin objfunc
@@ -21,32 +18,17 @@ def objfunc(xdict):
 
 # rst begin optProb
 # Optimization Object
-optProb = Optimization(
-    "TP037 Constraint Problem",
-    objfunc,
-)
+optProb = Optimization("TP037 Constraint Problem", objfunc)
 
 # rst begin addVar
 # Design Variables
-optProb.addVarGroup(
-    "xvars",
-    3,
-    "c",
-    lower=[0, 0, 0],
-    upper=[42, 42, 42],
-    value=10,
-)
+optProb.addVarGroup("xvars", 3, "c", lower=[0, 0, 0], upper=[42, 42, 42], value=10)
 
 # rst begin addCon
 # Constraints
 # Equality constraints are specified using the same values for lower and upper bounds
 # None equals to -infinity to lower, and +infinity to upper
-optProb.addConGroup(
-    "con",
-    2,
-    lower=None,
-    upper=0.0,
-)
+optProb.addConGroup("con", 2, lower=None, upper=0.0)
 
 # rst begin addObj
 # Objective
