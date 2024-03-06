@@ -2,10 +2,49 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from custom_types import PlotData
+import scienceplots
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(CURRENT_DIR, "..")
+
+
+# Scienceplots style
+plt.style.use(["science", "ieee"])
+plt.rcParams.update({'figure.dpi': '300'})
+
+
+def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
+    fig, axes = plt.subplots(
+        nrows=plot_data["rows"],
+        ncols=plot_data["columns"],
+        figsize=(10, 10),
+        sharex=sharex,
+        sharey=sharey
+    )
+
+    for axe_data in plot_data["axes_data"]:
+        axe = None
+        if plot_data["rows"] > 1 and plot_data["columns"] > 1:
+            axe = axes["i"]["j"]
+        else:
+            if axe_data["i"] > axe_data["j"]:
+                axe = axes[axe_data["i"]]
+            else:
+                axe = axes[axe_data["j"]]
+
+        for array_data in axe_data["arrays_data"]:
+            axe.plot(array_data["x"], array_data["y"], label=array_data["label"])
+
+        if "title" in axe_data: axe.title.set_text(axe_data["title"])
+        if "xlabel" in axe_data: axe.set_xlabel(axe_data["xlabel"])
+        if "ylabel" in axe_data: axe.set_ylabel(axe_data["ylabel"])
+        axe.grid(True)
+        axe.legend()
+
+    if title: fig.suptitle(title, fontsize=16)
+    plt.show()
 
 
 def get_solar_field_powers(max_solar_radiation, n_hours):
