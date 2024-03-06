@@ -6,6 +6,8 @@ from numpy.typing import NDArray
 """
 Plot types: PlotData its dependencies
 """
+
+
 class ArrayData(TypedDict):
     x: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float_]]
     y: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float_]]

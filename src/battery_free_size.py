@@ -12,8 +12,10 @@ def objfunc(xdict):
     funcs["cost"] = np.sum(grid_prices_mwh * (-p_gen + p_bat))
 
     stored_battery_energy = []
-    for h in range(1, PARAMS["N_HOURS"]+1):
-        stored_battery_energy.append(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h]))
+    for h in range(1, PARAMS["N_HOURS"] + 1):
+        stored_battery_energy.append(
+            PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h])
+        )
     funcs["stored_battery_energy"] = stored_battery_energy
 
     grid_power = []
@@ -38,7 +40,7 @@ def run_optimization():
         "c",
         lower=-PARAMS["P_BAT_MAX"],
         upper=PARAMS["P_BAT_MAX"],
-        value=0
+        value=0,
     )
 
     # Constraints
@@ -46,14 +48,14 @@ def run_optimization():
         "stored_battery_energy",
         PARAMS["N_HOURS"],
         lower=(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"]),
-        upper=(PARAMS["SOC_MAX"] * PARAMS["MAX_BAT_CAPACITY"])
+        upper=(PARAMS["SOC_MAX"] * PARAMS["MAX_BAT_CAPACITY"]),
     )
 
     optProb.addConGroup(
         "grid_power",
         PARAMS["N_HOURS"],
         lower=-PARAMS["P_GRID_MAX"],
-        upper=PARAMS["P_GRID_MAX"]
+        upper=PARAMS["P_GRID_MAX"],
     )
 
     # Objective
@@ -98,7 +100,7 @@ if __name__ == "__main__":
                         "y": grid_prices_mwh,
                         "label": None,
                     }
-                ]
+                ],
             },
             {
                 "i": 0,
@@ -120,10 +122,10 @@ if __name__ == "__main__":
                         "x": hours,
                         "y": sol.xStar["p_bat"],
                         "label": "Power to battery (kW)",
-                    }
-                ]
-            }
-        ]
+                    },
+                ],
+            },
+        ],
     }
 
     generic_plot(plot_data, sharex=True)

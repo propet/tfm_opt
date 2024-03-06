@@ -6,7 +6,7 @@ from pyoptsparse import SLSQP, Optimization
 def objfunc(xdict):
     x = xdict["xvars"]
     funcs = {}
-    funcs["obj"] = (1 - x[0])**2 + 100*(x[1] - x[0]**2)**2
+    funcs["obj"] = (1 - x[0]) ** 2 + 100 * (x[1] - x[0] ** 2) ** 2
     fail = False
 
     return funcs, fail

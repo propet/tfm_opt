@@ -1,6 +1,11 @@
 from pyoptsparse import SLSQP, Optimization
 import numpy as np
-from utils import get_solar_field_powers, get_grid_prices_mwh, get_electric_demand_powers, generic_plot
+from utils import (
+    get_solar_field_powers,
+    get_grid_prices_mwh,
+    get_electric_demand_powers,
+    generic_plot,
+)
 from parameters import PARAMS
 from custom_types import PlotData
 
@@ -16,8 +21,10 @@ def objfunc(xdict):
     # funcs["cost"] = np.sum( 1 / PARAMS["DK_RHO"] * np.log(1 + np.exp(PARAMS["DK_RHO"] * (grid_prices_mwh * (-p_gen + p_bat + p_electric_demand)))) )
 
     stored_battery_energy = []
-    for h in range(1, PARAMS["N_HOURS"]+1):
-        stored_battery_energy.append(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h]))
+    for h in range(1, PARAMS["N_HOURS"] + 1):
+        stored_battery_energy.append(
+            PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h])
+        )
     funcs["stored_battery_energy"] = stored_battery_energy
 
     grid_power = []
@@ -41,7 +48,7 @@ def run_optimization():
         "c",
         lower=-PARAMS["P_BAT_MAX"],
         upper=PARAMS["P_BAT_MAX"],
-        value=0
+        value=0,
     )
 
     # Constraints
@@ -49,14 +56,11 @@ def run_optimization():
         "stored_battery_energy",
         PARAMS["N_HOURS"],
         lower=(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"]),
-        upper=(PARAMS["SOC_MAX"] * PARAMS["MAX_BAT_CAPACITY"])
+        upper=(PARAMS["SOC_MAX"] * PARAMS["MAX_BAT_CAPACITY"]),
     )
 
     optProb.addConGroup(
-        "grid_power",
-        PARAMS["N_HOURS"],
-        lower=0,
-        upper=PARAMS["P_GRID_MAX"]
+        "grid_power", PARAMS["N_HOURS"], lower=0, upper=PARAMS["P_GRID_MAX"]
     )
 
     # Objective
@@ -78,7 +82,9 @@ if __name__ == "__main__":
     # Retrieve data
     grid_prices_mwh = get_grid_prices_mwh(PARAMS["N_HOURS"])
     p_gen = get_solar_field_powers(PARAMS["MAX_SOLAR_RADIATION"], PARAMS["N_HOURS"])
-    p_electric_demand = get_electric_demand_powers(PARAMS["MAX_ELECTRIC_DEMAND"], PARAMS["N_HOURS"])
+    p_electric_demand = get_electric_demand_powers(
+        PARAMS["MAX_ELECTRIC_DEMAND"], PARAMS["N_HOURS"]
+    )
     hours = np.arange(len(p_gen))
 
     # Run optimization
@@ -102,7 +108,7 @@ if __name__ == "__main__":
                         "y": grid_prices_mwh,
                         "label": None,
                     }
-                ]
+                ],
             },
             {
                 "i": 0,
@@ -129,10 +135,10 @@ if __name__ == "__main__":
                         "x": hours,
                         "y": p_electric_demand,
                         "label": "Electric power demand (kW)",
-                    }
-                ]
-            }
-        ]
+                    },
+                ],
+            },
+        ],
     }
 
     generic_plot(plot_data, sharex=True)
