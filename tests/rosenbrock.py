@@ -1,5 +1,8 @@
 # First party modules
-from pyoptsparse import SLSQP, Optimization
+from pyoptsparse import (
+    SLSQP,
+    Optimization,
+)
 
 
 # rst begin objfunc
@@ -14,7 +17,10 @@ def objfunc(xdict):
 
 # rst begin optProb
 # Optimization Object
-optProb = Optimization("Rosenbrock function", objfunc)
+optProb = Optimization(
+    "Rosenbrock function",
+    objfunc,
+)
 
 # rst begin addVar
 # Design Variables

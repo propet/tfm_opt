@@ -2,7 +2,9 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from custom_types import PlotData
+from custom_types import (
+    PlotData,
+)
 import scienceplots
 
 
@@ -15,7 +17,12 @@ plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
 
 
-def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
+def generic_plot(
+    plot_data: PlotData,
+    title=None,
+    sharex=False,
+    sharey=False,
+):
     fig, axes = plt.subplots(
         nrows=plot_data["rows"],
         ncols=plot_data["columns"],
@@ -35,7 +42,11 @@ def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
                 axe = axes[axe_data["j"]]
 
         for array_data in axe_data["arrays_data"]:
-            axe.plot(array_data["x"], array_data["y"], label=array_data["label"])
+            axe.plot(
+                array_data["x"],
+                array_data["y"],
+                label=array_data["label"],
+            )
 
         if "title" in axe_data:
             axe.title.set_text(axe_data["title"])
@@ -51,7 +62,10 @@ def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
     plt.show()
 
 
-def get_solar_field_powers(max_solar_radiation, n_hours):
+def get_solar_field_powers(
+    max_solar_radiation,
+    n_hours,
+):
     HOURS_IN_DAY = 24
     min_solar_radiation = 0
     amplitude = (max_solar_radiation - min_solar_radiation) / 2
@@ -61,14 +75,14 @@ def get_solar_field_powers(max_solar_radiation, n_hours):
     # Calculate the sinusoidal function value for each hour
     # máximo de radiación a mediodía y mínimo a medianoche (sinusoidal desplazada 6 horas a la derecha)
     # A * sin(w * t) = A * sin(2*pi*f*t)
-    p_gen = (
-        amplitude * np.sin(2 * np.pi * (1 / HOURS_IN_DAY) * (hours - 6))
-        + vertical_shift
-    )
+    p_gen = amplitude * np.sin(2 * np.pi * (1 / HOURS_IN_DAY) * (hours - 6)) + vertical_shift
     return p_gen
 
 
-def get_electric_demand_powers(max_electric_demand, n_hours):
+def get_electric_demand_powers(
+    max_electric_demand,
+    n_hours,
+):
     HOURS_IN_DAY = 24
     min_electric_demand = 0
     amplitude = (max_electric_demand - min_electric_demand) / 2
@@ -78,9 +92,7 @@ def get_electric_demand_powers(max_electric_demand, n_hours):
     # Calculate the sinusoidal function value for each hour
     # máximo de demanda a las 6 de la mañana y mínimo a las 6 de la tarde
     # A * sin(w * t) = A * sin(2*pi*f*t)
-    p_electric_demand = (
-        amplitude * np.sin(2 * np.pi * (1 / HOURS_IN_DAY) * hours) + vertical_shift
-    )
+    p_electric_demand = amplitude * np.sin(2 * np.pi * (1 / HOURS_IN_DAY) * hours) + vertical_shift
     return p_electric_demand
 
 
@@ -91,7 +103,10 @@ def get_grid_prices_mwh(n_hours, year=2022):
     # Loop over every csv file
     for file in sorted(os.listdir(directory)):
         if file.startswith("marginalpdbc_") and file.endswith(".1"):
-            filepath = os.path.join(directory, file)
+            filepath = os.path.join(
+                directory,
+                file,
+            )
             # Read csv with separator ";"
             df = pd.read_csv(
                 filepath,
