@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scienceplots
 
+import scienceplots
 plt.style.use(["science", "ieee"])
+plt.rcParams.update({'figure.dpi': '300'})
 
 
 def ks(g, rho=100):

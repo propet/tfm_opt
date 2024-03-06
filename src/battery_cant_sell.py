@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils import get_solar_field_powers, get_grid_prices_mwh, get_electric_demand_powers
 
-
 # Scienceplots style
-# import scienceplots
-# plt.style.use(["science", "nature"])
+import scienceplots
+plt.style.use(["science", "ieee"])
+plt.rcParams.update({"figure.dpi": "300"})
 
 
 #############
