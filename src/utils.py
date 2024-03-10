@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from custom_types import PlotData
 import scienceplots
+from parameters import PARAMS
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -13,6 +14,10 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
+
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
 
 def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
@@ -55,6 +60,16 @@ def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
     if title:
         fig.suptitle(title, fontsize=16)
     plt.show()
+
+    # Save the figure
+    directory = f"{ROOT_DIR}/figures"
+    filename = "_".join(f"{key}_{value}" for key, value in PARAMS.items()) + ".png"
+    filepath = os.path.join(
+        directory,
+        filename,
+    )
+    fig.savefig(filepath)
+    print(f"Figure saved as {filepath}")
 
 
 def get_solar_field_powers(max_solar_radiation, n_hours):

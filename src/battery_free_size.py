@@ -1,6 +1,6 @@
 from pyoptsparse import SLSQP, Optimization
 import numpy as np
-from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot
+from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot, sigmoid
 from parameters import PARAMS
 from custom_types import PlotData
 
@@ -16,11 +16,15 @@ def objfunc(grid_prices_kwh, p_gen):
         funcs = {}
         funcs["cost"] = np.sum(grid_prices_kwh * (-p_gen + p_bat))
 
+        # Battery SOC constraints
+        sigmoid_p = sigmoid(p_bat)
+        eta = sigmoid_p * PARAMS["BAT_ETA_CHARGE"] + (1 - sigmoid_p) * PARAMS["BAT_ETA_DISCHARGE"]
         battery_soc = []
         for h in range(1, PARAMS["N_HOURS"] + 1):
-            battery_soc.append((PARAMS["SOC_MIN"] * battery_capacity + np.sum(p_bat[:h])) / battery_capacity)
+            battery_soc.append((PARAMS["SOC_MIN"] * battery_capacity + np.sum(eta[:h] * p_bat[:h])) / battery_capacity)
         funcs["battery_soc"] = battery_soc
 
+        # Grid power constraints
         grid_power = []
         for h in range(PARAMS["N_HOURS"]):
             grid_power.append(-p_gen[h] + p_bat[h])
@@ -49,10 +53,10 @@ def run_optimization(plot=True):
     optProb.addVarGroup("p_bat", PARAMS["N_HOURS"], "c", lower=-PARAMS["P_BAT_MAX"], upper=PARAMS["P_BAT_MAX"], value=0)
     optProb.addVar("battery_capacity", "c", lower=1e-3, upper=BATTERY_CAPACITY_UPPER_BOUND, value=0)
 
-    # Battery SOC constraint
+    # Battery SOC constraints
     optProb.addConGroup("battery_soc", PARAMS["N_HOURS"], lower=PARAMS["SOC_MIN"], upper=PARAMS["SOC_MAX"])
 
-    # Grid power constraint
+    # Grid power constraints
     optProb.addConGroup("grid_power", PARAMS["N_HOURS"], lower=-PARAMS["P_GRID_MAX"], upper=PARAMS["P_GRID_MAX"])
 
     # Objective
@@ -73,12 +77,15 @@ def run_optimization(plot=True):
     if plot:
         print(sol)
 
+        sigmoid_p = sigmoid(sol.xStar["p_bat"])
+        eta = sigmoid_p * PARAMS["BAT_ETA_CHARGE"] + (1 - sigmoid_p) * PARAMS["BAT_ETA_DISCHARGE"]
         battery_soc = []
         for h in range(1, PARAMS["N_HOURS"] + 1):
             battery_soc.append(
-                (PARAMS["SOC_MIN"] * sol.xStar["battery_capacity"] + np.sum(sol.xStar["p_bat"][:h]))
+                (PARAMS["SOC_MIN"] * sol.xStar["battery_capacity"] + np.sum(eta[:h] * sol.xStar["p_bat"][:h]))
                 / sol.xStar["battery_capacity"]
             )
+
         plot_data: PlotData = {
             "rows": 3,
             "columns": 1,

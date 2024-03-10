@@ -8,4 +8,6 @@ PARAMS = {
     "MAX_SOLAR_RADIATION": 10,  # kW
     "MAX_ELECTRIC_DEMAND": 20,  # kW
     "DK_RHO": 10,  # Kreisselmeier–Steinhauser factor
+    "BAT_ETA_CHARGE": 0.8,  # charge efficiency
+    "BAT_ETA_DISCHARGE": 0.9,  # discharge efficiency
 }
