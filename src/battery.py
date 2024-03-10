@@ -1,128 +1,139 @@
 from pyoptsparse import SLSQP, Optimization
 import numpy as np
-from utils import get_solar_field_powers, get_grid_prices_mwh, generic_plot
+from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot
 from parameters import PARAMS
 from custom_types import PlotData
 
 
-def objfunc(xdict):
-    p_bat = xdict["p_bat"]
+def objfunc(grid_prices_kwh, p_gen):
 
-    funcs = {}
-    funcs["cost"] = np.sum(grid_prices_mwh * (-p_gen + p_bat))
+    def return_function(xdict):
+        p_bat = xdict["p_bat"]
 
-    stored_battery_energy = []
-    for h in range(1, PARAMS["N_HOURS"] + 1):
-        stored_battery_energy.append(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h]))
-    funcs["stored_battery_energy"] = stored_battery_energy
+        funcs = {}
+        funcs["cost"] = np.sum(grid_prices_kwh * (-p_gen + p_bat))
 
-    grid_power = []
-    for h in range(PARAMS["N_HOURS"]):
-        grid_power.append(-p_gen[h] + p_bat[h])
-    funcs["grid_power"] = grid_power
+        battery_soc = []
+        for h in range(1, PARAMS["N_HOURS"] + 1):
+            battery_soc.append(
+                (PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(p_bat[:h])) / PARAMS["MAX_BAT_CAPACITY"]
+            )
+        funcs["battery_soc"] = battery_soc
 
-    fail = False
+        grid_power = []
+        for h in range(PARAMS["N_HOURS"]):
+            grid_power.append(-p_gen[h] + p_bat[h])
+        funcs["grid_power"] = grid_power
 
-    return funcs, fail
+        fail = False
+        return funcs, fail
+
+    return return_function
 
 
-def run_optimization():
+def get_input_data():
+    grid_prices_kwh = get_grid_prices_kwh(PARAMS["N_HOURS"])
+    p_gen = get_solar_field_powers(PARAMS["MAX_SOLAR_RADIATION"], PARAMS["N_HOURS"])
+    hours = np.arange(len(p_gen))
+    return hours, grid_prices_kwh, p_gen
+
+
+def run_optimization(plot=True):
+    hours, grid_prices_kwh, p_gen = get_input_data()
+
     # Optimization Object
-    optProb = Optimization("All year battery powers", objfunc)
+    optProb = Optimization("All year battery powers", objfunc(grid_prices_kwh, p_gen))
 
     # Design Variables
-    optProb.addVarGroup(
-        "p_bat",
-        PARAMS["N_HOURS"],
-        "c",
-        lower=-PARAMS["P_BAT_MAX"],
-        upper=PARAMS["P_BAT_MAX"],
-        value=0,
-    )
+    optProb.addVarGroup("p_bat", PARAMS["N_HOURS"], "c", lower=-PARAMS["P_BAT_MAX"], upper=PARAMS["P_BAT_MAX"], value=0)
 
-    # Constraints
-    optProb.addConGroup(
-        "stored_battery_energy",
-        PARAMS["N_HOURS"],
-        lower=(PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"]),
-        upper=(PARAMS["SOC_MAX"] * PARAMS["MAX_BAT_CAPACITY"]),
-    )
+    # Battery SOC constraint
+    optProb.addConGroup("battery_soc", PARAMS["N_HOURS"], lower=PARAMS["SOC_MIN"], upper=PARAMS["SOC_MAX"])
 
-    optProb.addConGroup(
-        "grid_power",
-        PARAMS["N_HOURS"],
-        lower=-PARAMS["P_GRID_MAX"],
-        upper=PARAMS["P_GRID_MAX"],
-    )
+    # Grid power constraint
+    optProb.addConGroup("grid_power", PARAMS["N_HOURS"], lower=-PARAMS["P_GRID_MAX"], upper=PARAMS["P_GRID_MAX"])
 
     # Objective
     optProb.addObj("cost")
 
     # Check optimization problem
-    # print(optProb)
+    if plot:
+        print(optProb)
 
     # Optimizer
     optOptions = {"IPRINT": -1}
     opt = SLSQP(options=optOptions)
 
     # Solve
-    sol = opt(optProb, sens="FD")
+    sol = opt(optProb, sens="FD", sensStep=1e-6)
+
+    # Check Solution
+    if plot:
+        print(sol)
+
+        battery_soc = []
+        for h in range(1, PARAMS["N_HOURS"] + 1):
+            battery_soc.append(
+                (PARAMS["SOC_MIN"] * PARAMS["MAX_BAT_CAPACITY"] + np.sum(sol.xStar["p_bat"][:h]))
+                / PARAMS["MAX_BAT_CAPACITY"]
+            )
+        plot_data: PlotData = {
+            "rows": 3,
+            "columns": 1,
+            "axes_data": [
+                {
+                    "i": 0,
+                    "j": 0,
+                    "ylabel": "Price[€/kWh]",
+                    "arrays_data": [
+                        {
+                            "x": hours,
+                            "y": grid_prices_kwh,
+                            "label": None,
+                        }
+                    ],
+                },
+                {
+                    "i": 0,
+                    "j": 1,
+                    "ylabel": "Power[kW]",
+                    "arrays_data": [
+                        {
+                            "x": hours,
+                            "y": p_gen,
+                            "label": "From Solar",
+                        },
+                        {
+                            "x": hours,
+                            "y": (-p_gen + sol.xStar["p_bat"]),
+                            "label": "From grid",
+                        },
+                        {
+                            "x": hours,
+                            "y": sol.xStar["p_bat"],
+                            "label": "To battery",
+                        },
+                    ],
+                },
+                {
+                    "i": 0,
+                    "j": 2,
+                    "xlabel": "Time[hours]",
+                    "ylabel": "Battery SOC",
+                    "arrays_data": [
+                        {
+                            "x": hours,
+                            "y": battery_soc,
+                            "label": None,
+                        },
+                    ],
+                },
+            ],
+        }
+        generic_plot(plot_data, sharex=True)
+
     return sol
 
 
 if __name__ == "__main__":
-    # Retrieve data
-    grid_prices_mwh = get_grid_prices_mwh(PARAMS["N_HOURS"])
-    p_gen = get_solar_field_powers(PARAMS["MAX_SOLAR_RADIATION"], PARAMS["N_HOURS"])
-    hours = np.arange(len(p_gen))
-
-    # Run optimization
-    sol = run_optimization()
-
-    # Check Solution
-    print(sol)
-
-    # Plot results
-    plot_data: PlotData = {
-        "rows": 2,
-        "columns": 1,
-        "axes_data": [
-            {
-                "i": 0,
-                "j": 0,
-                "ylabel": "Price (€/MWh)",
-                "arrays_data": [
-                    {
-                        "x": hours,
-                        "y": grid_prices_mwh,
-                        "label": None,
-                    }
-                ],
-            },
-            {
-                "i": 0,
-                "j": 1,
-                "xlabel": "Time (hours)",
-                "ylabel": "Power (kW)",
-                "arrays_data": [
-                    {
-                        "x": hours,
-                        "y": p_gen,
-                        "label": "Solar field power (kW)",
-                    },
-                    {
-                        "x": hours,
-                        "y": (-p_gen + sol.xStar["p_bat"]),
-                        "label": "Power from grid (kW)",
-                    },
-                    {
-                        "x": hours,
-                        "y": sol.xStar["p_bat"],
-                        "label": "Power to battery (kW)",
-                    },
-                ],
-            },
-        ],
-    }
-
-    generic_plot(plot_data, sharex=True)
+    run_optimization(plot=True)

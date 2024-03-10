@@ -26,7 +26,9 @@ def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
 
     for axe_data in plot_data["axes_data"]:
         axe = None
-        if plot_data["rows"] > 1 and plot_data["columns"] > 1:
+        if plot_data["rows"] == 1 and plot_data["columns"] == 1:
+            axe = axes
+        elif plot_data["rows"] > 1 and plot_data["columns"] > 1:
             axe = axes["i"]["j"]
         else:
             if axe_data["i"] > axe_data["j"]:
@@ -83,7 +85,7 @@ def get_electric_demand_powers(max_electric_demand, n_hours):
     return p_electric_demand
 
 
-def get_grid_prices_mwh(n_hours, year=2022):
+def get_grid_prices_kwh(n_hours, year=2022):
     directory = f"{ROOT_DIR}/data/mercado_diario_precio_horario_{year}"
     grid_prices_mwh = []
 
@@ -108,4 +110,5 @@ def get_grid_prices_mwh(n_hours, year=2022):
             grid_prices_mwh.extend(price_values.tolist())
 
     grid_prices_mwh = grid_prices_mwh[:n_hours]
-    return grid_prices_mwh
+    grid_prices_kwh = np.array(grid_prices_mwh) * 1e-3
+    return grid_prices_kwh
