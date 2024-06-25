@@ -26,6 +26,7 @@ def explicit_solve_ode_system(y, h, p):
 
 def get_dfdy(y, p):
     # λ_n = ∂C/∂y_n + λ_{n+1} + λ_{n+1} * h * ∂f(y_n;p)/∂y_n
+    # y_n = y_{n-1} + h \cdot f(y_{n-1}, t_{n-1})
     # Compute ∂f(y_n;p)/∂y_n
     dfdy = np.zeros((2, 2))
     dfdy[0, 0] = p[0] - p[1] * y[1]
@@ -36,7 +37,7 @@ def get_dfdy(y, p):
 
 
 def get_dfdp(y, p):
-    # λ_n = ∂C/∂y_n + λ_{n+1} + λ_{n+1} * h * ∂f(y_n;p)/∂y_n
+    # ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_{n-1};p)/∂p)
     # Compute ∂f(y_n;p)/∂p
     dfdp = np.zeros((2, 4))
     dfdp[0, 0] = y[0]
@@ -83,21 +84,21 @@ def adjoint_gradients(y, p, h, steps):
 
     min_p C
     s.t.
-        y_next[0] - y[0] - h * (p[0] * y[0] - p[1] * y[0] * y[1]) = 0
-        y_next[1] - y[1] - h * (-p[2] * y[1] + p[3] * y[0] * y[1]) = 0
+        0 = -y_next[0] + y[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1])
+        0 = -y_next[1] + y[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
 
 
     with C = Σ y[0]_n
 
     Lagragian:
-    L = C - Σ λ_n (y_{n} - y_{n-1} - h * f(y_{n-1};p))
-    ∂L/∂y_n = ∂C/∂y_n + λ_n - λ_{n+1} - λ_{n+1} * h * ∂f(y_n;p)/∂y_n = 0
+    L = C + Σ λ_n (-y_n + y_{n-1} + h * f(y_{n-1};p))
+    ∂L/∂y_n = ∂C/∂y_n - λ_n + λ_{n+1} + λ_{n+1} * h * ∂f(y_n;p)/∂y_n = 0
     ∂L/∂y_N = 0 => λ_N = ∂C/∂y_N = [1, 0]
     .
     .
     λ_n^T = ∂C/∂y_n + λ_{n+1}^T + λ_{n+1}^T * h * ∂f(y_n;p)/∂y_n
 
-    ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f/∂p)
+    ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_{n-1};p)/∂p)
     """
     # Initialize adjoint variables
     lambd = np.zeros((2, steps + 1))
@@ -106,12 +107,10 @@ def adjoint_gradients(y, p, h, steps):
 
     # Backward propagation of adjoint variables
     for n in range(steps-1, -1, -1):
-        # print("step:", n)
-        dfdy = get_dfdy(y[:, n], p)
-        # print(dfdy)
-        dCdy = np.array([1, 0])
-        # λ_n = ∂C/∂y_n + λ_{n+1} + λ_{n+1} * ∂f(y_n;p,h)/∂y_n
-        lambd[:, n] = adjoint_equation(h, lambd[:, n+1], dfdy, dCdy)
+        dfdy_n = get_dfdy(y[:, n], p)
+        dCdy_n = np.array([1, 0])
+        lambd[:, n] = adjoint_equation(h, lambd[:, n+1], dfdy_n, dCdy_n)
+        # print(f"lambd_{n}", lambd[:, n])
 
     dCdy_0 = lambd[:, 0]
 
@@ -181,25 +180,23 @@ def plot(y, steps, h):
     plt.plot(t, y[1], label='y_1')
     plt.xlabel('Time')
     plt.ylabel('Values')
-    plt.title('DAE Simulation Results')
+    plt.title('ODE Simulation Results')
     plt.legend()
     plt.grid(True)
     plt.show()
 
 
 def main():
-    # steps = 1000
-    steps = 3
-    h = 0.001  # timestep
+    steps = 100000
+    # steps = 3
+    h = 0.0001  # timestep
     p = [1.0, 2.0, 3.0, 2.0]
     y_0 = [2, 2]
     y = solve(y_0, p, h, steps)
-    # print(y)
     print("solution:", y[:, -1])
-    # plot(y, steps, h)
+    plot(y, steps, h)
 
     # Derivatives
-    # g = fd_central_gradients(y_0, p, h, steps)
     dCdy_0, dCdp = fd_gradients(y_0, p, h, steps)
     print("(finite diff) df/dy_0", dCdy_0)
     print("(finite diff) df/dp: ", dCdp)
