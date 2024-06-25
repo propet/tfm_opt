@@ -15,8 +15,10 @@
         fhs = pkgs.buildFHSUserEnv {
           name = "my-fhs-environment";
 
-          targetPkgs = _: [
+          targetPkgs = _: with pkgs;[
             pkgs.micromamba
+            pkgs.gdb
+            pkgs.valgrind
           ];
 
           profile = ''
@@ -33,7 +35,16 @@
       in
       {
         devShell = fhs.env;
+
+        # devShell = pkgs.mkShell {
+        #   buildInputs = [
+        #     pkgs.petsc
+        #     pkgs.mpi
+        #     pkgs.gcc
+        #     pkgs.python3
+        #     pkgs.gfortran
+        #   ];
+        # };
       }
     );
 }
-

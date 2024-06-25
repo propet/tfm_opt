@@ -6,3 +6,7 @@ pandas
 scienceplots
 pyright
 black
+mpi4py
+petsc
+petsc4py
+scikits.odes
