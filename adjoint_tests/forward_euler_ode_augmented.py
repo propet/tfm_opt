@@ -51,6 +51,22 @@ def get_dfdp(y, p):
     return dfdp
 
 
+def get_drdy(y, p):
+    # ∂r(y_n,p_n)/∂y_n
+    # r = y[0]
+    drdy = np.zeros((1, 2))
+    drdy[0, 0] = 1
+    drdy[0, 1] = 0
+    return drdy
+
+
+def get_drdp(y, p):
+    # ∂r(y_n,p_n)/∂p_n
+    # r = y[0]
+    drdp = np.zeros((1, 4))
+    return drdp
+
+
 def cost_function(y):
     return sum(y[0])
 
@@ -73,55 +89,73 @@ def solve(y_0, p, h, steps):
     return y
 
 
-def adjoint_equation(h, lambd_np1, dfdy, dCdy):
-    # λ_n = ∂C/∂y_n + λ_{n+1} + λ_{n+1} * h * ∂f(y_n;p)/∂y_n
-    return dCdy + lambd_np1 + h * np.dot(lambd_np1.T, dfdy)
-
-
 def adjoint_gradients(y, p, h, steps):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
+    C = Σy[0]
+
     min_p C
     s.t.
-        0 = -y_next[0] + y[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1])
-        0 = -y_next[1] + y[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
+        0 = -y[0] + y_prev[0] + h * (p[0] * y_prev[0] - p[1] * y_prev[0] * y_prev[1])
+        0 = -y[1] + y_prev[1] + h * (-p[2] * y_prev[1] + p[3] * y_prev[0] * y_prev[1])
 
+    by agumenting the system
+    q' = r -> q_n = q_(n-1) + y_prev[0]
+    p' = 0
 
-    with C = Σ y[0]_n
+    min q(t_N)
+        y[0] - y_prev[0] - h * (p[0] * y_prev[0] - p[1] * y_prev[0] * y_prev[1]) = 0
+        y[1] - y_prev[1] - h * (-p[2] * y_prev[1] + p[3] * y_prev[0] * y_prev[1]) = 0
+        .
+        .
+        q_n - q_{n-1} - y_prev[0] = 0
+        .
+        .
+        (p_n - p_prev) / h = 0
 
     Lagragian:
-    L = C + Σ λ_n (-y_n + y_{n-1} + h * f(y_{n-1};p))
-    ∂L/∂y_n = ∂C/∂y_n - λ_n + λ_{n+1} + λ_{n+1} * h * ∂f(y_n;p)/∂y_n = 0
-    ∂L/∂y_N = 0 => λ_N = ∂C/∂y_N = [1, 0]
-    .
-    .
-    λ_n^T = ∂C/∂y_n + λ_{n+1}^T + λ_{n+1}^T * h * ∂f(y_n;p)/∂y_n
+    L = q_N
+        - Σ λ_n (y_n - y_(n-1) - hf(y_(n-1), p_(n-1)))
+        - Σ θ_n (q_n - q_(n-1) - r(y_(n-1), p_(n-1)))
+        - Σ μ_n (p_n - p_(n-1))
 
-    ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_{n-1};p)/∂p)
+    ∂L/∂y_n = 0 = - λ_n + λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n + θ_(n+1) ∂r(y_n,p_n)/∂y_n
+    ∂L/∂p_n = 0 = λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n + θ_(n+1) * ∂r(y_n,p_n)/∂p_n - μ_n + μ_(n+1)
+    ∂L/∂q_n = 0 = q_N - θ_n + θ_(n+1)
+
+    ∂L/∂y_N = 0 => ∂C/∂y_N - λ_N = 0 => λ_N = [1, 0]
+    ∂L/∂p_N = 0 => μ_n = 0
+    ∂L/∂q_N = 0 => ∂q_N/∂q_N - θ_N = 0 => θ_N = 1
+    .
+    .
+
+    Solve system at each step:
+    λ_n = λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n + θ_(n+1) ∂r(y_n,p_n)/∂y_n
+    μ_n = μ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n + θ_(n+1) * ∂r(y_n,p_n)/∂p_n 
+    θ_n = θ_(n+1)
+
+    since θ_N = 1 = θ_n
+
+    λ_n = λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n + ∂r(y_n,p_n)/∂y_n
+    μ_n = μ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n + ∂r(y_n,p_n)/∂p_n 
     """
     # Initialize adjoint variables
-    lambd = np.zeros((2, steps + 1))
-    # λ_N = ∂C/∂y_N = [1, 0]
-    lambd[:, -1] = [1, 0]  # Set the final condition
+    # Set the final condition
+    adj_lambda = np.zeros((2, steps+1))
+    adj_lambda[:, -1] = [1, 0]
+    adj_mu = np.zeros((4, steps+1))
 
     # Backward propagation of adjoint variables
     for n in range(steps-1, -1, -1):
         dfdy_n = get_dfdy(y[:, n], p)
-        dCdy_n = np.array([1, 0])
-        lambd[:, n] = adjoint_equation(h, lambd[:, n+1], dfdy_n, dCdy_n)
-        # print(f"lambd_{n}", lambd[:, n])
+        dfdp_n = get_dfdp(y[:, n], p)
+        drdy_n = get_drdy(y[:, n], p)
+        drdp_n = get_drdp(y[:, n], p)
+        adj_lambda[:, n] = adj_lambda[:, n+1] + h * np.dot(adj_lambda[:, n+1].T, dfdy_n) + drdy_n
+        adj_mu[:, n] = adj_mu[:, n+1] + h * np.dot(adj_lambda[:, n+1].T, dfdp_n) + drdp_n
 
-    dCdy_0 = lambd[:, 0]
-
-    # Compute gradient with respect to parameters
-    dCdp = np.zeros(4)
-    # ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_{n-1};p)/∂p)
-    for n in range(steps, 0, -1):
-        dfdp = get_dfdp(y[:, n-1], p)
-        dCdp += h * np.dot(lambd[:, n].T, dfdp)
-
-    return dCdy_0, dCdp
+    return adj_lambda[:, 0], adj_mu[:, 0]
 
 
 def fd_gradients(y_0, p, h, steps):
@@ -193,14 +227,14 @@ def main():
     y_0 = [2, 2]
     y = solve(y_0, p, h, steps)
     print("solution:", y[:, -1])
-    plot(y, steps, h)
+    # plot(y, steps, h)
 
     # Derivatives
     dCdy_0, dCdp = fd_gradients(y_0, p, h, steps)
     print("(finite diff) df/dy_0", dCdy_0)
     print("(finite diff) df/dp: ", dCdp)
-    #
-    # # Adjoint derivatives
+
+    # # # Adjoint derivatives
     dCdy_0, dCdp = adjoint_gradients(y, p, h, steps)
     print("(adjoint) df/dy_0: ", dCdy_0)
     print("(adjoint) df/dp: ", dCdp)
