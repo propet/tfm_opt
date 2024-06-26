@@ -158,6 +158,30 @@ def adjoint_gradients(y, p, h, steps):
     return adj_lambda[:, 0], adj_mu[:, 0]
 
 
+def memory_efficient_adjoint_gradients(y, p, h, steps):
+    """
+    Don't require to store the intermediate adjoints
+    λ_n = λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n + θ_(n+1) ∂r(y_n,p_n)/∂y_n
+    μ_n = μ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n + θ_(n+1) * ∂r(y_n,p_n)/∂p_n 
+    θ_n = θ_(n+1) = 1
+    """
+    # Initialize adjoint variables
+    # Set the final condition
+    adj_lambda = np.array([1, 0])  # ∂C(y_N,p_N)/∂y_N
+    adj_mu = np.zeros(4)  # ∂C(y_N,p_N)/∂p_N
+
+    # Backward propagation of adjoint variables
+    for n in range(steps-1, -1, -1):
+        dfdy_n = get_dfdy(y[:, n], p)
+        dfdp_n = get_dfdp(y[:, n], p)
+        drdy_n = get_drdy(y[:, n], p)
+        drdp_n = get_drdp(y[:, n], p)
+        adj_mu = adj_mu + h * np.dot(adj_lambda, dfdp_n) + drdp_n
+        adj_lambda = adj_lambda + h * np.dot(adj_lambda, dfdy_n) + drdy_n
+
+    return adj_lambda, adj_mu
+
+
 def fd_gradients(y_0, p, h, steps):
     """
     Finite difference of function cost_function with respect parameters
