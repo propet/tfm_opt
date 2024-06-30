@@ -103,7 +103,7 @@ def adjoint_gradients(y, p, h, steps):
         y[0] - y_prev[0] - h * (p[0] * y_prev[0] - p[1] * y_prev[0] * y_prev[1]) = 0
         y[1] - y_prev[1] - h * (-p[2] * y_prev[1] + p[3] * y_prev[0] * y_prev[1]) = 0
 
-    Lagragian:
+    Lagrangian:
     L = Σr(y_n, p_n)
         - Σ λ_n (y_n - y_(n-1) - h * f(y_(n-1), p))
 

@@ -87,7 +87,7 @@ def adjoint_gradients(y, p, h, steps):
 
     with C = Σ y[0]_n
 
-    Lagragian:
+    Lagrangian:
     L = C + Σ λ_n+1^T [Ω(y_{n+1}, y_n, p)]
 
     ∂L/∂y_n = ∂C/∂y_n + λ_n^T ∂Ω(y_n, y_{n-1}, p)/∂y_n + λ_{n+1}^T ∂Ω(y_{n+1}, y_n, p)/∂y_n = 0
@@ -224,7 +224,7 @@ def main():
     y_0 = [2, 2, -3]
     y = solve(y_0, p, h, steps)
     print("solution:", y[:, -1])
-    # plot(y, steps, h)
+    plot(y, steps, h)
 
     # Derivatives
     # g = fd_central_gradients(y_0, p, h, steps)
@@ -233,8 +233,8 @@ def main():
     print("(finite diff) df/dy_0", g[0:2])
 
     # Adjoint derivatives
-    gp = adjoint_gradients(y, p, h, steps)
-    print("(adjoint) df/dp: ", gp)
+    # gp = adjoint_gradients(y, p, h, steps)
+    # print("(adjoint) df/dp: ", gp)
 
 
 if __name__ == "__main__":
