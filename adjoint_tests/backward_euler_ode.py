@@ -30,7 +30,7 @@ def ode_system(y, y_previous, h, p):
     """
     return [
         -y[0] + y_previous[0] + h * p[0] * y[0] - h * p[1] * y[0] * y[1],
-        -y[1] + y_previous[1] - h * p[2] * y[1] + h * p[3] * y[0] * y[1]
+        -y[1] + y_previous[1] - h * p[2] * y[1] + h * p[3] * y[0] * y[1],
     ]
 
 
@@ -64,6 +64,22 @@ def get_dfdp(y, p):
     return dfdp
 
 
+def get_drdy(y, p):
+    # ∂r(y_n,p_n)/∂y_n
+    # r = y[0]
+    drdy = np.zeros(2)
+    drdy[0] = 1
+    drdy[1] = 0
+    return drdy
+
+
+def get_drdp(y, p):
+    # ∂r(y_n,p_n)/∂p_n
+    # r = y[0]
+    drdp = np.zeros(4)
+    return drdp
+
+
 def cost_function(y):
     return sum(y[0])
 
@@ -78,7 +94,6 @@ def solve(y_0, p, h, steps):
 
     # Time-stepping loop
     for n in range(steps):
-        # print("forward step:", n)
         y_next = fsolve(ode_system, y[:, n], args=(y[:, n], h, p))
         y[0][n + 1] = y_next[0]
         y[1][n + 1] = y_next[1]
@@ -86,67 +101,57 @@ def solve(y_0, p, h, steps):
     return y
 
 
-def adjoint_equation(h, lambd_np1, dfdy_n, dCdy_n):
-    # ∂C/∂y_n - λ_n + λ_{n+1} + λ_n * h * ∂f(y_n;p)/∂y_n = 0
-    # (I - h ∂f(y_n;p)/∂y_n) λ_n = ∂C/∂y_N + λ_{n+1}
-
-    I = np.eye(dfdy_n.shape[0])
-    A = I - h * dfdy_n
-    b = dCdy_n + lambd_np1
-
-    # Solve the linear system A * λ_n = b
-    lambd_n = np.linalg.solve(A, b)
-    return lambd_n
-
-
 def adjoint_gradients(y, p, h, steps):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
-    min_p C
+    min_p C = Σr(y_n, p)
     s.t.
-        0 = -y[0] + y_previous[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1])
-        0 = -y[1] + y_previous[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
-
-
-    with C = Σ y[0]_n
+        y[0] - y_previous[0] - h * (p[0] * y[0] - p[1] * y[0] * y[1]) = 0
+        y[1] - y_previous[1] - h * (-p[2] * y[1] + p[3] * y[0] * y[1]) = 0
 
     Lagragian:
-    L = C + Σ λ_n (-y_n + y_{n-1} + h * f(y_n;p))
-    ∂L/∂y_n = ∂C/∂y_n - λ_n + λ_{n+1} + λ_n * h * ∂f(y_n;p)/∂y_n = 0
-    ∂L/∂y_N = 0 = ∂C/∂y_N - λ_N + λ_N * h * ∂f(y_N;p)/∂y_N => λ_N
-    .
-    .
-    ∂C/∂y_n - λ_n + λ_{n+1} + λ_n * h * ∂f(y_n;p)/∂y_n = 0
+    L = Σr(y_n, p_n) - Σ λ_n (y_n - y_{n-1} - h * f(y_n;p))
+    ∂L/∂y_n = 0 = ∂r(y_n, p_n)/∂y_n - λ_n + λ_(n+1) + λ_n * h * ∂f(y_n,p_n)/∂y_n
+    ∂L/∂y_N = 0 = ∂r(y_N, p_N)/∂y_N - λ_N + λ_N * h * ∂f(y_N,p_N)/∂y_N
 
-    ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_n;p)/∂p)
+    Solve for λ_n at each step:
+    (I - h * ∂f(y_n,p_n)/∂y_n) λ_n = λ_(n+1) + ∂r/∂y_n
+
+    Terminal conditions:
+    (I - h * ∂f(y_N,p)/∂y_N) λ_N = ∂r/∂y_N
+
+    Solve for initial timestep:
+    ∂L/∂y_0 = ∂C/∂y_0 = ∂r(y_0, p_0)/∂y_0 + λ_1
+
+    Finally, obtain the parameter sensitivities
+    ∂L/∂p = ∂C/∂p = Σ∂r/∂p_n + Σ λ_n * h * (∂f(y_n;p)/∂p)
     """
     # Initialize adjoint variables
-    lambd = np.zeros((2, steps + 1))
-    # ∂L/∂y_N = 0 = ∂C/∂y_N - λ_N + λ_N * h * ∂f(y_n;p)/∂y_N
-    dCdy_N = [1, 0]
-    dfdy_N = get_dfdy(y[:, -1], p)
-    I = np.eye(dfdy_N.shape[0])
-    # (I - h ∂f(y_N;p)/∂y_N) λ_N = ∂C/∂y_N
-    lambd_N = np.linalg.solve((I - h * dfdy_N.T), dCdy_N)
-    lambd[:, -1] = lambd_N  # Set the final condition
+    adj_lambda = np.zeros((2, steps + 1))
+    dCdy_0 = np.zeros(2)
+    dCdp = np.zeros(4)
 
-    # Backward propagation of adjoint variables
-    for n in range(steps-1, -1, -1):
+    # Compute gradients with respect to inital conditions
+    for n in range(steps, -1, -1):
         dfdy_n = get_dfdy(y[:, n], p)
-        dCdy_n = np.array([1, 0])
-        lambd[:, n] = adjoint_equation(h, lambd[:, n+1], dfdy_n.T, dCdy_n)
-        # print(f"lambd_{n}", lambd[:, n])
+        drdy_n = get_drdy(y[:, n], p)
+        I = np.eye(dfdy_n.shape[0])
 
-    dCdy_0 = lambd[:, 0]
-
+        if n == steps:
+            # Terminal condition
+            adj_lambda[:, n] = np.linalg.solve((I - h * dfdy_n.T), drdy_n)
+        elif n == 0:
+            # ∂L/∂y_0 = ∂C/∂y_0, ∂L/∂p_0 = ∂C/∂p_0
+            dCdy_0 = drdy_n + adj_lambda[:, n + 1]
+        else:
+            adj_lambda[:, n] = np.linalg.solve((I - h * dfdy_n.T), (adj_lambda[:, n + 1] + drdy_n))
 
     # Compute gradient with respect to parameters
-    dCdp = np.zeros(4)
-    # ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_n;p)/∂p)
-    for n in range(steps, 0, -1):
+    for n in range(1, steps + 1):
         dfdp = get_dfdp(y[:, n], p)
-        dCdp += h * np.dot(lambd[:, n].T, dfdp)
+        drdp = get_drdp(y[:, n], p)
+        dCdp += drdp + h * np.dot(adj_lambda[:, n].T, dfdp)
 
     return dCdy_0, dCdp
 
@@ -202,35 +207,39 @@ def plot(y, steps, h):
 
     # Plot the results
     plt.figure(figsize=(10, 6))
-    plt.plot(t, y[0], label='y_0')
-    plt.plot(t, y[1], label='y_1')
-    plt.xlabel('Time')
-    plt.ylabel('Values')
-    plt.title('ODE Simulation Results')
+    plt.plot(t, y[0], label="y_0")
+    plt.plot(t, y[1], label="y_1")
+    plt.xlabel("Time")
+    plt.ylabel("Values")
+    plt.title("ODE Simulation Results")
     plt.legend()
     plt.grid(True)
     plt.show()
 
 
 def main():
-    steps = 100000
-    # steps = 3
+    # steps = 100000
+    steps = 3
     h = 0.0001  # timestep
     p = [1.0, 2.0, 3.0, 2.0]
     y_0 = [2, 2]
     y = solve(y_0, p, h, steps)
     print("solution:", y[:, -1])
-    plot(y, steps, h)
+    # plot(y, steps, h)
 
     # Derivatives
-    dCdy_0, dCdp = fd_gradients(y_0, p, h, steps)
-    print("(finite diff) df/dy_0", dCdy_0)
-    print("(finite diff) df/dp: ", dCdp)
+    dCdy_0_fd, dCdp_fd = fd_gradients(y_0, p, h, steps)
+    print("(finite diff) df/dy_0", dCdy_0_fd)
+    print("(finite diff) df/dp: ", dCdp_fd)
 
-    # # Adjoint derivatives
-    dCdy_0, dCdp = adjoint_gradients(y, p, h, steps)
-    print("(adjoint) df/dy_0: ", dCdy_0)
-    print("(adjoint) df/dp: ", dCdp)
+    # Adjoint derivatives
+    dCdy_0_adj, dCdp_adj = adjoint_gradients(y, p, h, steps)
+    print("(adjoint) df/dy_0: ", dCdy_0_adj)
+    print("(adjoint) df/dp: ", dCdp_adj)
+
+    # Discrepancies
+    print(f"Discrepancy df/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-6) * 100}%")
+    print(f"Discrepancy df/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-6) * 100}%")
 
 
 if __name__ == "__main__":

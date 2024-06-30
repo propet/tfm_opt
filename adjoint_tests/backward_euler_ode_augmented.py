@@ -4,30 +4,41 @@ from scipy.optimize import fsolve
 from matplotlib.animation import FuncAnimation
 
 
-def explicit_solve_ode_system(y, h, p):
+def ode_system(y, y_previous, h, p):
     r"""
-    Solve with forward euler discretization
+    Solve with backward euler discretization (y_{n+1} = y_n + h \cdot f(y_{n+1}, t_{n+1}))
+
     dy0/dt = p0*y0 - p1*y0*y1
     dy1/dt = -p2*y1 + p3*y0*y1
 
-    ((y_next[0] - y[0]) / h) = p[0] * y[0] - p[1] * y[0] * y[1]
-    ((y_next[1] - y[1]) / h) = -p[2] * y[1] + p[3] * y[0] * y[1]
+    (y[0] - y_previous[0]) / h) = p[0] * y[0] - p[1] * y[0] * y[1]
+    (y[1] - y_previous[1]) / h) = -p[2] * y[1] + p[3] * y[0] * y[1]
 
     Same as
 
-    ((y_next[0] - y[0]) / h) - p[0] * y[0] + p[1] * y[0] * y[1] = 0
-    ((y_next[1] - y[1]) / h) + p[2] * y[1] - p[3] * y[0] * y[1] = 0
+    0 = -((y[0] - y_previous[0]) / h) + p[0] * y[0] - p[1] * y[0] * y[1]
+    0 = -((y[1] - y_previous[1]) / h) - p[2] * y[1] + p[3] * y[0] * y[1]
+
+    Same as
+
+    0 = -y[0] + y_previous[0] + h * p[0] * y[0] - h * p[1] * y[0] * y[1]
+    0 = -y[1] + y_previous[1] - h * p[2] * y[1] + h * p[3] * y[0] * y[1]
+
+    Same as
+    0 = -y[0] + y_previous[0] + h * p[0] * y[0] - h * p[1] * y[0] * y[1]
+    0 = -y[1] + y_previous[1] - h * p[2] * y[1] + h * p[3] * y[0] * y[1]
     """
     return [
-        y[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1]),
-        y[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
+        -y[0] + y_previous[0] + h * p[0] * y[0] - h * p[1] * y[0] * y[1],
+        -y[1] + y_previous[1] - h * p[2] * y[1] + h * p[3] * y[0] * y[1],
     ]
 
 
 def get_dfdy(y, p):
-    # λ_n = ∂C/∂y_n + λ_{n+1} + λ_{n+1} * h * ∂f(y_n;p)/∂y_n
-    # y_n = y_{n-1} + h \cdot f(y_{n-1}, t_{n-1})
+    # y_n = y_{n-1} + h \cdot f(y_n, t_n)
     # Compute ∂f(y_n;p)/∂y_n
+    # y[0] = y_previous[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1])
+    # y[1] = y_previous[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
     dfdy = np.zeros((2, 2))
     dfdy[0, 0] = p[0] - p[1] * y[1]
     dfdy[0, 1] = -p[1] * y[0]
@@ -37,8 +48,10 @@ def get_dfdy(y, p):
 
 
 def get_dfdp(y, p):
-    # ∂L/∂p = ∂C/∂p = Σ λ_n * h * (∂f(y_{n-1};p)/∂p)
+    # y_n = y_{n-1} + h \cdot f(y_n, t_n)
     # Compute ∂f(y_n;p)/∂p
+    # y[0] = y_previous[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1])
+    # y[1] = y_previous[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
     dfdp = np.zeros((2, 4))
     dfdp[0, 0] = y[0]
     dfdp[0, 1] = -y[0] * y[1]
@@ -54,16 +67,16 @@ def get_dfdp(y, p):
 def get_drdy(y, p):
     # ∂r(y_n,p_n)/∂y_n
     # r = y[0]
-    drdy = np.zeros((1, 2))
-    drdy[0, 0] = 1
-    drdy[0, 1] = 0
+    drdy = np.zeros(2)
+    drdy[0] = 1
+    drdy[1] = 0
     return drdy
 
 
 def get_drdp(y, p):
     # ∂r(y_n,p_n)/∂p_n
     # r = y[0]
-    drdp = np.zeros((1, 4))
+    drdp = np.zeros(4)
     return drdp
 
 
@@ -81,7 +94,7 @@ def solve(y_0, p, h, steps):
 
     # Time-stepping loop
     for n in range(steps):
-        y_next = explicit_solve_ode_system(y[:, n], h, p)
+        y_next = fsolve(ode_system, y[:, n], args=(y[:, n], h, p))
         y[0][n + 1] = y_next[0]
         y[1][n + 1] = y_next[1]
 
@@ -92,40 +105,42 @@ def adjoint_gradients(y, p, h, steps):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
-    min_p C = Σr(y_n, p_n)
+    min_p C = Σr(y_n, p)
     s.t.
-        y[0] - y_prev[0] - h * (p[0] * y_prev[0] - p[1] * y_prev[0] * y_prev[1]) = 0
-        y[1] - y_prev[1] - h * (-p[2] * y_prev[1] + p[3] * y_prev[0] * y_prev[1]) = 0
+        y[0] - y_previous[0] - h * (p[0] * y[0] - p[1] * y[0] * y[1]) = 0
+        y[1] - y_previous[1] - h * (-p[2] * y[1] + p[3] * y[0] * y[1]) = 0
 
     by agumenting the system
     p' = 0
 
-    min_p C = Σr(y_n, p_n)
-        y[0] - y_prev[0] - h * (p[0] * y_prev[0] - p[1] * y_prev[0] * y_prev[1]) = 0
-        y[1] - y_prev[1] - h * (-p[2] * y_prev[1] + p[3] * y_prev[0] * y_prev[1]) = 0
+    min_{p_n} C = Σr(y_n, p_n)
+        y[0] - y_previous[0] - h * (p[0] * y[0] - p[1] * y[0] * y[1]) = 0
+        y[1] - y_previous[1] - h * (-p[2] * y[1] + p[3] * y[0] * y[1]) = 0
         .
         .
         (p_n - p_prev) / h = 0
+        .
+        .
 
     Lagragian:
     L = Σr(y_n, p_n)
-        - Σ λ_n (y_n - y_(n-1) - h * f(y_(n-1), p_(n-1)))
+        - Σ λ_n (y_n - y_(n-1) - h * f(y_n, p_n))
         - Σ μ_n (p_n - p_(n-1))
 
-    ∂L/∂y_n = 0 = ∂r(y_n,p_n)/∂y_n - λ_n + λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n
-    ∂L/∂p_n = 0 = ∂r(y_n,p_n)/∂p_n + λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n - μ_n + μ_(n+1)
+    ∂L/∂y_n = 0 = ∂r(y_n, p_n)/∂y_n - λ_n + λ_(n+1) + λ_n * h * ∂f(y_n,p_n)/∂y_n
+    ∂L/∂p_n = 0 = ∂r(y_n, p_n)/∂p_n + λ_n * h * ∂f(y_n,p_n)/∂p_n - μ_n + μ_(n+1)
 
-    Solve system at each step:
-    λ_n = λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n + ∂r(y_n,p_n)/∂y_n
-    μ_n = μ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n + ∂r(y_n,p_n)/∂p_n
+    Solve for λ_n and μ_n at each step:
+    (I - h * ∂f(y_n,p_n)/∂y_n) λ_n = λ_(n+1) + ∂r/∂y_n
+    μ_n = μ_(n+1) + ∂r/∂p_n + λ_n * h * ∂f(y_n,p_n)/∂p_n
 
-    Terminal condition:
-    ∂L/∂y_N = 0 = ∂r/∂y_N - λ_N
-    ∂L/∂p_N = 0 = ∂r/∂p_N - μ_N
+    Terminal conditions:
+    ∂L/∂y_N = 0 = ∂r/∂y_N - λ_N + λ_N * h * ∂f(y_N,p_N)/∂y_N
+    ∂L/∂p_N = 0 = ∂r/∂p_N + λ_N * h * ∂f(y_N,p_N)/∂p_N - μ_N
 
     Solve for initial timestep:
-    ∂L/∂y_0 = ∂C/∂y_0 = ∂r(y_0,p_0)/∂y_0 + λ_1 + λ_1 * h * ∂f(y_0,p_0)/∂y_0
-    ∂L/∂p_0 = ∂C/∂p_0 = ∂r(y_0,p_0)/∂p_0 + λ_1 * h * ∂f(y_0,p_0)/∂p_0 + μ_1
+    ∂L/∂y_0 = ∂C/∂y_0 = ∂r(y_0, p_0)/∂y_0 + λ_1
+    ∂L/∂p_0 = ∂C/∂p_0 = ∂r(y_0, p_0)/∂p_0 + μ_1
     """
     # Initialize adjoint variables
     adj_lambda = np.zeros((2, steps + 1))
@@ -139,44 +154,21 @@ def adjoint_gradients(y, p, h, steps):
         dfdp_n = get_dfdp(y[:, n], p)
         drdy_n = get_drdy(y[:, n], p)
         drdp_n = get_drdp(y[:, n], p)
+        I = np.eye(dfdy_n.shape[0])
 
         if n == steps:
             # Terminal condition
-            adj_lambda[:, n] = drdy_n
-            adj_mu[:, n] = drdp_n
+            adj_lambda[:, n] = np.linalg.solve((I - h * dfdy_n.T), drdy_n)
+            adj_mu[:, n] = drdp_n + h * np.dot(adj_lambda[:, n].T, dfdp_n)
         elif n == 0:
             # ∂L/∂y_0 = ∂C/∂y_0, ∂L/∂p_0 = ∂C/∂p_0
-            dCdy_0 = drdy_n + adj_lambda[:, n + 1] + h * np.dot(adj_lambda[:, n + 1].T, dfdy_n)
-            dCdp_0 = drdp_n + adj_mu[:, n + 1] + h * np.dot(adj_lambda[:, n + 1].T, dfdp_n)
+            dCdy_0 = drdy_n + adj_lambda[:, n + 1]
+            dCdp_0 = adj_mu[:, n + 1]
         else:
-            adj_lambda[:, n] = adj_lambda[:, n + 1] + h * np.dot(adj_lambda[:, n + 1].T, dfdy_n) + drdy_n
-            adj_mu[:, n] = adj_mu[:, n + 1] + h * np.dot(adj_lambda[:, n + 1].T, dfdp_n) + drdp_n
+            adj_lambda[:, n] = np.linalg.solve((I - h * dfdy_n.T), (adj_lambda[:, n + 1] + drdy_n))
+            adj_mu[:, n] = adj_mu[:, n + 1] + drdp_n.T + h * np.dot(adj_lambda[:, n].T, dfdp_n)
 
     return dCdy_0, dCdp_0
-
-
-def memory_efficient_adjoint_gradients(y, p, h, steps):
-    """
-    Don't require to store the intermediate adjoints
-    λ_n = λ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂y_n + θ_(n+1) ∂r(y_n,p_n)/∂y_n
-    μ_n = μ_(n+1) + λ_(n+1) * h * ∂f(y_n,p_n)/∂p_n + θ_(n+1) * ∂r(y_n,p_n)/∂p_n
-    θ_n = θ_(n+1) = 1
-    """
-    # Initialize adjoint variables
-    # Set the final condition
-    adj_lambda = np.array([1, 0])  # ∂C(y_N,p_N)/∂y_N
-    adj_mu = np.zeros(4)  # ∂C(y_N,p_N)/∂p_N
-
-    # Backward propagation of adjoint variables
-    for n in range(steps - 1, -1, -1):
-        dfdy_n = get_dfdy(y[:, n], p)
-        dfdp_n = get_dfdp(y[:, n], p)
-        drdy_n = get_drdy(y[:, n], p)
-        drdp_n = get_drdp(y[:, n], p)
-        adj_mu = adj_mu + h * np.dot(adj_lambda, dfdp_n) + drdp_n
-        adj_lambda = adj_lambda + h * np.dot(adj_lambda, dfdy_n) + drdy_n
-
-    return adj_lambda, adj_mu
 
 
 def fd_gradients(y_0, p, h, steps):
@@ -188,7 +180,7 @@ def fd_gradients(y_0, p, h, steps):
     delta = 1e-5
 
     # Initial solution
-    y = solve(y_0, p, h, steps)
+    y = solve(y_0.copy(), p.copy(), h, steps)
 
     # Perturbations
     y_0_perturbed = y_0.copy()  # Create a new copy of y_0
