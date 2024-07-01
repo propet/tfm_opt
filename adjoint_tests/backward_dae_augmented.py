@@ -158,15 +158,15 @@ def adjoint_gradients(y, p, h, steps):
 
     Solve for λ_n and μ_n at each step:
     [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
-    [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n - μ_{n+1})^T                               ]
+    [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
                               [μ_n]
     Terminal conditions:
-    [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n)^T]
-    [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n)^T]
-                              [μ_n]
+    [∂f/∂y_N^T  ∂g/∂y_N^T  0] [λ_N]   [(∂r/∂y_N)^T]
+    [∂f/∂p_N^T  ∂g/∂p_N^T  I] [ν_N] = [(∂r/∂p_N)^T]
+                              [μ_N]
     Solve for initial timestep:
     ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T
-    ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_n - μ_{n+1})^T
+    ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_n + μ_{n+1})^T
     """
     # Obtain shapes of jacobians
     dfdy = get_dfdy(y[:, 1], y[:, 0], p, h)
@@ -209,13 +209,13 @@ def adjoint_gradients(y, p, h, steps):
         elif n == 0:
             # Inital timestep
             # ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T
-            # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_n - μ_{n+1})^T
+            # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_n + μ_{n+1})^T
             dfdy_prev = get_dfdy_prev(y[:, 1], y[:, 0], p, h)
             dCdy_0 = drdy_n - np.dot(adj_lambda[:, 1].T, dfdy_prev)
             dCdp_0 = drdp_n + adj_mu[:, 1]
         else:
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
-            # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n - μ_{n+1})^T                               ]
+            # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
             #                           [μ_n]
             dfdy_prev = get_dfdy_prev(y[:, n+1], y[:, n], p, h)
             A = np.block([
