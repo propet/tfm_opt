@@ -20,7 +20,7 @@ def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
 
-def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
+def generic_plot(plot_data: PlotData, filename=None, title=None, sharex=False, sharey=False):
     fig, axes = plt.subplots(
         nrows=plot_data["rows"],
         ncols=plot_data["columns"],
@@ -63,7 +63,8 @@ def generic_plot(plot_data: PlotData, title=None, sharex=False, sharey=False):
 
     # Save the figure
     directory = f"{ROOT_DIR}/figures"
-    filename = "_".join(f"{key}_{value}" for key, value in PARAMS.items()) + ".png"
+    if not filename:
+        filename = "_".join(f"{key}_{value}" for key, value in PARAMS.items()) + ".png"
     filepath = os.path.join(
         directory,
         filename,
@@ -127,3 +128,35 @@ def get_grid_prices_kwh(n_hours, year=2022):
     grid_prices_mwh = grid_prices_mwh[:n_hours]
     grid_prices_kwh = np.array(grid_prices_mwh) * 1e-3
     return grid_prices_kwh
+
+
+def ks_max(g: np.ndarray, rho: float = 100) -> float:
+    """
+    Calculates the KS function for given rho and g values.
+
+    Parameters:
+    rho (float): The rho parameter.
+    g (np.ndarray): An array of g values.
+
+    Returns:
+    float: The result of the KS function.
+    """
+    max_g = np.max(g)
+    sum_exp = np.sum(np.exp(np.dot(rho, (g - max_g))))
+    return max_g + (1 / rho) * np.log(sum_exp)
+
+
+def ks_min(g: np.ndarray, rho: float = 100) -> float:
+    """
+    Calculates the KS function for given rho and g values.
+
+    Parameters:
+    rho (float): The rho parameter.
+    g (np.ndarray): An array of g values.
+
+    Returns:
+    float: The result of the KS function.
+    """
+    min_g = np.min(g)
+    sum_exp = np.sum(np.exp(-rho * (g - min_g)))
+    return min_g - (1 / rho) * np.log(sum_exp)

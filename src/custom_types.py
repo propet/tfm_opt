@@ -1,5 +1,5 @@
 import numpy as np
-from typing import TypedDict, List, Union, Optional
+from typing import TypedDict, Dict, List, Union, Optional, Callable, Any
 from numpy.typing import NDArray
 
 
@@ -30,3 +30,24 @@ class PlotData(TypedDict):
     rows: int
     columns: int
     axes_data: List[AxesData]
+
+
+Parameters = Dict[str, Any]
+DesignVariables = Dict[str, np.ndarray]
+
+
+class DesignVariableInfo(TypedDict):
+    name: str
+    n_params: int
+    type: str
+    lower: Union[float, List[float], None]
+    upper: Union[float, List[float], None]
+    initial_value: float
+
+
+class ConstraintInfo(TypedDict):
+    name: str
+    n_params: int
+    lower: Union[float, List[float], None]
+    upper: Union[float, List[float], None]
+    function: Callable[[DesignVariables, Parameters], np.ndarray]

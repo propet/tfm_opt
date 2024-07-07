@@ -7,6 +7,9 @@ scienceplots
 pyright
 black
 mpi4py
+cython
 petsc
 petsc4py
 scikits.odes
+ipopt
+# openmdao-with-all

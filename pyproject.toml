@@ -1,2 +1,29 @@
 [tool.black]
 line-length = 120
+
+[build-system]
+requires = [ "setuptools", "gcc" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "src"
+description = "my tool"
+version = "1.0.0"
+dependencies = [
+  "requests",
+  "numpy",
+  "pandas",
+  "pyoptsparse @ git+https://github.com/mdolab/pyoptsparse.git",
+  "matplotlib",
+  "scienceplots",
+  "pyright",
+  "black",
+  "mpi4py",
+  "petsc",
+  # "petsc4py",
+  "scikits.odes @ git+https://github.com/bmcage/odes.git#egg=scikit-odes",
+  "click @ git+https://github.com/pallets/click.git@main"
+]
+
+# [project.scripts]
+# my-tool = "my_tool:main"

@@ -15,10 +15,14 @@
         fhs = pkgs.buildFHSUserEnv {
           name = "my-fhs-environment";
 
-          targetPkgs = _: with pkgs;[
+          targetPkgs = _: with pkgs; [
             pkgs.micromamba
             pkgs.gdb
             pkgs.valgrind
+            pkgs.mpi
+            pkgs.blas
+            pkgs.lapack
+            pkgs.metis
           ];
 
           profile = ''
