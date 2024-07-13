@@ -64,15 +64,19 @@ class Opt:
                 lower=design_variable_info["lower"],
                 upper=design_variable_info["upper"],
                 value=design_variable_info["initial_value"],
+                scale=design_variable_info.get("scale", 1.0),  # Use 1.0 as default if "scale" is not present
             )
 
         # Add constraints
         for constraint_info in self.constraints_info:
             self.optProb.addConGroup(
                 constraint_info["name"],
-                constraint_info["n_params"],
+                constraint_info["n_constraints"],
                 lower=constraint_info["lower"],
                 upper=constraint_info["upper"],
+                scale=constraint_info.get("scale", 1.0),  # Use 1.0 as default if "scale" is not present
+                wrt=constraint_info.get("wrt", None),
+                jac=constraint_info.get("jac", None),
             )
 
         # Objective

@@ -1,0 +1,19 @@
+name: myenv
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - numpy
+  - pyoptsparse
+  - matplotlib
+  - pandas
+  - scienceplots
+  - pyright
+  - black
+  - mpi4py
+  - cython
+  - petsc
+  - petsc4py
+  - scikits.odes
+  - ipopt
+  - openmdao-with-all

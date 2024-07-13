@@ -1,10 +1,11 @@
 import numpy as np
 from pyoptsparse import OPT
 from opt import Opt
-from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot, ks_max, ks_min
+from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot
 from parameters import PARAMS
 from typing import List, Dict
 from custom_types import DesignVariables, PlotData, DesignVariableInfo, ConstraintInfo, Parameters
+import scipy.sparse as sp
 
 
 def get_input_data():
@@ -18,7 +19,10 @@ def obj(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray
     p_bat = design_variables["p_bat"]
     grid_prices_kwh = parameters["grid_prices_kwh"]
     p_gen = parameters["p_gen"]
-    return np.sum(grid_prices_kwh * (-p_gen + p_bat))
+    # print(p_bat[:10])
+    # print(np.mean(grid_prices_kwh * p_bat) / 1e2)
+    return np.sum((grid_prices_kwh * (-p_gen + p_bat)) / 1e3)
+    # return np.sum(grid_prices_kwh * (-p_gen + p_bat))
 
 
 def battery_soc_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
@@ -34,32 +38,6 @@ def battery_soc_constraint_fun(design_variables: DesignVariables, parameters: Pa
     return np.array(battery_soc)
 
 
-def battery_max_soc_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    max_bat_capacity = parameters["MAX_BAT_CAPACITY"]
-    soc_min = parameters["SOC_MIN"]
-    battery_soc = []
-
-    for h in range(1, parameters["N_HOURS"] + 1):
-        battery_soc.append((soc_min * max_bat_capacity + np.sum(p_bat[:h])) / max_bat_capacity)
-
-    battery_max_soc = ks_max(np.array(battery_soc))
-    return np.array(battery_max_soc)
-
-
-def battery_min_soc_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    max_bat_capacity = parameters["MAX_BAT_CAPACITY"]
-    soc_min = parameters["SOC_MIN"]
-    battery_soc = []
-
-    for h in range(1, parameters["N_HOURS"] + 1):
-        battery_soc.append((soc_min * max_bat_capacity + np.sum(p_bat[:h])) / max_bat_capacity)
-
-    battery_min_soc = ks_min(np.array(battery_soc))
-    return np.array(battery_min_soc)
-
-
 def grid_power_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
     p_bat = design_variables["p_bat"]
     p_gen = parameters["p_gen"]
@@ -71,30 +49,52 @@ def grid_power_constraint_fun(design_variables: DesignVariables, parameters: Par
     return np.array(grid_power)
 
 
-def grid_max_power_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    p_gen = parameters["p_gen"]
-    grid_power = []
+def get_constraint_sparse_jacs():
+    grid_prices_kwh = PARAMS["grid_prices_kwh"]
+    N_HOURS = PARAMS["N_HOURS"]
 
-    for h in range(parameters["N_HOURS"]):
-        grid_power.append(-p_gen[h] + p_bat[h])
+    # soc constraints
+    dg1_dx_row = []
+    dg1_dx_col = []
+    dg1_dx_data = []
+    for i in range(N_HOURS):
+        for j in range(i + 1):
+            dg1_dx_row.append(i)
+            dg1_dx_col.append(j)
+            dg1_dx_data.append(1 / PARAMS["MAX_BAT_CAPACITY"])
 
-    # Differentiable max(grid_power)
-    max_power = ks_max(np.array(grid_power))
-    return np.array(max_power)
+    dg1_dx = {
+        'coo': [np.array(dg1_dx_row), np.array(dg1_dx_col), np.array(dg1_dx_data)],
+        'shape': [N_HOURS, N_HOURS]
+    }
 
+    # grid power constraints
+    dg2_dx_row = np.arange(N_HOURS)
+    dg2_dx_col = np.arange(N_HOURS)
+    dg2_dx_data = np.ones(N_HOURS)
 
-def grid_min_power_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    p_gen = parameters["p_gen"]
-    grid_power = []
+    dg2_dx = {
+        'coo': [dg2_dx_row, dg2_dx_col, dg2_dx_data],
+        'shape': [N_HOURS, N_HOURS]
+    }
 
-    for h in range(parameters["N_HOURS"]):
-        grid_power.append(-p_gen[h] + p_bat[h])
+    return dg1_dx, dg2_dx
 
-    # Differentiable min(grid_power)
-    min_power = ks_min(np.array(grid_power))
-    return np.array(min_power)
+def sens(design_variables: DesignVariables, func_values):
+    grid_prices_kwh = PARAMS["grid_prices_kwh"]
+    dsoc_dx, dgrid_dx = get_constraint_sparse_jacs()
+
+    return {
+        "obj": {
+            "p_bat": grid_prices_kwh / 1e3,
+        },
+        "battery_soc": {
+            "p_bat": dsoc_dx,
+        },
+        "grid_power": {
+            "p_bat": dgrid_dx,
+        },
+    }
 
 
 def run_optimization(plot=True):
@@ -107,6 +107,8 @@ def run_optimization(plot=True):
     PARAMS["p_gen"] = p_gen
     opt.add_parameters(PARAMS)
 
+    dsoc_dx, dgrid_dx = get_constraint_sparse_jacs()
+
     # Design Variables
     p_bat: DesignVariableInfo = {
         "name": "p_bat",
@@ -115,7 +117,7 @@ def run_optimization(plot=True):
         "lower": -PARAMS["P_BAT_MAX"],
         "upper": PARAMS["P_BAT_MAX"],
         "initial_value": 0,
-        "scale": 1,
+        "scale": 1 / PARAMS["P_BAT_MAX"],
     }
     opt.add_design_variables_info(p_bat)
 
@@ -127,6 +129,8 @@ def run_optimization(plot=True):
         "upper": PARAMS["SOC_MAX"],
         "function": battery_soc_constraint_fun,
         "scale": 1,
+        "wrt": ["p_bat"],
+        "jac": {"p_bat": dsoc_dx}
     }
     opt.add_constraint_info(battery_soc_constraint)
 
@@ -136,11 +140,16 @@ def run_optimization(plot=True):
         "lower": -PARAMS["P_GRID_MAX"],
         "upper": PARAMS["P_GRID_MAX"],
         "function": grid_power_constraint_fun,
-        "scale": 1,
+        "scale": 1 / PARAMS["P_GRID_MAX"],
+        "wrt": ["p_bat"],
+        "jac": {"p_bat": dgrid_dx}
     }
     opt.add_constraint_info(grid_power_constraint)
 
     opt.setup()
+
+    opt.optProb.printSparsity()
+    # exit(0)
 
     # Check optimization problem
     if plot:
@@ -156,7 +165,8 @@ def run_optimization(plot=True):
     }
     optOptions = ipoptOptions
     optimizer = OPT("ipopt", options=optOptions)
-    sol = optimizer(opt.optProb, sens="FD", sensStep=1e-6)
+    # sol = optimizer(opt.optProb, sens="FD", sensStep=1e-6)
+    sol = optimizer(opt.optProb, sens=sens)
 
     # Check Solution
     if plot:

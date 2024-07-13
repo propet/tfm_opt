@@ -1,6 +1,8 @@
 import numpy as np
-from typing import TypedDict, Dict, List, Union, Optional, Callable, Any
+from typing import TypedDict, Dict, List, Union, Optional, Callable, Any, NotRequired
+from typing_extensions import NotRequired
 from numpy.typing import NDArray
+import scipy.sparse as sp
 
 
 """
@@ -43,11 +45,17 @@ class DesignVariableInfo(TypedDict):
     lower: Union[float, List[float], None]
     upper: Union[float, List[float], None]
     initial_value: float
+    scale: NotRequired[float]
 
 
 class ConstraintInfo(TypedDict):
     name: str
-    n_params: int
+    n_constraints: int
     lower: Union[float, List[float], None]
     upper: Union[float, List[float], None]
+    scale: NotRequired[float]
     function: Callable[[DesignVariables, Parameters], np.ndarray]
+    wrt: NotRequired[List[str]]
+    # jac: NotRequired[Dict[str, Union[np.ndarray, sp.spmatrix]]]
+    jac: NotRequired[Dict[str, Any]]
+

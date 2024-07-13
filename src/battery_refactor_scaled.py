@@ -1,7 +1,7 @@
 import numpy as np
 from pyoptsparse import OPT
 from opt import Opt
-from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot, ks_max, ks_min
+from utils import get_solar_field_powers, get_grid_prices_kwh, generic_plot
 from parameters import PARAMS
 from typing import List, Dict
 from custom_types import DesignVariables, PlotData, DesignVariableInfo, ConstraintInfo, Parameters
@@ -18,7 +18,10 @@ def obj(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray
     p_bat = design_variables["p_bat"]
     grid_prices_kwh = parameters["grid_prices_kwh"]
     p_gen = parameters["p_gen"]
-    return np.sum(grid_prices_kwh * (-p_gen + p_bat))
+    # print(p_bat[:10])
+    # print(np.mean(grid_prices_kwh * p_bat) / 1e2)
+    return np.sum((grid_prices_kwh * (-p_gen + p_bat)) / 1e3)
+    # return np.sum(grid_prices_kwh * (-p_gen + p_bat) * 100)
 
 
 def battery_soc_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
@@ -34,32 +37,6 @@ def battery_soc_constraint_fun(design_variables: DesignVariables, parameters: Pa
     return np.array(battery_soc)
 
 
-def battery_max_soc_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    max_bat_capacity = parameters["MAX_BAT_CAPACITY"]
-    soc_min = parameters["SOC_MIN"]
-    battery_soc = []
-
-    for h in range(1, parameters["N_HOURS"] + 1):
-        battery_soc.append((soc_min * max_bat_capacity + np.sum(p_bat[:h])) / max_bat_capacity)
-
-    battery_max_soc = ks_max(np.array(battery_soc))
-    return np.array(battery_max_soc)
-
-
-def battery_min_soc_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    max_bat_capacity = parameters["MAX_BAT_CAPACITY"]
-    soc_min = parameters["SOC_MIN"]
-    battery_soc = []
-
-    for h in range(1, parameters["N_HOURS"] + 1):
-        battery_soc.append((soc_min * max_bat_capacity + np.sum(p_bat[:h])) / max_bat_capacity)
-
-    battery_min_soc = ks_min(np.array(battery_soc))
-    return np.array(battery_min_soc)
-
-
 def grid_power_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
     p_bat = design_variables["p_bat"]
     p_gen = parameters["p_gen"]
@@ -69,32 +46,6 @@ def grid_power_constraint_fun(design_variables: DesignVariables, parameters: Par
         grid_power.append(-p_gen[h] + p_bat[h])
 
     return np.array(grid_power)
-
-
-def grid_max_power_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    p_gen = parameters["p_gen"]
-    grid_power = []
-
-    for h in range(parameters["N_HOURS"]):
-        grid_power.append(-p_gen[h] + p_bat[h])
-
-    # Differentiable max(grid_power)
-    max_power = ks_max(np.array(grid_power))
-    return np.array(max_power)
-
-
-def grid_min_power_ks_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
-    p_bat = design_variables["p_bat"]
-    p_gen = parameters["p_gen"]
-    grid_power = []
-
-    for h in range(parameters["N_HOURS"]):
-        grid_power.append(-p_gen[h] + p_bat[h])
-
-    # Differentiable min(grid_power)
-    min_power = ks_min(np.array(grid_power))
-    return np.array(min_power)
 
 
 def run_optimization(plot=True):
@@ -115,7 +66,7 @@ def run_optimization(plot=True):
         "lower": -PARAMS["P_BAT_MAX"],
         "upper": PARAMS["P_BAT_MAX"],
         "initial_value": 0,
-        "scale": 1,
+        "scale": 1 / PARAMS["P_BAT_MAX"],
     }
     opt.add_design_variables_info(p_bat)
 
@@ -136,7 +87,7 @@ def run_optimization(plot=True):
         "lower": -PARAMS["P_GRID_MAX"],
         "upper": PARAMS["P_GRID_MAX"],
         "function": grid_power_constraint_fun,
-        "scale": 1,
+        "scale": 1 / PARAMS["P_GRID_MAX"],
     }
     opt.add_constraint_info(grid_power_constraint)
 
