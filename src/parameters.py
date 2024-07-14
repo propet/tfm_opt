@@ -13,7 +13,7 @@
 # }
 
 PARAMS = {
-    "N_HOURS": 8760,  # 8760 in a year
+    "N_HOURS": 100,  # 8760 in a year
     "MAX_BAT_CAPACITY": 120000,  # Wh
     "SOC_MIN": 0.1,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
