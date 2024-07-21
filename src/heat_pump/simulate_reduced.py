@@ -1,10 +1,10 @@
+import time
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
 from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
-import jax
-import jax.numpy as jnp
+from parameters import PARAMS
+from utils import get_dynamic_parameters, plot_styles
 
 """
 Here we only simulate the water tank side, but
@@ -15,12 +15,11 @@ Considerations:
     effectiveness of hx's is constant, no matter the delta in temperature
 """
 
-rho_water = 1000  # Water density (kg/m3)
-cp_water = 4186  # Specific heat capacity of water (J/(kg·K))
-T_amb = 298  # [K] (25ºC)
-load_hx_eff = 0.8
-
-P_comp_max = 10000  # W
+rho_water = PARAMS["RHO_WATER"]  # Water density (kg/m3)
+cp_water = PARAMS["CP_WATER"]  # Specific heat capacity of water (J/(kg·K))
+T_amb = PARAMS["T_AMB"]  # [K] (25ºC)
+load_hx_eff = PARAMS["LOAD_HX_EFF"]
+P_comp_max = PARAMS["P_COMPRESSOR_MAX"]  # W
 
 
 def cop(T):
@@ -123,6 +122,19 @@ def dae_system(y, y_prev, p, u_prev, h):
         + (m_dot_cond + m_dot_load) * cp_water * T_tank
         + U * A * (T_tank - T_amb)
         = 0
+
+    So now I have a decoupled system, which consist of a dae of two equations:
+    ∘ m_tank * cp_water * ((T_tank - T_tank_prev)/h)
+        - m_dot_cond * cp_water * T_cond
+        - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
+        + (m_dot_cond + m_dot_load) * cp_water * T_tank
+        + U * A * (T_tank - T_amb)
+        = 0
+    ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
+
+    and then another two trivial algebraic equations to compute P_heat and T_load:
+    ∘ P_heat = q_dot_required - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    ∘ T_load = T_tank - load_hx_eff * (T_tank - T_amb)
 
     Making:
     y[0] = T_tank
@@ -330,7 +342,10 @@ def adjoint_gradients(y, p, u, h, n_steps):
     dCdu = np.zeros(u.shape)
 
     # Backward propagation of adjoint variables
+    # print(n_steps)
+    # exit(0)
     for n in range(n_steps, -1, -1):
+        # tic = time.time()
         y_current = y[:, n]
         y_prev = y[:, n - 1]
         u_prev = u[:, n - 1]
@@ -373,8 +388,10 @@ def adjoint_gradients(y, p, u, h, n_steps):
             adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
             adj_mu[:, n] = adjs[(n_odes + n_algs) :]
 
-        # ∂L/∂u_n = ∂C/∂u_n = -λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_n)/∂u_n - ν_(n+1) ∂g(y_(n+1), p_(n+1), u_n)/∂u_n
+        # ∂L/∂u_n = ∂C/∂u_n = ∂r/∂u_n - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_n)/∂u_n - ν_(n+1) ∂g(y_(n+1), p_(n+1), u_n)/∂u_n
         dCdu[:, n - 1] = -adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
+        # toc = time.time()
+        # print(toc - tic)
 
     return dCdy_0, dCdp_0, dCdu
 
@@ -395,9 +412,9 @@ def plot(y, u, n_steps, h, Q_dot_required):
     Q_dot_load = Q_dot_required - P_heat
 
     # First subplot for T_tank, T_load, and T_cond
-    axes[0].plot(t, y[0], label="T_tank")
-    axes[0].plot(t, y[1], label="T_cond")
-    axes[0].plot(t[:-1], T_load, label="T_load")
+    axes[0].plot(t, y[0], label="T_tank", **plot_styles[0])
+    axes[0].plot(t, y[1], label="T_cond", **plot_styles[1])
+    axes[0].plot(t[:-1], T_load, label="T_load", **plot_styles[2])
     axes[0].set_ylabel("Temperature (K)")
     axes[0].set_title("Temperature Profiles")
     # axes[0].legend()
@@ -405,21 +422,21 @@ def plot(y, u, n_steps, h, Q_dot_required):
     axes[0].grid(True)
 
     ax0 = axes[0].twinx()
-    ax0.plot(t[:-1], Q_dot_load, "--", label="Q_dot_load", color="red")
-    ax0.plot(t[:-1], P_heat, "--", label="P_heat", color="purple")
+    ax0.plot(t[:-1], Q_dot_load, label="Q_dot_load", **plot_styles[3])
+    ax0.plot(t[:-1], P_heat, label="P_heat", **plot_styles[4])
     ax0.set_ylabel("W")
     ax0.legend(loc="upper right")
 
-    axes[1].plot(t[:-1], u[0], label="P_comp")
-    axes[1].plot(t[:-1], Q_dot_required, label="Q_dot_required")
+    axes[1].plot(t[:-1], u[0], label="P_comp", **plot_styles[0])
+    axes[1].plot(t[:-1], Q_dot_required, label="Q_dot_required", **plot_styles[1])
     axes[1].set_ylabel("Power[W]")
     axes[1].set_title("Control Variables")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
 
     ax1 = axes[1].twinx()
-    ax1.plot(t[:-1], u[1], label="m_dot_cond", color="tab:red")
-    ax1.plot(t[:-1], u[2], label="m_dot_load", color="tab:green")
+    ax1.plot(t[:-1], u[1], label="m_dot_cond", **plot_styles[2])
+    ax1.plot(t[:-1], u[2], label="m_dot_load", **plot_styles[3])
     ax1.set_ylabel("Mass flow rates")
     ax1.legend(loc="upper right")
 
@@ -471,57 +488,48 @@ def fd_gradients(y0, p, u, h, n_steps):
 
 
 def main():
-    time = 10000  # s
-    h = 10  # timestep
-    # n_steps = int(1e5)
-    n_steps = int(time / h)
-    # n_steps = int(5)
+    h = PARAMS["H"]
+    horizon = PARAMS["HORIZON"]
+    n_steps = int(horizon / h)
     y0, p, u, Q_dot_required = get_inputs(n_steps, h)
     y = solve(y0, p, u, h, n_steps)
     print("solution:", y[:, -1])
     print("y[1]: ", y[:, 1])
     plot(y, u, n_steps, h, Q_dot_required)
 
-    # FD derivatives
-    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, p, u, h, n_steps)
-    print("(finite diff) dC/dy0", dCdy_0_fd)
-    print("(finite diff) dC/dp: ", dCdp_fd)
-    print("(finite diff) dC/du_3: ", dCdu_fd)
+    # # FD derivatives
+    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, p, u, h, n_steps)
+    # print("(finite diff) dC/dy0", dCdy_0_fd)
+    # print("(finite diff) dC/dp: ", dCdp_fd)
+    # print("(finite diff) dC/du_3: ", dCdu_fd)
 
     # Adjoint derivatives
+    tic = time.time()
     dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, p, u, h, n_steps)
     print("(adjoint) dC/dy_0: ", dCdy_0_adj)
     print("(adjoint) dC/dp: ", dCdp_adj)
     print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
+    toc = time.time()
+    print("adjoints time: ", toc - tic)
 
-    # Discrepancies
-    print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-9) * 100}%")
-    print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-9) * 100}%")
-    print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-9) * 100}%")
+    # # Discrepancies
+    # print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-9) * 100}%")
+    # print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-9) * 100}%")
+    # print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-9) * 100}%")
 
 
 def get_inputs(n_steps, h):
     # Parameters
-    U = 0.04  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
-    # U = 1  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
-    # V = 1  # Tank volume (m3)
-    V = 0.01  # Tank volume (m3)
+    U = PARAMS["U"]  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
+    V = PARAMS["TANK_VOLUME"]  # Tank volume (m3)
     A = 6 * np.pi * (V / (2 * np.pi)) ** (2 / 3)  # Tank surface area (m2)
     m_tank = V * rho_water  # Mass of water in the tank (kg)
-    print("m_tank: ", m_tank)
-
-    total_time = h * n_steps
-    f = 1 / total_time
-    desired_frequency = 10 * f
-    time_steps = np.arange(n_steps) * h
 
     p = [cp_water, m_tank, U, A, T_amb, load_hx_eff]
     y0 = [298.34089176, 309.70395426]
 
     # Fix control variables
-    # P_comp = P_comp_max * np.sin(2 * np.pi * desired_frequency * time_steps) + P_comp_max
     P_comp = np.ones((n_steps)) * P_comp_max
-    # P_comp = P_comp_max * np.sin(2 * np.pi * f * 100 * np.arange(n_steps)) + P_comp_max
     P_comp[-int(n_steps / 3) :] = 1e-6
     P_comp[-int(n_steps / 4) :] = P_comp_max
 

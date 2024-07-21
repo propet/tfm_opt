@@ -13,6 +13,8 @@
 # }
 
 PARAMS = {
+    "H": 10,  # stepsize [s]
+    "HORIZON": 10000,  # s
     "N_HOURS": 100,  # 8760 in a year
     "MAX_BAT_CAPACITY": 120000,  # Wh
     "SOC_MIN": 0.1,  # Minimum State of Charge
@@ -20,8 +22,24 @@ PARAMS = {
     "P_BAT_MAX": 10000,  # W
     "P_GRID_MAX": 10000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
+    "MAX_HEAT_POWER": 10000,  # W
     "MAX_ELECTRIC_DEMAND": 20000,  # W
     "DK_RHO": 50,  # Kreisselmeier–Steinhauser factor
     "BAT_ETA_CHARGE": 0.8,  # charge efficiency
     "BAT_ETA_DISCHARGE": 0.9,  # discharge efficiency
+
+
+    "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
+    "RHO_WATER": 1000,  # Water density (kg/m3)
+    "TANK_VOLUME": 0.1,  # m3
+    # TODO: make insulation length a design variable
+    "U": 0.04,  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
+    # TODO: make T_AMB time dependant (just like grid prices)
+    "T_AMB": 300,  # K (27ºC)
+    "P_COMPRESSOR_MAX": 10000,  # W
+
+    "MAX_Q_DOT_REQUIRED": 4000,  # W
+    "LOAD_HX_EFF": 0.8,
+
+
 }

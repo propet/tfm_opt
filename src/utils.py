@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from custom_types import PlotData
 import scienceplots
 from parameters import PARAMS
+from cycler import cycler
+import jax.numpy as jnp
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +16,8 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
+prop_cycle = cycler('color', ['k', 'r', 'b', 'g', 'purple']) + cycler('ls', ['-', '--', ':', '-.', (5, (10, 3))])
+plot_styles = list(prop_cycle)
 
 
 def sigmoid(x):
@@ -71,6 +75,69 @@ def generic_plot(plot_data: PlotData, filename=None, title=None, sharex=False, s
     )
     fig.savefig(filepath)
     print(f"Figure saved as {filepath}")
+
+
+def get_dynamic_parameters(t0, h, horizon):
+    dynamic_parameters = {}
+    dynamic_parameters["t_amb"] = get_t_amb(t0, h, horizon)
+    dynamic_parameters["cost_grid"] = get_cost_grid(t0, h, horizon)
+    dynamic_parameters["p_solar_gen"] = get_p_solar_gen(t0, h, horizon)
+    dynamic_parameters["q_dot_required"] = get_q_dot_required(t0, h, horizon)
+    dynamic_parameters["p_required"] = get_p_required(t0, h, horizon)
+    return dynamic_parameters
+
+
+def get_q_dot_required(t0, h, horizon):
+    q_dot_required = np.ones((horizon)) * PARAMS["P_COMPRESSOR_MAX"] * 2
+    return q_dot_required[t0:t0+horizon:h]
+
+
+# def get_q_dot_required(t0, h, horizon):
+#     max_q_dot_required = PARAMS["MAX_Q_DOT_REQUIRED"]
+#     seconds_in_day = 24 * 3600
+#     min_q_dot_required = 0
+#     amplitude = (max_q_dot_required - min_q_dot_required) / 2
+#     vertical_shift = amplitude + min_q_dot_required
+#     seconds = np.arange(horizon)
+#     # A * sin(w * t) = A * sin(2*pi*f*t)
+#     q_dot_required = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
+#     return q_dot_required[t0:t0+horizon:h]
+
+
+def get_p_required(t0, h, horizon):
+    max_p_required = PARAMS["MAX_Q_DOT_REQUIRED"]
+    seconds_in_day = 24 * 3600
+    min_p_required = 0
+    amplitude = (max_p_required - min_p_required) / 2
+    vertical_shift = amplitude + min_p_required
+    seconds = np.arange(horizon)
+    # A * sin(w * t) = A * sin(2*pi*f*t)
+    p_required = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
+    return p_required[t0:t0+horizon:h]
+
+
+def get_p_solar_gen(t0, h, horizon):
+    max_solar_radiation = PARAMS["MAX_SOLAR_RADIATION"]
+    seconds_in_day = 24 * 3600
+    min_solar_radiation = 0
+    amplitude = (max_solar_radiation - min_solar_radiation) / 2
+    vertical_shift = amplitude + min_solar_radiation
+    seconds = np.arange(horizon)
+    # A * sin(w * t) = A * sin(2*pi*f*t)
+    p_gen = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
+    return p_gen[t0:t0+horizon:h]
+
+
+def get_t_amb(t0, h, horizon):
+    t_amb = np.ones((horizon)) * 300  # 300 K == 27ºC
+    return t_amb[t0:t0+horizon:h]
+
+
+def get_cost_grid(t0, h, horizon, year=2022):
+    n_hours = 8760
+    cost_grid_by_hour = get_grid_prices_kwh(n_hours, year=year)
+    cost_grid_by_second = np.repeat(cost_grid_by_hour, 3600)
+    return cost_grid_by_second[t0:t0+horizon:h]
 
 
 def get_solar_field_powers(max_solar_radiation, n_hours):
@@ -160,3 +227,28 @@ def ks_min(g: np.ndarray, rho: float = 100) -> float:
     min_g = np.min(g)
     sum_exp = np.sum(np.exp(-rho * (g - min_g)))
     return min_g - (1 / rho) * np.log(sum_exp)
+
+
+def jax_to_numpy(jax_func):
+    def numpy_func(*args):
+        jax_args = [jnp.array(arg) if isinstance(arg, np.ndarray) else arg for arg in args]
+        result = jax_func(*jax_args)
+        return np.array(result)
+    return numpy_func
+
+
+if __name__ == "__main__":
+    t0 = 0
+    horizon = 3600 * 24
+    h = 3600
+    t_amb = get_t_amb(t0, h, horizon)
+    print(t_amb)
+    print(t_amb.shape)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(np.arange(t0, t0+horizon, h), t_amb, 'b-', linewidth=2)
+    plt.xlabel('Time (s)', fontsize=14)
+    plt.ylabel(r'solar_field', fontsize=14)
+    plt.grid(True)
+    plt.show()
+

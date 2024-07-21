@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
 from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
 from parameters import PARAMS
@@ -42,7 +41,7 @@ def cost_function(y):
 
 
 def get_drdy(y, p, u, h):
-    # ∂r(y_n,p_n)/∂y_n
+    # ∂r(y_n,p_n,u_n)/∂y_n
     # r = y[0]
     drdy = np.zeros(4)
     drdy[0] = 1
@@ -53,13 +52,20 @@ def get_drdy(y, p, u, h):
 
 
 def get_drdp(y, p, u, h):
-    # ∂r(y_n,p_n)/∂p_n
+    # ∂r(y_n,p_n,u_n)/∂p_n
     # r = y[0]
     drdp = np.zeros(6)
     return drdp
 
 
-def dae_system(y, y_prev, p, u_prev, h):
+def get_drdu(y, p, u, h):
+    # ∂r(y_n,p_n,u_n)/∂u_n
+    # r = y[0]
+    drdu = np.zeros(3)
+    return drdu
+
+
+def dae_system(y, y_prev, p, u, h):
     r"""
     Solve the following system of non-linear equations
 
@@ -105,43 +111,43 @@ def dae_system(y, y_prev, p, u_prev, h):
     p[4] = T_amb
     p[5] = load_hx_eff
 
-    u_prev[0] = P_comp
-    u_prev[1] = m_dot_cond
-    u_prev[2] = m_dot_load
-    m_dot_tank = u_prev[1] + u_prev[2]
+    u[0] = P_comp
+    u[1] = m_dot_cond
+    u[2] = m_dot_load
+    m_dot_tank = u[1] + u[2]
 
 
     ∘ p[1] * p[0] * ((y[0] - y_prev[0])/h)
-        - u_prev[1] * p[0] * y[1]
-        - u_prev[2] * p[0] * y[2]
-        + (u_prev[1] + u_prev[2]) * p[0] * y[0]
+        - u[1] * p[0] * y[1]
+        - u[2] * p[0] * y[2]
+        + (u[1] + u[2]) * p[0] * y[0]
         + p[2] * p[3] * (y[0] - p[4])
         = 0
-    ∘ cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]) = 0
-    ∘ y[3] - p[5] * u_prev[2] * p[0] * (y[0] - p[4]) = 0
-    ∘ y[3] - u_prev[2] * p[0] * (y[0] - y[2]) = 0
+    ∘ cop(y[1]) * u[0] - u[1] * p[0] * (y[1] - y[0]) = 0
+    ∘ y[3] - p[5] * u[2] * p[0] * (y[0] - p[4]) = 0
+    ∘ y[3] - u[2] * p[0] * (y[0] - y[2]) = 0
 
-    Which are divided in differential equations (f(y,y_prev,p,u_prev) = 0)
-    and algebraic equations (g(y,p,u_prev) = 0)
+    Which are divided in differential equations (f(y,y_prev,p,u) = 0)
+    and algebraic equations (g(y,p,u) = 0)
     """
     return [
         # f
         p[1] * p[0] * ((y[0] - y_prev[0]) / h)
-        - u_prev[1] * p[0] * y[1]
-        - u_prev[2] * p[0] * y[2]
-        + (u_prev[1] + u_prev[2]) * p[0] * y[0]
+        - u[1] * p[0] * y[1]
+        - u[2] * p[0] * y[2]
+        + (u[1] + u[2]) * p[0] * y[0]
         + p[2] * p[3] * (y[0] - p[4]),
         # g
-        cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]),
-        y[3] - p[5] * u_prev[2] * p[0] * (y[0] - p[4]),
-        y[3] - u_prev[2] * p[0] * (y[0] - y[2]),
+        cop(y[1]) * u[0] - u[1] * p[0] * (y[1] - y[0]),
+        y[3] - p[5] * u[2] * p[0] * (y[0] - p[4]),
+        y[3] - u[2] * p[0] * (y[0] - y[2]),
     ]
 
 
-def get_dfdp(y, y_prev, p, u_prev, h):
+def get_dfdp(y, y_prev, p, u, h):
     # Compute ∂f(y_n,p_n,u_n)/∂p
     dfdp = np.zeros((1, 6))
-    dfdp[0, 0] = p[1] * ((y[0] - y_prev[0]) / h) - u_prev[1] * y[1] - u_prev[2] * y[2] + (u_prev[1] + u_prev[2]) * y[0]
+    dfdp[0, 0] = p[1] * ((y[0] - y_prev[0]) / h) - u[1] * y[1] - u[2] * y[2] + (u[1] + u[2]) * y[0]
     dfdp[0, 1] = p[0] * ((y[0] - y_prev[0]) / h)
     dfdp[0, 2] = p[3] * (y[0] - p[4])
     dfdp[0, 3] = p[2] * (y[0] - p[4])
@@ -150,7 +156,7 @@ def get_dfdp(y, y_prev, p, u_prev, h):
     return dfdp
 
 
-def get_dfdu(y, y_prev, p, u_prev, h):
+def get_dfdu(y, y_prev, p, u, h):
     # Compute ∂f(y_n,p_n,u_n)/∂p
     dfdu = np.zeros((1, 3))
     dfdu[0, 0] = 0
@@ -159,24 +165,24 @@ def get_dfdu(y, y_prev, p, u_prev, h):
     return dfdu
 
 
-def get_dgdp(y, p, u_prev, h):
+def get_dgdp(y, p, u, h):
     # Compute ∂g(y_n,p_n,u_n)/∂p_n
     dgdp = np.zeros((3, 6))
-    dgdp[0, 0] = -u_prev[1] * (y[1] - y[0])
+    dgdp[0, 0] = -u[1] * (y[1] - y[0])
     dgdp[0, 1] = 0
     dgdp[0, 2] = 0
     dgdp[0, 3] = 0
     dgdp[0, 4] = 0
     dgdp[0, 5] = 0
 
-    dgdp[1, 0] = -p[5] * u_prev[2] * (y[0] - p[4])
+    dgdp[1, 0] = -p[5] * u[2] * (y[0] - p[4])
     dgdp[1, 1] = 0
     dgdp[1, 2] = 0
     dgdp[1, 3] = 0
-    dgdp[1, 4] = p[5] * u_prev[2] * p[0]
-    dgdp[1, 5] = -u_prev[2] * p[0] * (y[0] - p[4])
+    dgdp[1, 4] = p[5] * u[2] * p[0]
+    dgdp[1, 5] = -u[2] * p[0] * (y[0] - p[4])
 
-    dgdp[2, 0] = -u_prev[2] * (y[0] - y[2])
+    dgdp[2, 0] = -u[2] * (y[0] - y[2])
     dgdp[2, 1] = 0
     dgdp[2, 2] = 0
     dgdp[2, 3] = 0
@@ -185,60 +191,60 @@ def get_dgdp(y, p, u_prev, h):
     return dgdp
 
 
-def get_dgdu(y, p, u_prev, h):
+def get_dgdu(y, p, u, h):
     # Compute ∂g(y_n,p_n,u_n)/∂p_n
-    # cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]),
+    # cop(y[1]) * u[0] - u[1] * p[0] * (y[1] - y[0]),
     dgdu = np.zeros((3, 3))
     dgdu[0, 0] = cop(y[1])
     dgdu[0, 1] = -p[0] * (y[1] - y[0])
     dgdu[0, 2] = 0
 
-    # y[3] - p[5] * u_prev[2] * p[0] * (y[0] - p[4]),
+    # y[3] - p[5] * u[2] * p[0] * (y[0] - p[4]),
     dgdu[1, 0] = 0
     dgdu[1, 1] = 0
     dgdu[1, 2] = -p[5] * p[0] * (y[0] - p[4])
 
-    # y[3] - u_prev[2] * p[0] * (y[0] - y[2]),
+    # y[3] - u[2] * p[0] * (y[0] - y[2]),
     dgdu[2, 0] = 0
     dgdu[2, 1] = 0
     dgdu[2, 2] = -p[0] * (y[0] - y[2])
     return dgdu
 
 
-def get_dgdy(y, p, u_prev, h):
+def get_dgdy(y, p, u, h):
     # Compute ∂g(y_n,p_n,u_n)/∂y_n
-    # ∘ cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]) = 0
+    # ∘ cop(y[1]) * u[0] - u[1] * p[0] * (y[1] - y[0]) = 0
     dgdy = np.zeros((3, 4))
-    dgdy[0, 0] = u_prev[1] * p[0]
-    dgdy[0, 1] = get_dcopdT(y[1]) * u_prev[0] - u_prev[1] * p[0]
+    dgdy[0, 0] = u[1] * p[0]
+    dgdy[0, 1] = get_dcopdT(y[1]) * u[0] - u[1] * p[0]
     dgdy[0, 2] = 0
     dgdy[0, 3] = 0
 
-    # ∘ y[3] - p[5] * u_prev[2] * p[0] * (y[0] - p[4]) = 0
-    dgdy[1, 0] = -p[5] * u_prev[2] * p[0]
+    # ∘ y[3] - p[5] * u[2] * p[0] * (y[0] - p[4]) = 0
+    dgdy[1, 0] = -p[5] * u[2] * p[0]
     dgdy[1, 1] = 0
     dgdy[1, 2] = 0
     dgdy[1, 3] = 1
 
-    # ∘ y[3] - u_prev[2] * p[0] * (y[0] - y[2]) = 0
-    dgdy[2, 0] = -u_prev[2] * p[0]
+    # ∘ y[3] - u[2] * p[0] * (y[0] - y[2]) = 0
+    dgdy[2, 0] = -u[2] * p[0]
     dgdy[2, 1] = 0
-    dgdy[2, 2] = u_prev[2] * p[0]
+    dgdy[2, 2] = u[2] * p[0]
     dgdy[2, 3] = 1
     return dgdy
 
 
-def get_dfdy(y, y_prev, p, u_prev, h):
+def get_dfdy(y, y_prev, p, u, h):
     # Compute ∂f(y_n,p_n,u_n)/∂y_n
     dfdy = np.zeros((1, 4))
-    dfdy[0, 0] = p[1] * p[0] / h + (u_prev[1] + u_prev[2]) * p[0] + p[2] * p[3]
-    dfdy[0, 1] = -u_prev[1] * p[0]
-    dfdy[0, 2] = -u_prev[2] * p[0]
+    dfdy[0, 0] = p[1] * p[0] / h + (u[1] + u[2]) * p[0] + p[2] * p[3]
+    dfdy[0, 1] = -u[1] * p[0]
+    dfdy[0, 2] = -u[2] * p[0]
     dfdy[0, 3] = 0
     return dfdy
 
 
-def get_dfdy_prev(y, y_prev, p, u_prev, h):
+def get_dfdy_prev(y, y_prev, p, u, h):
     # Compute ∂f(y_n,p_n,u_n)/∂y_n
     dfdy_prev = np.zeros((1, 4))
     dfdy_prev[0, 0] = -p[1] * p[0] / h
@@ -250,16 +256,16 @@ def get_dfdy_prev(y, y_prev, p, u_prev, h):
 
 def solve(y_0, p, u, h, n_steps):
     # Initialize parameters
-    y = np.zeros((4, n_steps + 1))
+    y = np.zeros((4, n_steps))
 
     # Initial conditions
     y[:, 0] = y_0
 
     # Time-stepping loop
-    for n in range(n_steps):
+    for n in range(1, n_steps):
         # Use fsolve to solve the nonlinear system
-        y_next = fsolve(dae_system, y[:, n], args=(y[:, n], p, u[:, n], h))
-        y[:, n + 1] = y_next
+        y_n = fsolve(dae_system, y[:, n - 1], args=(y[:, n - 1], p, u[:, n], h))
+        y[:, n] = y_n
 
     return y
 
@@ -268,10 +274,10 @@ def adjoint_gradients(y, p, u, h, n_steps):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
-    min_p C = Σr(y_n, p)
+    min_p C = Σr(y_n, p, u_n)
     s.t.
-        f(y_n, y_(n-1), p, u_(n-1)) = 0
-        g(y_n, p, u_(n-1)) = 0
+        f(y_n, y_(n-1), p, u_n) = 0
+        g(y_n, p, u_n) = 0
 
     where f are the differential constraints
     and g are the algebraic constraints
@@ -279,22 +285,31 @@ def adjoint_gradients(y, p, u, h, n_steps):
     by augmenting the system
     p' = 0
 
-    min_{p_n} C = Σr(y_n, p_n)
-        f(y_n, y_(n-1), p_n) = 0
-        g(y_n, p_n) = 0
+    min_{p_n} C = Σr(y_n, p_n, u_n)
+        f(y_n, y_(n-1), p_n, u_n) = 0
+        g(y_n, p_n, u_n) = 0
         (p_n - p_(n-1)) / h = 0
 
     Lagrangian:
-    L = Σr(y_n, p_n)
-        - Σ λ_n f(y_n, y_(n-1), p_n, u_(n-1))
-        - Σ ν_n g(y_n, p_n, u_(n-1))
+    L = Σr(y_n, p_n, u_n)
+        - Σ λ_n f(y_n, y_(n-1), p_n, u_n)
+        - Σ ν_n g(y_n, p_n, u_n)
         - Σ μ_n (p_n - p_(n-1))
 
-    ∂L/∂y_n = 0 = ∂r(y_n, p_n)/∂y_n - λ_n ∂f(y_n, y_(n-1), p_n)/∂y_n - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1))/∂y_n - ν_n ∂g/∂y_n
-    ∂L/∂p_n = 0 = ∂r(y_n, p_n)/∂p_n - λ_n ∂f(y_n, y_(n-1), p_n)/∂p_n - ν_n ∂g/py_n - μ_n + μ_(n+1)
+    ∂L/∂y_n = 0 = ∂r(y_n, p_n, u_n)/∂y_n
+                  - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂y_n
+                  - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_(n+1))/∂y_n
+                  - ν_n ∂g(y_n, p_n, u_n)/∂y_n
+    ∂L/∂p_n = 0 = ∂r(y_n, p_n, u_n)/∂p_n
+                  - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂p_n
+                  - ν_n ∂g(y_n, p_n, u_n)/∂p_n
+                  - μ_n + μ_(n+1)
+    ∂L/∂u_n = ∂C/∂u_n = ∂r(y_n, p_n, u_n)/∂u_n
+                        - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
+                        - ν_n ∂g(y_n, p_n, u_n)/∂u_n
 
     Solve for λ_n and μ_n at each step:
-    [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
+    [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1}, u_{n+1})/∂y_n)^T]
     [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
                               [μ_n]
     Terminal conditions:
@@ -302,8 +317,8 @@ def adjoint_gradients(y, p, u, h, n_steps):
     [∂f/∂p_N^T  ∂g/∂p_N^T  I] [ν_N] = [(∂r/∂p_N)^T]
                               [μ_N]
     Solve for initial timestep:
-    ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T
-    ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_n + μ_{n+1})^T
+    ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
+    ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
     """
     # Obtain shapes of jacobians
     dfdy = get_dfdy(y[:, 1], y[:, 0], p, u[:, 0], h)
@@ -322,20 +337,22 @@ def adjoint_gradients(y, p, u, h, n_steps):
     dCdu = np.zeros(u.shape)
 
     # Backward propagation of adjoint variables
-    for n in range(n_steps, -1, -1):
+
+    for n in range(n_steps - 1, -1, -1):
         y_current = y[:, n]
         y_prev = y[:, n - 1]
-        u_prev = u[:, n - 1]
-        dfdy_n = get_dfdy(y_current, y_prev, p, u_prev, h)
-        dfdp_n = get_dfdp(y_current, y_prev, p, u_prev, h)
-        dgdy_n = get_dgdy(y_current, p, u_prev, h)
-        dgdp_n = get_dgdp(y_current, p, u_prev, h)
-        drdy_n = get_drdy(y_current, p, u_prev, h)
-        drdp_n = get_drdp(y_current, p, u_prev, h)
-        dfdu_n = get_dfdu(y[:, n], y[:, n - 1], p, u[:, n - 1], h)
-        dgdu_n = get_dgdu(y[:, n], p, u[:, n - 1], h)
+        u_current = u[:, n]
+        dfdy_n = get_dfdy(y_current, y_prev, p, u_current, h)
+        dfdp_n = get_dfdp(y_current, y_prev, p, u_current, h)
+        dfdu_n = get_dfdu(y_current, y_prev, p, u_current, h)
+        dgdy_n = get_dgdy(y_current, p, u_current, h)
+        dgdp_n = get_dgdp(y_current, p, u_current, h)
+        dgdu_n = get_dgdu(y_current, p, u_current, h)
+        drdy_n = get_drdy(y_current, p, u_current, h)
+        drdp_n = get_drdp(y_current, p, u_current, h)
+        drdu_n = get_drdu(y_current, p, u_current, h)
 
-        if n == n_steps:
+        if n == n_steps - 1:
             # Terminal condition
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n)^T]
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n)^T]
@@ -347,17 +364,17 @@ def adjoint_gradients(y, p, u, h, n_steps):
             adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
             adj_mu[:, n] = adjs[(n_odes + n_algs) :]
         elif n == 0:
-            # Inital timestep
-            # ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T
-            # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_n + μ_{n+1})^T
-            dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], p, u[:, n], h)
+            # Initial timestep
+            # ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
+            # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
+            dfdy_prev = get_dfdy_prev(y[:, 1], y[:, 0], p, u[:, 1], h)
             dCdy_0 = drdy_n - np.dot(adj_lambda[:, 1].T, dfdy_prev)
             dCdp_0 = drdp_n + adj_mu[:, 1]
         else:
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
             #                           [μ_n]
-            dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], p, u[:, n], h)
+            dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], p, u[:, n + 1], h)
             A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
             b = np.concatenate([drdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev), drdp_n + adj_mu[:, n + 1]])
             adjs = np.linalg.solve(A, b)
@@ -365,15 +382,17 @@ def adjoint_gradients(y, p, u, h, n_steps):
             adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
             adj_mu[:, n] = adjs[(n_odes + n_algs) :]
 
-        # ∂L/∂u_n = ∂C/∂u_n = -λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_n)/∂u_n - ν_(n+1) ∂g(y_(n+1), p_(n+1), u_n)/∂u_n
-        dCdu[:, n - 1] = - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
+        # ∂L/∂u_n = ∂C/∂u_n = ∂r(y_n, p_n, u_n)/∂u_n
+        #                     - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
+        #                     - ν_n ∂g(y_n, p_n, u_n)/∂u_n
+        dCdu[:, n] = drdu_n - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
 
     return dCdy_0, dCdp_0, dCdu
 
 
 def plot(y, u, n_steps, h):
     # Create time array
-    t = np.linspace(0, n_steps * h, n_steps + 1)
+    t = np.linspace(0, n_steps * h, n_steps)
 
     # Create the figure and the subplots
     fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
@@ -408,7 +427,7 @@ def plot(y, u, n_steps, h):
     # axes[1].set_xlabel("Time (s)")
 
     # Third subplot for control variables
-    axes[1].plot(t[:-1], u[0], label="P_comp")
+    axes[1].plot(t, u[0], label="P_comp")
     axes[1].set_ylabel("Compressor power")
     axes[1].set_title("Control Variables")
     axes[1].legend(loc="upper left")
@@ -416,8 +435,8 @@ def plot(y, u, n_steps, h):
 
     # Create a secondary y-axis for u[1] and u[2]
     ax1 = axes[1].twinx()
-    ax1.plot(t[:-1], u[1], label="m_dot_cond", color="tab:red")
-    ax1.plot(t[:-1], u[2], label="m_dot_load", color="tab:green")
+    ax1.plot(t, u[1], label="m_dot_cond", color="tab:red")
+    ax1.plot(t, u[2], label="m_dot_load", color="tab:green")
     ax1.set_ylabel("Mass flow rates")
     ax1.legend(loc="upper right")
 
@@ -459,6 +478,7 @@ def fd_gradients(y0, p, u, h, n_steps):
         dfdp.append((cost_function(y_perturbed) - cost_function(y)) / delta)
 
     dfdu_3 = []
+    # perturb each control at timestep 3, one at a time
     for i in range(len(u[:, 0])):
         u_perturbed = u.copy()  # Create a new copy of u
         u_perturbed[i, 3] += delta
@@ -474,26 +494,27 @@ def main():
     n_steps = int(horizon / h)
     y0, p, u = get_inputs(n_steps, h)
     y = solve(y0, p, u, h, n_steps)
+
     print("solution:", y[:, -1])
     print("y[2]", y[:, 2])
     plot(y, u, n_steps, h)
 
     # FD derivatives
     dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, p, u, h, n_steps)
-    print("(finite diff) df/dy0", dCdy_0_fd)
-    print("(finite diff) df/dp: ", dCdp_fd)
-    print("(finite diff) df/du_3: ", dCdu_fd)
+    print("(finite diff) dC/dy0", dCdy_0_fd)
+    print("(finite diff) dC/dp: ", dCdp_fd)
+    print("(finite diff) dC/du_3: ", dCdu_fd)
 
     # Adjoint derivatives
     dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, p, u, h, n_steps)
-    print("(adjoint) df/dy_0: ", dCdy_0_adj)
-    print("(adjoint) df/dp: ", dCdp_adj)
-    print("(finite diff) df/du_3: ", dCdu_adj[:, 3])
+    print("(adjoint) dC/dy_0: ", dCdy_0_adj)
+    print("(adjoint) dC/dp: ", dCdp_adj)
+    print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
 
     # Discrepancies
-    print(f"Discrepancy df/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-6) * 100}%")
-    print(f"Discrepancy df/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-6) * 100}%")
-    print(f"Discrepancy df/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-6) * 100}%")
+    print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-6) * 100}%")
+    print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-6) * 100}%")
+    print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-6) * 100}%")
 
 
 def get_inputs(n_steps, h):
@@ -506,7 +527,6 @@ def get_inputs(n_steps, h):
     rho_water = 1000  # Water density (kg/m3)
     cp_water = 4186  # Specific heat capacity of water (J/(kg·K))
     m_tank = V * rho_water  # Mass of water in the tank (kg)
-    print("m_tank: ", m_tank)
     T_amb = 298  # [K] (25ºC)
     load_hx_eff = 0.8
 
