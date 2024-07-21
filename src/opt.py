@@ -2,6 +2,8 @@ import numpy as np
 from pyoptsparse import Optimization
 from custom_types import DesignVariableInfo, DesignVariables, Parameters, ConstraintInfo
 from typing import Callable, List, Dict, Union
+from pyoptsparse import OPT
+from pyoptsparse import ALPSO, CONMIN, IPOPT, NLPQLP, NSGA2, PSQP, ParOpt, SLSQP, SNOPT
 
 
 class Opt:
@@ -10,13 +12,14 @@ class Opt:
     constraints_info: List[ConstraintInfo]
     design_variables_info: List[DesignVariableInfo]
     parameters: Parameters
-    objective: Callable[[DesignVariables, Parameters], np.ndarray]
+    objective: Callable[["Opt", DesignVariables], np.ndarray]
     objective_name: str = "obj"
+    optimizer: ALPSO | CONMIN | IPOPT | NLPQLP | NSGA2 | PSQP | ParOpt | SLSQP | SNOPT
 
     def __init__(
         self,
         name: str,
-        objective: Callable[[DesignVariables, Parameters], np.ndarray],
+        objective: Callable[["Opt", DesignVariables], np.ndarray],
     ):
         self.name = name
         self.objective = objective
@@ -27,21 +30,27 @@ class Opt:
     def print(self):
         print(self.optProb)
 
-    def problem_wrapper(self, parameters: Parameters):
+    def problem_wrapper(self):
         def problem(design_variables: DesignVariables):
             funcs: Dict[str, Union[float, np.ndarray]] = {}
 
             # Cost function
-            funcs[self.objective_name] = self.objective(design_variables, parameters)
+            funcs[self.objective_name] = self.objective(self, design_variables)
 
             # Constraint functions
             for constraint_info in self.constraints_info:
-                funcs[constraint_info["name"]] = constraint_info["function"](design_variables, parameters)
+                funcs[constraint_info["name"]] = constraint_info["function"](self, design_variables)
 
             fail = False
             return funcs, fail
 
         return problem
+
+    def sens_wrapper(self, sens_function: Callable[["Opt", DesignVariables, List], Dict]):
+        def sens(design_variables: DesignVariables, func_values):
+            return sens_function(self, design_variables, func_values)
+
+        return sens
 
     def add_constraint_info(self, constraint: ConstraintInfo) -> None:
         self.constraints_info.append(constraint)
@@ -52,8 +61,11 @@ class Opt:
     def add_parameters(self, parameters: Parameters) -> None:
         self.parameters = parameters
 
+    def add_optimizer(self, optimizer_type: str, options: Dict) -> None:
+        self.optimizer = OPT(optimizer_type, options=options)
+
     def setup(self):
-        self.optProb = Optimization(self.name, self.problem_wrapper(self.parameters))
+        self.optProb = Optimization(self.name, self.problem_wrapper())
 
         # Add design variables
         for design_variable_info in self.design_variables_info:
@@ -81,3 +93,10 @@ class Opt:
 
         # Objective
         self.optProb.addObj(self.objective_name)
+
+    def optimize(self, sens: Union[str, Callable[["Opt", DesignVariables, List], Dict]], sensStep=None):
+        if isinstance(sens, str):
+            sol = self.optimizer(self.optProb, sens=sens, sensStep=sensStep)
+        else:
+            sol = self.optimizer(self.optProb, sens=self.sens_wrapper(sens))
+        return sol

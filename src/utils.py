@@ -1,4 +1,6 @@
 import os
+import pickle
+import imageio
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,6 +8,7 @@ from custom_types import PlotData
 import scienceplots
 from parameters import PARAMS
 from cycler import cycler
+import jax
 import jax.numpy as jnp
 
 
@@ -16,7 +19,7 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
-prop_cycle = cycler('color', ['k', 'r', 'b', 'g', 'purple']) + cycler('ls', ['-', '--', ':', '-.', (5, (10, 3))])
+prop_cycle = cycler('color', ['k', 'r', 'b', 'g', 'purple']) + cycler('linestyle', ['-', '--', ':', '-.', (5, (10, 3))])
 plot_styles = list(prop_cycle)
 
 
@@ -77,6 +80,37 @@ def generic_plot(plot_data: PlotData, filename=None, title=None, sharex=False, s
     print(f"Figure saved as {filepath}")
 
 
+def plot_film():
+    directory = f"tmp"
+    image_files = []
+    for file in sorted(os.listdir(directory)):
+        image_files.append(file)
+
+    with imageio.get_writer("animation.gif", mode="I", duration=0.5, loop=0) as writer:  # Adjust duration as needed
+        for filename in image_files:
+            image = imageio.imread(f"{directory}/{filename}")
+            writer.append_data(image)
+
+    # Delete the files after creating the GIF
+    for filename in image_files:
+        os.remove(os.path.join(directory, filename))
+
+
+def save_dict_to_file(dict):
+    filename = "saves/dict_file.pkl"
+    # Open a file in write-binary mode and use pickle to serialize the dictionary
+    with open(filename, 'wb') as f:
+        pickle.dump(dict, f)
+
+    print(f"Saved to {filename}")
+
+
+def load_dict_from_file(filename):
+    with open(filename, 'rb') as f:
+        dict = pickle.load(f)
+    return dict
+
+
 def get_dynamic_parameters(t0, h, horizon):
     dynamic_parameters = {}
     dynamic_parameters["t_amb"] = get_t_amb(t0, h, horizon)
@@ -87,21 +121,21 @@ def get_dynamic_parameters(t0, h, horizon):
     return dynamic_parameters
 
 
-def get_q_dot_required(t0, h, horizon):
-    q_dot_required = np.ones((horizon)) * PARAMS["P_COMPRESSOR_MAX"] * 2
-    return q_dot_required[t0:t0+horizon:h]
-
-
 # def get_q_dot_required(t0, h, horizon):
-#     max_q_dot_required = PARAMS["MAX_Q_DOT_REQUIRED"]
-#     seconds_in_day = 24 * 3600
-#     min_q_dot_required = 0
-#     amplitude = (max_q_dot_required - min_q_dot_required) / 2
-#     vertical_shift = amplitude + min_q_dot_required
-#     seconds = np.arange(horizon)
-#     # A * sin(w * t) = A * sin(2*pi*f*t)
-#     q_dot_required = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
+#     q_dot_required = np.ones((horizon)) * PARAMS["P_COMPRESSOR_MAX"] * 1.3
 #     return q_dot_required[t0:t0+horizon:h]
+
+
+def get_q_dot_required(t0, h, horizon):
+    max_q_dot_required = PARAMS["MAX_Q_DOT_REQUIRED"]
+    seconds_in_day = 24 * 3600
+    min_q_dot_required = 0
+    amplitude = (max_q_dot_required - min_q_dot_required) / 2
+    vertical_shift = amplitude + min_q_dot_required
+    seconds = np.arange(horizon)
+    # A * sin(w * t) = A * sin(2*pi*f*t)
+    q_dot_required = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
+    return q_dot_required[t0:t0+horizon:h]
 
 
 def get_p_required(t0, h, horizon):
@@ -197,36 +231,60 @@ def get_grid_prices_kwh(n_hours, year=2022):
     return grid_prices_kwh
 
 
-def ks_max(g: np.ndarray, rho: float = 100) -> float:
+def ks_max(x: np.ndarray, rho: float = 100):
     """
-    Calculates the KS function for given rho and g values.
+    Calculates the KS function for given rho and x values.
 
     Parameters:
     rho (float): The rho parameter.
-    g (np.ndarray): An array of g values.
+    x (np.ndarray): An array of x values.
 
     Returns:
     float: The result of the KS function.
     """
-    max_g = np.max(g)
-    sum_exp = np.sum(np.exp(np.dot(rho, (g - max_g))))
-    return max_g + (1 / rho) * np.log(sum_exp)
+    max_x = np.max(x)
+    sum_exp = np.sum(np.exp(np.dot(rho, (x - max_x))))
+    return max_x + (1 / rho) * np.log(sum_exp)
 
 
-def ks_min(g: np.ndarray, rho: float = 100) -> float:
+# @jax.jit
+# def ks_max_jax(x: jnp.ndarray, rho: float = 100.0):
+#     """
+#     Calculates the KS function for given rho and x values using JAX.
+#
+#     Parameters:
+#     x (jnp.ndarray): An array of x values.
+#     rho (float): The rho parameter.
+#
+#     Returns:
+#     float: The result of the KS function.
+#     """
+#     max_x = jnp.max(x)
+#     sum_exp = jnp.sum(jnp.exp(rho * (x - max_x)))
+#     return max_x + (1 / rho) * jnp.log(sum_exp)
+#
+#
+# def ks_max(x):
+#     if isinstance(x, jnp.ndarray):
+#         return ks_max_jax(x)
+#     else:
+#         return ks_max_np(x)
+
+
+def ks_min(x: np.ndarray, rho: float = 100) -> float:
     """
-    Calculates the KS function for given rho and g values.
+    Calculates the KS function for given rho and x values.
 
     Parameters:
     rho (float): The rho parameter.
-    g (np.ndarray): An array of g values.
+    x (np.ndarray): An array of x values.
 
     Returns:
     float: The result of the KS function.
     """
-    min_g = np.min(g)
-    sum_exp = np.sum(np.exp(-rho * (g - min_g)))
-    return min_g - (1 / rho) * np.log(sum_exp)
+    min_x = np.min(x)
+    sum_exp = np.sum(np.exp(-rho * (x - min_x)))
+    return min_x - (1 / rho) * np.log(sum_exp)
 
 
 def jax_to_numpy(jax_func):

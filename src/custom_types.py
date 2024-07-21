@@ -3,6 +3,7 @@ from typing import TypedDict, Dict, List, Union, Optional, Callable, Any, NotReq
 from typing_extensions import NotRequired
 from numpy.typing import NDArray
 import scipy.sparse as sp
+# from opt import Opt
 
 
 """
@@ -54,7 +55,7 @@ class ConstraintInfo(TypedDict):
     lower: Union[float, List[float], None]
     upper: Union[float, List[float], None]
     scale: NotRequired[float]
-    function: Callable[[DesignVariables, Parameters], np.ndarray]
+    function: Callable[["Opt", DesignVariables], np.ndarray]
     wrt: NotRequired[List[str]]
     # jac: NotRequired[Dict[str, Union[np.ndarray, sp.spmatrix]]]
     jac: NotRequired[Dict[str, Any]]

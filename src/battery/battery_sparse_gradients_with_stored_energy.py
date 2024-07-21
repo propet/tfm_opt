@@ -15,7 +15,10 @@ def get_input_data():
     return hours, grid_prices_kwh, p_gen
 
 
-def obj(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
+# def obj(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
+def obj(opt, design_variables: DesignVariables) -> np.ndarray:
+    parameters = opt.parameters
+
     p_bat = design_variables["p_bat"]
     grid_prices_kwh = parameters["grid_prices_kwh"]
     p_gen = parameters["p_gen"]
@@ -26,7 +29,9 @@ def obj(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray
     # return np.sum(grid_prices_kwh * (-p_gen + p_bat))
 
 
-def battery_soc_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
+def battery_soc_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
+    parameters = opt.parameters
+
     # Inequality constraint
     # E_{bat_h} / E_{bat_{max}
     e_bat = design_variables["e_bat"]
@@ -38,7 +43,9 @@ def battery_soc_constraint_fun(design_variables: DesignVariables, parameters: Pa
     return np.array(battery_soc)
 
 
-def battery_energy_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
+def battery_energy_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
+    parameters = opt.parameters
+
     # Equality constraint
     # E_h - E_{h-1} - P_h = 0
     p_bat = design_variables["p_bat"]
@@ -55,7 +62,9 @@ def battery_energy_constraint_fun(design_variables: DesignVariables, parameters:
     return np.array(energy_constraints)
 
 
-def grid_power_constraint_fun(design_variables: DesignVariables, parameters: Parameters) -> np.ndarray:
+def grid_power_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
+    parameters = opt.parameters
+
     # Inequality constraint
     # -P_{gen_h} + P_{bat_h}
     p_bat = design_variables["p_bat"]
@@ -73,13 +82,13 @@ def get_constraint_sparse_jacs():
     MAX_BAT_CAPACITY = PARAMS["MAX_BAT_CAPACITY"]
 
     # soc constraints
-    dsoc_de = sp.eye(N_HOURS, format='csr') / MAX_BAT_CAPACITY
+    dsoc_de = sp.eye(N_HOURS, format="csr") / MAX_BAT_CAPACITY
 
     # grid power constraints
-    dgrid_dp = sp.eye(N_HOURS, format='csr')
+    dgrid_dp = sp.eye(N_HOURS, format="csr")
 
     # battery energy constraints
-    denergy_dp = sp.eye(N_HOURS, format='csr') * -1
+    denergy_dp = sp.eye(N_HOURS, format="csr") * -1
     denergy_dp[0, 0] = 0
 
     # Create denergy_de
@@ -93,16 +102,13 @@ def get_constraint_sparse_jacs():
 
     # Convert to required format
     def to_required_format(mat):
-        return {
-            'csr': [mat.indptr, mat.indices, mat.data],
-            'shape': list(mat.shape)
-        }
+        return {"csr": [mat.indptr, mat.indices, mat.data], "shape": list(mat.shape)}
 
     return (
         to_required_format(dsoc_de),
         to_required_format(dgrid_dp),
         to_required_format(denergy_dp),
-        to_required_format(denergy_de)
+        to_required_format(denergy_de),
     )
 
 
@@ -129,12 +135,12 @@ def get_constraint_jacs():
     for i in range(1, PARAMS["N_HOURS"]):
         denergy_dp[i, i] = -1
         denergy_de[i, i] = 1
-        denergy_de[i, i-1] = -1
+        denergy_de[i, i - 1] = -1
 
     return dsoc_de, dgrid_dp, denergy_dp, denergy_de
 
 
-def sens(design_variables: DesignVariables, func_values):
+def sens(opt, design_variables: DesignVariables, func_values):
     grid_prices_kwh = PARAMS["grid_prices_kwh"]
     # dsoc_de, dgrid_dp, denergy_dp, denergy_de = get_constraint_jacs()
     dsoc_de, dgrid_dp, denergy_dp, denergy_de = get_constraint_sparse_jacs()
@@ -228,16 +234,7 @@ def run_optimization(plot=True):
     }
     opt.add_constraint_info(grid_power_constraint)
 
-    opt.setup()
-
-    opt.optProb.printSparsity()
-
-    # Check optimization problem
-    if plot:
-        opt.print()
-    # exit(0)
-
-    # Solve
+    # Optimizer
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
@@ -245,10 +242,18 @@ def run_optimization(plot=True):
         # "mu_strategy": "adaptive",
         # "alpha_red_factor": 0.2
     }
-    optOptions = ipoptOptions
-    optimizer = OPT("ipopt", options=optOptions)
-    # sol = optimizer(opt.optProb, sens="FD", sensStep=1e-6)
-    sol = optimizer(opt.optProb, sens=sens)
+    opt.add_optimizer("ipopt", ipoptOptions)
+
+    # Setup and check optimization problem
+    opt.setup()
+    opt.optProb.printSparsity()
+    if plot:
+        opt.print()
+    # exit(0)
+
+    # Run
+    sol = opt.optimize(sens=sens)
+    # sol = opt.optimize(sens="FD", sensStep=1e-6)
     p_bat_star = sol.xStar["p_bat"]
     e_bat_star = sol.xStar["e_bat"]
 

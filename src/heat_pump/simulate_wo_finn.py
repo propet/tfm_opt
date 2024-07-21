@@ -1,13 +1,12 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import fsolve
 from matplotlib.animation import FuncAnimation
+from scipy.optimize import fsolve
 from parameters import PARAMS
-from utils import get_dynamic_parameters, plot_styles, jax_to_numpy
+from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, load_dict_from_file
 import jax
 import jax.numpy as jnp
-from jax import jit, lax
 
 jax.config.update("jax_enable_x64", True)
 
@@ -30,8 +29,14 @@ def cop(T):
 
 
 def cop_jax(T):
-    conditions = [T < 273, (T >= 273) & (T < 343), T >= 343]
-    choices = [3.0, 14.7 - (3.0 / 70.0) * T, 0.0]
+    max_cop = 3
+    min_cop = 0
+    T_upper = 373
+    T_lower = 273
+    m = (max_cop - min_cop) / (T_upper - T_lower)
+    T0 = max_cop + m * T_lower
+    conditions = [T < 273, (T >= 273) & (T < 373), T >= 373]
+    choices = [max_cop, T0 - m * T, min_cop]
     return jnp.select(conditions, choices)
 
 
@@ -39,37 +44,44 @@ def cop_np(T):
     """
     piecewise lineal -> non-linear function overall
 
-    COP is 0 for T > 343
+    COP is 0 for T > 373
     COP is 3 for T < 273
-    COP varies linearly from 3 at 273K to 0 at 343K
+    COP varies linearly from 3 at 273K to 0 at 373K
     """
-    conditions = [T < 273, (273 <= T) & (T <= 343), T > 343]
-    functions = [lambda T: 3, lambda T: 14.7 - (3 / 70) * T, lambda T: 0]
+    max_cop = 3
+    min_cop = 0
+    T_upper = 373
+    T_lower = 273
+    m = (max_cop - min_cop) / (T_upper - T_lower)
+    T0 = max_cop + m * T_lower
+    conditions = [T < 273, (273 <= T) & (T <= 373), T > 373]
+    functions = [lambda T: max_cop, lambda T: T0 - m * T, lambda T: min_cop]
     return np.piecewise(T, conditions, functions)
 
 
 def get_dcopdT(T):
     """
-    COP is 0 for T > 343
+    COP is 0 for T > 373
     COP is 3 for T < 273
-    COP varies linearly from 3 at 273K to 0 at 343K
+    COP varies linearly from 3 at 273K to 0 at 373K
     """
-    conditions = [T < 273, (273 <= T) & (T <= 343), T > 343]
-    functions = [lambda T: 0, lambda T: -3 / 70, lambda T: 0]
+    max_cop = 3
+    min_cop = 0
+    T_upper = 373
+    T_lower = 273
+    m = (max_cop - min_cop) / (T_upper - T_lower)
+    conditions = [T < 273, (273 <= T) & (T <= 373), T > 373]
+    functions = [lambda T: 0, lambda T: -m, lambda T: 0]
     return np.piecewise(T, conditions, functions)
 
 
-# def cost_function(y, u, parameters, h):
-#     return np.sum(r(y, u, parameters, h))
-
-
-def cost_function(y, u, parameters, h):
+def cost_function(y, u, parameters):
     cost = 0
     for i in range(y.shape[1]):
         cost += r(
             y[:, i],
             u[:, i],
-            h,
+            parameters["H"],
             parameters["cost_grid"][i],
             parameters["q_dot_required"][i],
             parameters["t_amb"][i],
@@ -82,6 +94,7 @@ def cost_function(y, u, parameters, h):
 def r(y, u, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
     p_compressor = u[0]
     p_heat = get_p_heat(y, u, q_dot_required, t_amb, load_hx_eff, cp_water)
+    p_heat = jnp.max(jnp.array([0, p_heat]))
     r = h * cost_grid * (p_compressor + p_heat)
     return r
 
@@ -228,7 +241,7 @@ def solve(y_0, u, dae_p, h, n_steps):
     return y
 
 
-def adjoint_gradients(y, u, p, h, parameters, n_steps):
+def adjoint_gradients(y, u, p, n_steps, parameters):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
@@ -278,6 +291,8 @@ def adjoint_gradients(y, u, p, h, parameters, n_steps):
     ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
     ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
     """
+    h = parameters["H"]
+
     # Obtain shapes of jacobians
     # JACOBIANS
     # jax.jacobian will automatically
@@ -400,18 +415,26 @@ def dae_forward(y0, u, dae_p, n_steps):
     return y
 
 
-def dae_adjoints(y, u, dae_p, parameters, n_steps):
-    h = PARAMS["H"]
-    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, h, parameters, n_steps)
+def dae_adjoints(y, u, dae_p, n_steps, parameters):
+    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, n_steps, parameters)
     return dCdy_0_adj, dCdp_adj, dCdu_adj
 
 
-def plot(y, u, n_steps, h, parameters):
+fig = None
+
+
+def plot(y, u, n_steps, parameters, dynamic=True):
+    global fig
+    # Close the previous figure if it exists
+    if fig:
+        plt.close(fig)
+
+    h = parameters["H"]
     q_dot_required = parameters["q_dot_required"]
 
     # Create time array
     t = np.linspace(0, n_steps * h, n_steps)
-    fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
 
     if not isinstance(axes, np.ndarray):
         axes = [axes]
@@ -431,44 +454,164 @@ def plot(y, u, n_steps, h, parameters):
 
     Q_dot_load = q_dot_required - P_heat
 
-    # First subplot for T_tank, T_load, and T_cond
-    axes[0].plot(t, y[0], label="T_tank", **plot_styles[0])
-    axes[0].plot(t, y[1], label="T_cond", **plot_styles[1])
-    axes[0].plot(t, T_load, label="T_load", **plot_styles[2])
-    axes[0].set_ylabel("Temperature (K)")
-    axes[0].set_title("Temperature Profiles")
-    # axes[0].legend()
+    # First subplot for inputs C_grid
+    axes[0].plot(t, parameters["cost_grid"], label="C_grid", **plot_styles[0])
+    axes[0].set_ylabel("money")
+    axes[0].set_title("Cost grid")
+    axes[0].legend()
     axes[0].legend(loc="upper left")
     axes[0].grid(True)
 
     ax0 = axes[0].twinx()
-    ax0.plot(t, Q_dot_load, label="Q_dot_load", **plot_styles[3])
-    ax0.plot(t, P_heat, label="P_heat", **plot_styles[4])
+    ax0.plot(t, q_dot_required, label="q_dot_required", **plot_styles[1])
     ax0.set_ylabel("W")
     ax0.legend(loc="upper right")
 
-    axes[1].plot(t, u[0], label="P_comp", **plot_styles[0])
-    axes[1].plot(t, q_dot_required, label="q_dot_required", **plot_styles[1])
-    axes[1].set_ylabel("Power[W]")
+    # First subplot for T_tank, T_load, and T_cond
+    axes[1].plot(t, y[0], label="T_tank", **plot_styles[0])
+    axes[1].plot(t, y[1], label="T_cond", **plot_styles[1])
+    axes[1].plot(t, T_load, label="T_load", **plot_styles[2])
+    axes[1].set_ylabel("Temperature (K)")
+    axes[1].set_title("Temperature Profiles")
+    axes[1].legend(loc="upper left")
+    axes[1].grid(True)
+
+    ax1 = axes[1].twinx()
+    ax1.plot(t, Q_dot_load, label="Q_dot_load", **plot_styles[3])
+    ax1.plot(t, P_heat, label="P_heat", **plot_styles[4])
+    ax1.set_ylabel("W")
+    ax1.legend(loc="upper right")
+
+    axes[2].plot(t, u[0], label="P_comp", **plot_styles[0])
+    axes[2].set_ylabel("Power[W]")
+    axes[2].set_title("Control Variables")
+    axes[2].legend(loc="upper left")
+    axes[2].grid(True)
+    axes[2].set_xlabel("Time (s)")
+
+    ax2 = axes[2].twinx()
+    ax2.plot(t, u[1], label="m_dot_cond", **plot_styles[2])
+    ax2.plot(t, u[2], label="m_dot_load", **plot_styles[3])
+    ax2.set_ylabel("Mass flow rates")
+    ax2.legend(loc="upper right")
+
+    # Show the plots
+    if dynamic:
+        # Save and close plot
+        plt.ion()  # Turn on the interactive mode
+        plt.draw()  # Draw the figure
+        plt.pause(0.2)  # Time for the figure to load
+        plt.savefig(f"tmp/frame_{time.time()}.png")
+    else:
+        # Show plot
+        # plt.tight_layout()
+        plt.show()
+
+
+def plot_animation(y, u, n_steps, parameters):
+    h = parameters["H"]
+    q_dot_required = parameters["q_dot_required"]
+
+    # Create time array
+    t = np.linspace(0, n_steps * h, n_steps)
+
+    T_load = np.zeros(y.shape[1])
+    P_heat = np.zeros(y.shape[1])
+    for i in range(y.shape[1]):
+        T_load[i] = get_t_load(y[:, i], parameters, i)
+        P_heat[i] = get_p_heat(
+            y[:, i],
+            u[:, i],
+            parameters["q_dot_required"][i],
+            parameters["t_amb"][i],
+            parameters["LOAD_HX_EFF"],
+            parameters["CP_WATER"],
+        )
+
+    Q_dot_load = q_dot_required - P_heat
+
+    fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
+
+    # Set up the initial plot
+    (line1,) = axes[0].plot([], [], label="T_tank", **plot_styles[0])
+    (line2,) = axes[0].plot([], [], label="T_cond", **plot_styles[1])
+    (line3,) = axes[0].plot([], [], label="T_load", **plot_styles[2])
+    axes[0].set_ylabel("Temperature (K)")
+    axes[0].set_title("Temperature Profiles")
+    axes[0].legend(loc="upper left")
+    axes[0].grid(True)
+
+    ax0 = axes[0].twinx()
+    (line4,) = ax0.plot([], [], label="Q_dot_load", **plot_styles[3])
+    (line5,) = ax0.plot([], [], label="P_heat", **plot_styles[4])
+    ax0.set_ylabel("Power (W)")
+    ax0.legend(loc="upper right")
+
+    (line6,) = axes[1].plot([], [], label="P_comp", **plot_styles[0])
+    (line7,) = axes[1].plot([], [], label="q_dot_required", **plot_styles[1])
+    axes[1].set_ylabel("Power (W)")
     axes[1].set_title("Control Variables")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
 
     ax1 = axes[1].twinx()
-    ax1.plot(t, u[1], label="m_dot_cond", **plot_styles[2])
-    ax1.plot(t, u[2], label="m_dot_load", **plot_styles[3])
-    ax1.set_ylabel("Mass flow rates")
+    (line8,) = ax1.plot([], [], label="m_dot_cond", **plot_styles[2])
+    (line9,) = ax1.plot([], [], label="m_dot_load", **plot_styles[3])
+    ax1.set_ylabel("Mass flow rates (kg/s)")
     ax1.legend(loc="upper right")
 
-    # Set common x-axis label
     axes[1].set_xlabel("Time (s)")
 
-    # Show the plots
+    # Set x and y limits
+    axes[0].set_xlim(0, n_steps * h)
+    axes[0].set_ylim(min(y.min(), T_load.min()) - 5, max(y.max(), T_load.max()) + 5)
+    ax0.set_ylim(min(Q_dot_load.min(), P_heat.min()) - 100, max(Q_dot_load.max(), P_heat.max()) + 100)
+    axes[1].set_ylim(min(u[0].min(), q_dot_required.min()) - 100, max(u[0].max(), q_dot_required.max()) + 100)
+    ax1.set_ylim(np.min(u[1:]) - 0.1, np.max(u[1:]) + 0.1)
+
+    # Initialize the plot lines
+    def init():
+        line1.set_data([], [])
+        line2.set_data([], [])
+        line3.set_data([], [])
+        line4.set_data([], [])
+        line5.set_data([], [])
+        line6.set_data([], [])
+        line7.set_data([], [])
+        line8.set_data([], [])
+        line9.set_data([], [])
+        return line1, line2, line3, line4, line5, line6, line7, line8, line9
+
+    # Update the plot lines for each frame
+    def update(frame):
+        line1.set_data(t[:frame], y[0, :frame])
+        line2.set_data(t[:frame], y[1, :frame])
+        line3.set_data(t[:frame], T_load[:frame])
+        line4.set_data(t[:frame], Q_dot_load[:frame])
+        line5.set_data(t[:frame], P_heat[:frame])
+        line6.set_data(t[:frame], u[0, :frame])
+        line7.set_data(t[:frame], q_dot_required[:frame])
+        line8.set_data(t[:frame], u[1, :frame])
+        line9.set_data(t[:frame], u[2, :frame])
+        return line1, line2, line3, line4, line5, line6, line7, line8, line9
+
+    ani = FuncAnimation(
+        fig,
+        update,
+        frames=n_steps,
+        init_func=init,
+        blit=True,
+        repeat=False,
+        interval=1,  # Adjust this value to change the speed (lower value = faster animation)
+    )
+
     plt.tight_layout()
     plt.show()
 
 
-def fd_gradients(y0, u, dae_p, parameters, h, n_steps):
+
+
+def fd_gradients(y0, u, dae_p, n_steps, parameters):
     """
     Finite difference of function cost_function
     with respect
@@ -479,6 +622,7 @@ def fd_gradients(y0, u, dae_p, parameters, h, n_steps):
     f'(x) = (f(y+h) - f(y)) / h
     """
     delta = 1e-5
+    h = parameters["H"]
 
     # Initial solution
     y = solve(y0, u, dae_p, h, n_steps)
@@ -489,23 +633,21 @@ def fd_gradients(y0, u, dae_p, parameters, h, n_steps):
         y0_perturbed = y0.copy()  # Create a new copy of y0
         y0_perturbed[i] += delta
         y_perturbed = solve(y0_perturbed, u, dae_p, h, n_steps)
-        dfdy0.append((cost_function(y_perturbed, u, parameters, h) - cost_function(y, u, parameters, h)) / delta)
+        dfdy0.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
 
     dfdp = []
     for i in range(len(dae_p)):
         p_perturbed = dae_p.copy()  # Create a new copy of p
         p_perturbed[i] += delta
         y_perturbed = solve(y0, u, p_perturbed, h, n_steps)
-        dfdp.append((cost_function(y_perturbed, u, parameters, h) - cost_function(y, u, parameters, h)) / delta)
+        dfdp.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
 
     dfdu_3 = []
     for i in range(len(u[:, 0])):
         u_perturbed = u.copy()  # Create a new copy of u
         u_perturbed[i, 3] += delta
         y_perturbed = solve(y0, u_perturbed, dae_p, h, n_steps)
-        dfdu_3.append(
-            (cost_function(y_perturbed, u_perturbed, parameters, h) - cost_function(y, u, parameters, h)) / delta
-        )
+        dfdu_3.append((cost_function(y_perturbed, u_perturbed, parameters) - cost_function(y, u, parameters)) / delta)
 
     return dfdy0, dfdp, dfdu_3
 
@@ -529,21 +671,29 @@ def main():
     parameters["y0"] = y0
 
     # Prepare DAE inputs
-    P_comp = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
-    P_comp[-int(n_steps / 3) :] = 1e-6
-    P_comp[-int(n_steps / 4) :] = parameters["P_COMPRESSOR_MAX"]
-
-    m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
-    m_dot_cond[-int(n_steps / 3) :] = 1e-6
-    m_dot_cond[-int(n_steps / 6) :] = 0.3
-
-    m_dot_load = np.ones((n_steps)) * 1e-6  # kg/s
-    m_dot_load[-int(n_steps / 3) :] = 0.2
-
     u = np.zeros((3, n_steps))
-    u[0, :] = P_comp  # P_comp
-    u[1, :] = m_dot_cond
-    u[2, :] = m_dot_load
+
+    load_from_pickle = True
+    if load_from_pickle:
+        dict = load_dict_from_file("saves/dict_file.pkl")
+        u[0] = dict["p_compressor"]
+        u[1] = dict["m_dot_cond"]
+        u[2] = dict["m_dot_load"]
+    else:
+        P_comp = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
+        P_comp[-int(n_steps / 3) :] = 1e-6
+        P_comp[-int(n_steps / 4) :] = parameters["P_COMPRESSOR_MAX"]
+
+        m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
+        m_dot_cond[-int(n_steps / 3) :] = 1e-6
+        m_dot_cond[-int(n_steps / 6) :] = 0.3
+
+        m_dot_load = np.ones((n_steps)) * 1e-6  # kg/s
+        m_dot_load[-int(n_steps / 3) :] = 0.2
+
+        u[0, :] = P_comp  # P_comp
+        u[1, :] = m_dot_cond
+        u[2, :] = m_dot_load
 
     dae_p = np.array(
         [
@@ -559,16 +709,17 @@ def main():
     y = dae_forward(y0, u, dae_p, n_steps)
     print("solution:", y[:, -1])
     print("y[1]: ", y[:, 1])
-    plot(y, u, n_steps, h, parameters)
+    plot(y, u, n_steps, parameters, dynamic=False)
+    # plot_animation(y, u, n_steps, parameters)
 
     # FD derivatives
-    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, parameters, h, n_steps)
+    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, n_steps, parameters)
     print("(finite diff) dC/dy0", dCdy_0_fd)
     print("(finite diff) dC/dp: ", dCdp_fd)
     print("(finite diff) dC/du_3: ", dCdu_fd)
 
     # # Adjoint derivatives
-    dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, parameters, n_steps)
+    dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, n_steps, parameters)
     print("(adjoint) dC/dy_0: ", dCdy_0_adj)
     print("(adjoint) dC/dp: ", dCdp_adj)
     print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
@@ -580,4 +731,5 @@ def main():
 
 
 if __name__ == "__main__":
+    # plot_film()
     main()
