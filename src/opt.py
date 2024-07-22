@@ -2,13 +2,14 @@ import numpy as np
 from pyoptsparse import Optimization
 from custom_types import DesignVariableInfo, DesignVariables, Parameters, ConstraintInfo
 from typing import Callable, List, Dict, Union
-from pyoptsparse import OPT
+from pyoptsparse import OPT, History
 from pyoptsparse import ALPSO, CONMIN, IPOPT, NLPQLP, NSGA2, PSQP, ParOpt, SLSQP, SNOPT
 
 
 class Opt:
     optProb: Optimization
     name: str
+    historyFileName: str | None
     constraints_info: List[ConstraintInfo]
     design_variables_info: List[DesignVariableInfo]
     parameters: Parameters
@@ -17,11 +18,10 @@ class Opt:
     optimizer: ALPSO | CONMIN | IPOPT | NLPQLP | NSGA2 | PSQP | ParOpt | SLSQP | SNOPT
 
     def __init__(
-        self,
-        name: str,
-        objective: Callable[["Opt", DesignVariables], np.ndarray],
+        self, name: str, objective: Callable[["Opt", DesignVariables], np.ndarray], historyFileName: str | None = None
     ):
         self.name = name
+        self.historyFileName = historyFileName
         self.objective = objective
         self.constraints_info = []
         self.design_variables_info = []
@@ -96,7 +96,7 @@ class Opt:
 
     def optimize(self, sens: Union[str, Callable[["Opt", DesignVariables, List], Dict]], sensStep=None):
         if isinstance(sens, str):
-            sol = self.optimizer(self.optProb, sens=sens, sensStep=sensStep)
+            sol = self.optimizer(self.optProb, sens=sens, sensStep=sensStep, storeHistory=self.historyFileName)
         else:
-            sol = self.optimizer(self.optProb, sens=self.sens_wrapper(sens))
+            sol = self.optimizer(self.optProb, sens=self.sens_wrapper(sens), storeHistory=self.historyFileName)
         return sol

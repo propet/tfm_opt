@@ -80,13 +80,15 @@ def generic_plot(plot_data: PlotData, filename=None, title=None, sharex=False, s
     print(f"Figure saved as {filepath}")
 
 
-def plot_film():
+def plot_film(filename):
+    print("Merging pictures into gif file")
     directory = f"tmp"
     image_files = []
     for file in sorted(os.listdir(directory)):
         image_files.append(file)
+    image_files.remove(".gitignore")  # don't process .gitignore
 
-    with imageio.get_writer("animation.gif", mode="I", duration=0.5, loop=0) as writer:  # Adjust duration as needed
+    with imageio.get_writer(filename, mode="I", duration=0.5, loop=0) as writer:  # Adjust duration as needed
         for filename in image_files:
             image = imageio.imread(f"{directory}/{filename}")
             writer.append_data(image)

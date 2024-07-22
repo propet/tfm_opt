@@ -14,7 +14,7 @@
 
 PARAMS = {
     "H": 100,  # stepsize [s]
-    "HORIZON": 1000000,  # s
+    "HORIZON": 100000,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 120000,  # Wh
     "SOC_MIN": 0.1,  # Minimum State of Charge
@@ -31,7 +31,9 @@ PARAMS = {
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
-    "TANK_VOLUME": 1,  # m3
+    "TANK_VOLUME": 5.56,  # m3
+    "MAX_TANK_VOLUME": 1000, # m3
+    "MIN_TANK_VOLUME": 1, # m3
     # TODO: make insulation length a design variable
     "U": 0.04,  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
     # TODO: make T_AMB time dependant (just like grid prices)

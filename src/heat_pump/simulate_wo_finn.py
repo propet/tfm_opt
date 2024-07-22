@@ -5,6 +5,7 @@ from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
 from parameters import PARAMS
 from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, load_dict_from_file
+from pyoptsparse import History
 import jax
 import jax.numpy as jnp
 
@@ -94,7 +95,7 @@ def cost_function(y, u, parameters):
 def r(y, u, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
     p_compressor = u[0]
     p_heat = get_p_heat(y, u, q_dot_required, t_amb, load_hx_eff, cp_water)
-    p_heat = jnp.max(jnp.array([0, p_heat]))
+    # p_heat = jnp.max(jnp.array([0, p_heat]))
     r = h * cost_grid * (p_compressor + p_heat)
     return r
 
@@ -421,9 +422,8 @@ def dae_adjoints(y, u, dae_p, n_steps, parameters):
 
 
 fig = None
-
-
-def plot(y, u, n_steps, parameters, dynamic=True):
+def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
+    print("plotting...")
     global fig
     # Close the previous figure if it exists
     if fig:
@@ -496,119 +496,115 @@ def plot(y, u, n_steps, parameters, dynamic=True):
     ax2.legend(loc="upper right")
 
     # Show the plots
-    if dynamic:
+    if show:
         # Save and close plot
-        plt.ion()  # Turn on the interactive mode
-        plt.draw()  # Draw the figure
-        plt.pause(0.2)  # Time for the figure to load
+        # plt.ion()  # Turn on the interactive mode
+        plt.show(block=block)  # Draw the figure
+        plt.pause(0.3)  # Time for the figure to load
+
+    if save:
         plt.savefig(f"tmp/frame_{time.time()}.png")
-    else:
-        # Show plot
-        # plt.tight_layout()
-        plt.show()
 
 
-def plot_animation(y, u, n_steps, parameters):
-    h = parameters["H"]
-    q_dot_required = parameters["q_dot_required"]
-
-    # Create time array
-    t = np.linspace(0, n_steps * h, n_steps)
-
-    T_load = np.zeros(y.shape[1])
-    P_heat = np.zeros(y.shape[1])
-    for i in range(y.shape[1]):
-        T_load[i] = get_t_load(y[:, i], parameters, i)
-        P_heat[i] = get_p_heat(
-            y[:, i],
-            u[:, i],
-            parameters["q_dot_required"][i],
-            parameters["t_amb"][i],
-            parameters["LOAD_HX_EFF"],
-            parameters["CP_WATER"],
-        )
-
-    Q_dot_load = q_dot_required - P_heat
-
-    fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-
-    # Set up the initial plot
-    (line1,) = axes[0].plot([], [], label="T_tank", **plot_styles[0])
-    (line2,) = axes[0].plot([], [], label="T_cond", **plot_styles[1])
-    (line3,) = axes[0].plot([], [], label="T_load", **plot_styles[2])
-    axes[0].set_ylabel("Temperature (K)")
-    axes[0].set_title("Temperature Profiles")
-    axes[0].legend(loc="upper left")
-    axes[0].grid(True)
-
-    ax0 = axes[0].twinx()
-    (line4,) = ax0.plot([], [], label="Q_dot_load", **plot_styles[3])
-    (line5,) = ax0.plot([], [], label="P_heat", **plot_styles[4])
-    ax0.set_ylabel("Power (W)")
-    ax0.legend(loc="upper right")
-
-    (line6,) = axes[1].plot([], [], label="P_comp", **plot_styles[0])
-    (line7,) = axes[1].plot([], [], label="q_dot_required", **plot_styles[1])
-    axes[1].set_ylabel("Power (W)")
-    axes[1].set_title("Control Variables")
-    axes[1].legend(loc="upper left")
-    axes[1].grid(True)
-
-    ax1 = axes[1].twinx()
-    (line8,) = ax1.plot([], [], label="m_dot_cond", **plot_styles[2])
-    (line9,) = ax1.plot([], [], label="m_dot_load", **plot_styles[3])
-    ax1.set_ylabel("Mass flow rates (kg/s)")
-    ax1.legend(loc="upper right")
-
-    axes[1].set_xlabel("Time (s)")
-
-    # Set x and y limits
-    axes[0].set_xlim(0, n_steps * h)
-    axes[0].set_ylim(min(y.min(), T_load.min()) - 5, max(y.max(), T_load.max()) + 5)
-    ax0.set_ylim(min(Q_dot_load.min(), P_heat.min()) - 100, max(Q_dot_load.max(), P_heat.max()) + 100)
-    axes[1].set_ylim(min(u[0].min(), q_dot_required.min()) - 100, max(u[0].max(), q_dot_required.max()) + 100)
-    ax1.set_ylim(np.min(u[1:]) - 0.1, np.max(u[1:]) + 0.1)
-
-    # Initialize the plot lines
-    def init():
-        line1.set_data([], [])
-        line2.set_data([], [])
-        line3.set_data([], [])
-        line4.set_data([], [])
-        line5.set_data([], [])
-        line6.set_data([], [])
-        line7.set_data([], [])
-        line8.set_data([], [])
-        line9.set_data([], [])
-        return line1, line2, line3, line4, line5, line6, line7, line8, line9
-
-    # Update the plot lines for each frame
-    def update(frame):
-        line1.set_data(t[:frame], y[0, :frame])
-        line2.set_data(t[:frame], y[1, :frame])
-        line3.set_data(t[:frame], T_load[:frame])
-        line4.set_data(t[:frame], Q_dot_load[:frame])
-        line5.set_data(t[:frame], P_heat[:frame])
-        line6.set_data(t[:frame], u[0, :frame])
-        line7.set_data(t[:frame], q_dot_required[:frame])
-        line8.set_data(t[:frame], u[1, :frame])
-        line9.set_data(t[:frame], u[2, :frame])
-        return line1, line2, line3, line4, line5, line6, line7, line8, line9
-
-    ani = FuncAnimation(
-        fig,
-        update,
-        frames=n_steps,
-        init_func=init,
-        blit=True,
-        repeat=False,
-        interval=1,  # Adjust this value to change the speed (lower value = faster animation)
-    )
-
-    plt.tight_layout()
-    plt.show()
-
-
+# def plot_animation(y, u, n_steps, parameters):
+#     h = parameters["H"]
+#     q_dot_required = parameters["q_dot_required"]
+#
+#     # Create time array
+#     t = np.linspace(0, n_steps * h, n_steps)
+#
+#     T_load = np.zeros(y.shape[1])
+#     P_heat = np.zeros(y.shape[1])
+#     for i in range(y.shape[1]):
+#         T_load[i] = get_t_load(y[:, i], parameters, i)
+#         P_heat[i] = get_p_heat(
+#             y[:, i],
+#             u[:, i],
+#             parameters["q_dot_required"][i],
+#             parameters["t_amb"][i],
+#             parameters["LOAD_HX_EFF"],
+#             parameters["CP_WATER"],
+#         )
+#
+#     Q_dot_load = q_dot_required - P_heat
+#
+#     fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
+#
+#     # Set up the initial plot
+#     (line1,) = axes[0].plot([], [], label="T_tank", **plot_styles[0])
+#     (line2,) = axes[0].plot([], [], label="T_cond", **plot_styles[1])
+#     (line3,) = axes[0].plot([], [], label="T_load", **plot_styles[2])
+#     axes[0].set_ylabel("Temperature (K)")
+#     axes[0].set_title("Temperature Profiles")
+#     axes[0].legend(loc="upper left")
+#     axes[0].grid(True)
+#
+#     ax0 = axes[0].twinx()
+#     (line4,) = ax0.plot([], [], label="Q_dot_load", **plot_styles[3])
+#     (line5,) = ax0.plot([], [], label="P_heat", **plot_styles[4])
+#     ax0.set_ylabel("Power (W)")
+#     ax0.legend(loc="upper right")
+#
+#     (line6,) = axes[1].plot([], [], label="P_comp", **plot_styles[0])
+#     (line7,) = axes[1].plot([], [], label="q_dot_required", **plot_styles[1])
+#     axes[1].set_ylabel("Power (W)")
+#     axes[1].set_title("Control Variables")
+#     axes[1].legend(loc="upper left")
+#     axes[1].grid(True)
+#
+#     ax1 = axes[1].twinx()
+#     (line8,) = ax1.plot([], [], label="m_dot_cond", **plot_styles[2])
+#     (line9,) = ax1.plot([], [], label="m_dot_load", **plot_styles[3])
+#     ax1.set_ylabel("Mass flow rates (kg/s)")
+#     ax1.legend(loc="upper right")
+#
+#     axes[1].set_xlabel("Time (s)")
+#
+#     # Set x and y limits
+#     axes[0].set_xlim(0, n_steps * h)
+#     axes[0].set_ylim(min(y.min(), T_load.min()) - 5, max(y.max(), T_load.max()) + 5)
+#     ax0.set_ylim(min(Q_dot_load.min(), P_heat.min()) - 100, max(Q_dot_load.max(), P_heat.max()) + 100)
+#     axes[1].set_ylim(min(u[0].min(), q_dot_required.min()) - 100, max(u[0].max(), q_dot_required.max()) + 100)
+#     ax1.set_ylim(np.min(u[1:]) - 0.1, np.max(u[1:]) + 0.1)
+#
+#     # Initialize the plot lines
+#     def init():
+#         line1.set_data([], [])
+#         line2.set_data([], [])
+#         line3.set_data([], [])
+#         line4.set_data([], [])
+#         line5.set_data([], [])
+#         line6.set_data([], [])
+#         line7.set_data([], [])
+#         line8.set_data([], [])
+#         line9.set_data([], [])
+#         return line1, line2, line3, line4, line5, line6, line7, line8, line9
+#
+#     # Update the plot lines for each frame
+#     def update(frame):
+#         line1.set_data(t[:frame], y[0, :frame])
+#         line2.set_data(t[:frame], y[1, :frame])
+#         line3.set_data(t[:frame], T_load[:frame])
+#         line4.set_data(t[:frame], Q_dot_load[:frame])
+#         line5.set_data(t[:frame], P_heat[:frame])
+#         line6.set_data(t[:frame], u[0, :frame])
+#         line7.set_data(t[:frame], q_dot_required[:frame])
+#         line8.set_data(t[:frame], u[1, :frame])
+#         line9.set_data(t[:frame], u[2, :frame])
+#         return line1, line2, line3, line4, line5, line6, line7, line8, line9
+#
+#     ani = FuncAnimation(
+#         fig,
+#         update,
+#         frames=n_steps,
+#         init_func=init,
+#         blit=True,
+#         repeat=False,
+#         interval=1,  # Adjust this value to change the speed (lower value = faster animation)
+#     )
+#
+#     plt.tight_layout()
+#     plt.show()
 
 
 def fd_gradients(y0, u, dae_p, n_steps, parameters):
@@ -652,7 +648,7 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters):
     return dfdy0, dfdp, dfdu_3
 
 
-def main():
+def main(hist=None):
     # Get inputs
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
@@ -673,12 +669,12 @@ def main():
     # Prepare DAE inputs
     u = np.zeros((3, n_steps))
 
-    load_from_pickle = True
-    if load_from_pickle:
-        dict = load_dict_from_file("saves/dict_file.pkl")
-        u[0] = dict["p_compressor"]
-        u[1] = dict["m_dot_cond"]
-        u[2] = dict["m_dot_load"]
+    if hist:
+        storeHistory = History(hist)
+        histories = storeHistory.getValues()
+        u[0] = histories["p_compressor"][-1]
+        u[1] = histories["m_dot_cond"][-1]
+        u[2] = histories["m_dot_load"][-1]
     else:
         P_comp = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
         P_comp[-int(n_steps / 3) :] = 1e-6
@@ -709,7 +705,7 @@ def main():
     y = dae_forward(y0, u, dae_p, n_steps)
     print("solution:", y[:, -1])
     print("y[1]: ", y[:, 1])
-    plot(y, u, n_steps, parameters, dynamic=False)
+    # plot(y, u, n_steps, parameters, save=False)
     # plot_animation(y, u, n_steps, parameters)
 
     # FD derivatives
@@ -731,5 +727,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # plot_film()
-    main()
+    main(hist="saves/mdf_sizes_wo_finn.hst")

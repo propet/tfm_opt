@@ -1,7 +1,7 @@
 import numpy as np
 from pyoptsparse import OPT, History
 from opt import Opt
-from utils import get_dynamic_parameters, plot_film, save_dict_to_file
+from utils import get_dynamic_parameters, plot_film
 from parameters import PARAMS
 from typing import List, Dict
 from custom_types import DesignVariables, PlotData, DesignVariableInfo, ConstraintInfo, Parameters
@@ -17,6 +17,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     p_compressor = design_variables["p_compressor"]
     m_dot_cond = design_variables["m_dot_cond"]
     m_dot_load = design_variables["m_dot_load"]
+    tank_volume = design_variables["tank_volume"][0]  # just one design variable
     u = np.array([p_compressor, m_dot_cond, m_dot_load])
     opt.parameters["u"] = u
     n_steps = len(p_compressor)
@@ -25,9 +26,9 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     dae_p = np.array(
         [
             parameters["CP_WATER"],
-            parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass
+            tank_volume * parameters["RHO_WATER"],  # tank mass
             parameters["U"],
-            6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
+            6 * np.pi * (tank_volume / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
             parameters["T_AMB"],
             parameters["LOAD_HX_EFF"],
         ]
@@ -64,7 +65,7 @@ def run_optimization(parameters, plot=True):
     horizon = PARAMS["HORIZON"]
     n_steps = int(horizon / h)
 
-    opt = Opt("mdf_wo_finn", obj, historyFileName="saves/mdf_wo_finn.hst")
+    opt = Opt("mdf_wo_finn", obj, historyFileName="saves/mdf_sizes_wo_finn.hst")
 
     parameters["n_steps"] = n_steps
     opt.add_parameters(parameters)
@@ -76,7 +77,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": PARAMS["P_COMPRESSOR_MAX"],
-        "initial_value": PARAMS["P_COMPRESSOR_MAX"] / 2,
+        "initial_value": PARAMS["P_COMPRESSOR_MAX"] * 0.8,
         "scale": 1 / PARAMS["P_COMPRESSOR_MAX"],
     }
     opt.add_design_variables_info(p_compressor)
@@ -103,15 +104,26 @@ def run_optimization(parameters, plot=True):
     }
     opt.add_design_variables_info(m_dot_load)
 
+    tank_volume: DesignVariableInfo = {
+        "name": "tank_volume",
+        "n_params": 1,
+        "type": "c",
+        "lower": PARAMS["MIN_TANK_VOLUME"],
+        "upper": PARAMS["MAX_TANK_VOLUME"],
+        "initial_value": 1,
+        "scale": 1 / 10,
+    }
+    opt.add_design_variables_info(tank_volume)
+
     # Optimizer
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 50,
-        "tol": 1e-2,
-        "obj_scaling_factor": 1e-9,  # tells IPOPT how to internally handle the scaling without distorting the gradients
-        "acceptable_tol": 1e-3,
-        "acceptable_obj_change_tol": 1e-3,
+        "max_iter": 10,
+        "tol": 1e-6,
+        "obj_scaling_factor": 1e-7,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        "acceptable_tol": 1e-6,
+        "acceptable_obj_change_tol": 1e-6,
         # "mu_strategy": "adaptive",
         # "alpha_red_factor": 0.2
     }
@@ -124,11 +136,14 @@ def run_optimization(parameters, plot=True):
     # Run
     sol = opt.optimize(sens=sens)  # adjoint gradients
     # sol = opt.optimize(sens="FD", sensStep=1e-6)
-    plot_film("saves/mdf_wo_finn.gif")  # create animation with pictures from tmp folder
 
     p_compressor = sol.xStar["p_compressor"]
     m_dot_cond = sol.xStar["m_dot_cond"]
     m_dot_load = sol.xStar["m_dot_load"]
+    tank_volume = sol.xStar["tank_volume"]
+    print("tank_volume: ", tank_volume)
+
+    plot_film("saves/mdf_sizes_wo_finn.gif")  # create animation with pictures from tmp folder
 
     # Check Solution
     if plot:
@@ -219,7 +234,40 @@ def run_optimization(parameters, plot=True):
     return sol.xStar, sol.fStar
 
 
-if __name__ == "__main__":
+def plot_history():
+    storeHistory = History("mdf_sizes_wo_finn.hst")
+    values = storeHistory.getValues()
+    parameters = get_parameters()
+    y0 = parameters["y0"]
+
+    n_steps = values["p_compressor"].shape[1]
+    n_iterations = values["p_compressor"].shape[0]
+    for i in range(n_iterations):
+        tank_volume = values["tank_volume"][i][0]
+        u = np.array(
+            [
+                values["p_compressor"][i],
+                values["m_dot_cond"][i],
+                values["m_dot_load"][i],
+            ]
+        )
+        dae_p = np.array(
+            [
+                parameters["CP_WATER"],
+                tank_volume * parameters["RHO_WATER"],  # tank mass
+                parameters["U"],
+                6 * np.pi * (tank_volume / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
+                parameters["T_AMB"],
+                parameters["LOAD_HX_EFF"],
+            ]
+        )
+        y = dae_forward(y0, u, dae_p, n_steps)
+        plot(y, u, n_steps, parameters, show=False)
+
+    plot_film("mdf_sizes_wo_finn.gif")  # create animation with pictures from tmp folder
+
+
+def get_parameters():
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
     t0 = 0
@@ -228,8 +276,6 @@ if __name__ == "__main__":
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
     parameters["cost_grid"] = dynamic_parameters["cost_grid"]
-    # print(parameters["cost_grid"])
-    # exit(0)
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
@@ -237,4 +283,10 @@ if __name__ == "__main__":
     parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
     parameters["y0"] = y0
 
+    return parameters
+
+
+if __name__ == "__main__":
+    parameters = get_parameters()
     run_optimization(parameters, plot=True)
+    # plot_history()  # run all solutions from iterations stored in history
