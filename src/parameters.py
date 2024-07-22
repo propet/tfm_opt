@@ -14,7 +14,7 @@
 
 PARAMS = {
     "H": 100,  # stepsize [s]
-    "HORIZON": 100000,  # s
+    "HORIZON": 1000000,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 120000,  # Wh
     "SOC_MIN": 0.1,  # Minimum State of Charge

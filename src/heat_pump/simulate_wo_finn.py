@@ -704,8 +704,9 @@ def main(hist=None):
 
     y = dae_forward(y0, u, dae_p, n_steps)
     print("solution:", y[:, -1])
+    print(y.shape)
     print("y[1]: ", y[:, 1])
-    # plot(y, u, n_steps, parameters, save=False)
+    plot(y, u, n_steps, parameters, save=False)
     # plot_animation(y, u, n_steps, parameters)
 
     # FD derivatives
@@ -727,4 +728,5 @@ def main(hist=None):
 
 
 if __name__ == "__main__":
-    main(hist="saves/mdf_sizes_wo_finn.hst")
+    main(hist="saves/sand_wo_finn.hst")
+    # main(hist="saves/mdf_wo_finn.hst")

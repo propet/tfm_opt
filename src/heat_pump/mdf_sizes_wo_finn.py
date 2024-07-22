@@ -12,6 +12,7 @@ from heat_pump.simulate_wo_finn import cost_function, dae_forward, dae_adjoints,
 def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     parameters = opt.parameters
     y0 = parameters["y0"]
+    n_steps = parameters["n_steps"]
 
     # DAE model
     p_compressor = design_variables["p_compressor"]
@@ -20,7 +21,6 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     tank_volume = design_variables["tank_volume"][0]  # just one design variable
     u = np.array([p_compressor, m_dot_cond, m_dot_load])
     opt.parameters["u"] = u
-    n_steps = len(p_compressor)
 
     # May have some design variables in here as well
     dae_p = np.array(
