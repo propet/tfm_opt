@@ -1,5 +1,6 @@
 import os
 import pickle
+import csv
 import imageio
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
-prop_cycle = cycler('color', ['k', 'r', 'b', 'g', 'purple']) + cycler('linestyle', ['-', '--', ':', '-.', (5, (10, 3))])
+prop_cycle = cycler("color", ["k", "r", "b", "g", "purple"]) + cycler("linestyle", ["-", "--", ":", "-.", (5, (10, 3))])
 plot_styles = list(prop_cycle)
 
 
@@ -101,79 +102,130 @@ def plot_film(filename):
 def save_dict_to_file(dict):
     filename = "saves/dict_file.pkl"
     # Open a file in write-binary mode and use pickle to serialize the dictionary
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         pickle.dump(dict, f)
 
     print(f"Saved to {filename}")
 
 
 def load_dict_from_file(filename):
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         dict = pickle.load(f)
     return dict
 
 
-def get_dynamic_parameters(t0, h, horizon):
+def get_dynamic_parameters(t0, h, horizon, year=2022):
     dynamic_parameters = {}
-    dynamic_parameters["t_amb"] = get_t_amb(t0, h, horizon)
-    dynamic_parameters["cost_grid"] = get_cost_grid(t0, h, horizon)
-    dynamic_parameters["p_solar_gen"] = get_p_solar_gen(t0, h, horizon)
-    dynamic_parameters["q_dot_required"] = get_q_dot_required(t0, h, horizon)
+    dynamic_parameters["t_amb"] = get_t_amb(t0, h, horizon, year=2022)
+    dynamic_parameters["cost_grid"] = get_cost_grid(t0, h, horizon, year=2022)
+    dynamic_parameters["p_solar_gen"] = get_p_solar_gen(t0, h, horizon, year=2022)
+    dynamic_parameters["q_dot_required"] = get_q_dot_required(dynamic_parameters["t_amb"])
     dynamic_parameters["p_required"] = get_p_required(t0, h, horizon)
     return dynamic_parameters
 
 
 # def get_q_dot_required(t0, h, horizon):
+#     """
+#     Constant q_dot_required
+#     """
 #     q_dot_required = np.ones((horizon)) * PARAMS["P_COMPRESSOR_MAX"] * 1.3
 #     return q_dot_required[t0:t0+horizon:h]
 
 
-def get_q_dot_required(t0, h, horizon):
-    max_q_dot_required = PARAMS["MAX_Q_DOT_REQUIRED"]
-    seconds_in_day = 24 * 3600
-    min_q_dot_required = 0
-    amplitude = (max_q_dot_required - min_q_dot_required) / 2
-    vertical_shift = amplitude + min_q_dot_required
-    seconds = np.arange(horizon)
-    # A * sin(w * t) = A * sin(2*pi*f*t)
-    q_dot_required = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
-    return q_dot_required[t0:t0+horizon:h]
+def get_q_dot_required(t_amb):
+    """
+    Based on ambient temperature and conduction loses.
+
+    In my case I've assumed that in my house I have a target temperature for all the year of 293K (20C).
+    And the heat consumption comes from heat loses due to conduction.
+    So the heat consumption is proportional to the difference between my target temperature
+    and the ambient temperature.
+
+    Fourier law of heat conduction
+
+    Q[W] = U[W/(m2*K)] A[m2] (T_target - T_amb)[K] = K[W/K] (T_target - T_amb)
+
+    As an example, we can take a house of 100m2 of floor area, same as roof area.
+    With walls 2.5m tall. Which would correspond to 100m2 of sides area.
+
+    Taking 3/4 of the side area as wall, and the other 1/3 as windows.
+    Consider the walls and roof have 20cm of rock wool insulator.
+    """
+    T_target = PARAMS["HOUSE_T_TARGET"]
+    rock_wool_u = PARAMS["ROCK_WOOL_U"]
+    rock_wool_area = PARAMS["ROCK_WOOL_AREA"]
+    windows_u = PARAMS["WINDOWS_U"]
+    windows_area = PARAMS["WINDOWS_AREA"]
+
+    print("t_amb shape: ", t_amb.shape)
+
+    q_dot_required = (rock_wool_u * rock_wool_area + windows_u * windows_area) * (T_target - t_amb)
+    print("q_dot rquired: ", q_dot_required.shape)
+    q_dot_required[q_dot_required < 0] = 0
+    return q_dot_required
 
 
-def get_p_required(t0, h, horizon):
-    max_p_required = PARAMS["MAX_Q_DOT_REQUIRED"]
-    seconds_in_day = 24 * 3600
-    min_p_required = 0
-    amplitude = (max_p_required - min_p_required) / 2
-    vertical_shift = amplitude + min_p_required
-    seconds = np.arange(horizon)
-    # A * sin(w * t) = A * sin(2*pi*f*t)
-    p_required = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
-    return p_required[t0:t0+horizon:h]
+# def get_t_amb(t0, h, horizon):
+#     t_amb = np.ones((horizon)) * 300  # 300 K == 27ºC
+#     return t_amb[t0:t0+horizon:h]
 
 
-def get_p_solar_gen(t0, h, horizon):
-    max_solar_radiation = PARAMS["MAX_SOLAR_RADIATION"]
-    seconds_in_day = 24 * 3600
-    min_solar_radiation = 0
-    amplitude = (max_solar_radiation - min_solar_radiation) / 2
-    vertical_shift = amplitude + min_solar_radiation
-    seconds = np.arange(horizon)
-    # A * sin(w * t) = A * sin(2*pi*f*t)
-    p_gen = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
-    return p_gen[t0:t0+horizon:h]
+def get_t_amb(t0, h, horizon, year=2022):
+    filepath = f"{ROOT_DIR}/data/meteosat_madrid_every_15min/248481_40.41_-3.70_{year}.csv"
 
+    df = pd.read_csv(
+        filepath,
+        sep=",",
+        header=None,
+        skiprows=3,
+        skipfooter=0,
+        engine="python",
+    )
 
-def get_t_amb(t0, h, horizon):
-    t_amb = np.ones((horizon)) * 300  # 300 K == 27ºC
-    return t_amb[t0:t0+horizon:h]
+    t_amb_every_15min = df.iloc[:, 19].to_numpy()  # T column
+    t_amb_every_15min += 273  # from Celsius to Kelvin
+
+    t_amb_every_second = np.repeat(t_amb_every_15min, 900)  # 15min == 900s
+    return t_amb_every_second[t0 : t0 + horizon : h]
 
 
 def get_cost_grid(t0, h, horizon, year=2022):
     n_hours = 8760
     cost_grid_by_hour = get_grid_prices_kwh(n_hours, year=year)
-    cost_grid_by_second = np.repeat(cost_grid_by_hour, 3600)
-    return cost_grid_by_second[t0:t0+horizon:h]
+    cost_grid_by_second = np.repeat(cost_grid_by_hour, 3600)  # 1hour == 3600s
+    return cost_grid_by_second[t0 : t0 + horizon : h]
+
+
+# def get_p_solar_gen(t0, h, horizon):
+#     max_solar_radiation = PARAMS["MAX_SOLAR_RADIATION"]
+#     seconds_in_day = 24 * 3600
+#     min_solar_radiation = 0
+#     amplitude = (max_solar_radiation - min_solar_radiation) / 2
+#     vertical_shift = amplitude + min_solar_radiation
+#     seconds = np.arange(horizon)
+#     # A * sin(w * t) = A * sin(2*pi*f*t)
+#     p_gen = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
+#     return p_gen[t0:t0+horizon:h]
+
+
+def get_p_solar_gen(t0, h, horizon, year=2022):
+    # Data obtained from SAM
+    filepath = f"{ROOT_DIR}/data/sam_solar_power_madrid_every_15min/{year}_1kW.csv"
+
+    df = pd.read_csv(
+        filepath,
+        sep=",",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+
+    p_solar_every_15min = df.iloc[:, 1].to_numpy()  # second column
+    p_solar_every_15min *= 1000  # from kW to W
+
+    p_solar_every_second = np.repeat(p_solar_every_15min, 900)  # 15min == 900s
+    return p_solar_every_second[t0 : t0 + horizon : h]
 
 
 def get_solar_field_powers(max_solar_radiation, n_hours):
@@ -188,6 +240,25 @@ def get_solar_field_powers(max_solar_radiation, n_hours):
     # A * sin(w * t) = A * sin(2*pi*f*t)
     p_gen = amplitude * np.sin(2 * np.pi * (1 / HOURS_IN_DAY) * (hours - 6)) + vertical_shift
     return p_gen
+
+
+def get_p_required(t0, h, horizon):
+    # Electrical consumption is a sinusoidal
+    # with minimum at 100W because of the freezer energy consumption,
+    # and maximum of 4kW, because that's the average power contracted with the electricity supplier
+
+    # Calculate the sinusoidal function value for each second
+    # Max consumption at 10:00 AM, with period of 12 hours (f = 1 / (12 * 3600))
+    # A * sin(w * t) = A * sin(2*pi*f*t)
+    seconds = np.arange(horizon)
+    max_electric_demand = PARAMS["MAX_ELECTRIC_DEMAND"]
+    min_electric_demand = 100  # W
+    amplitude = (max_electric_demand - min_electric_demand) / 2
+    vertical_shift = amplitude + min_electric_demand
+    f = 1 / (12 * 3600)  # period of 12 hours
+    phase_shift = 10 * 3600  # Calculate phase shift for max at 10 AM
+    p_electric_demand = amplitude * np.sin(2 * np.pi * f * seconds - phase_shift) + vertical_shift
+    return p_electric_demand[t0 : t0 + horizon : h]
 
 
 def get_electric_demand_powers(max_electric_demand, n_hours):
@@ -205,7 +276,7 @@ def get_electric_demand_powers(max_electric_demand, n_hours):
 
 
 def get_grid_prices_kwh(n_hours, year=2022):
-    directory = f"{ROOT_DIR}/data/mercado_diario_precio_horario_{year}"
+    directory = f"{ROOT_DIR}/data/grid_prices_hourly/mercado_diario_precio_horario_{year}"
     grid_prices_mwh = []
 
     # Loop over every csv file
@@ -294,21 +365,29 @@ def jax_to_numpy(jax_func):
         jax_args = [jnp.array(arg) if isinstance(arg, np.ndarray) else arg for arg in args]
         result = jax_func(*jax_args)
         return np.array(result)
+
     return numpy_func
 
 
 if __name__ == "__main__":
-    t0 = 0
-    horizon = 3600 * 24
-    h = 3600
-    t_amb = get_t_amb(t0, h, horizon)
-    print(t_amb)
-    print(t_amb.shape)
+    t0 = 100
+    h = 1
+    horizon = 3600 * 24 * 10
 
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
+    parameters = PARAMS
+    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
+    parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
+    parameters["p_required"] = dynamic_parameters["p_required"]
+    parameters["t_amb"] = dynamic_parameters["t_amb"]
+    parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
+
+    time = np.arange(t0, t0 + horizon, h)
+    print(time.shape)
+    print(parameters["q_dot_required"].shape)
     plt.figure(figsize=(8, 6))
-    plt.plot(np.arange(t0, t0+horizon, h), t_amb, 'b-', linewidth=2)
-    plt.xlabel('Time (s)', fontsize=14)
-    plt.ylabel(r'solar_field', fontsize=14)
+    plt.plot(time, parameters["q_dot_required"], "b-", linewidth=2)
+    plt.xlabel("Time (s)", fontsize=14)
+    plt.ylabel(r"solar_field", fontsize=14)
     plt.grid(True)
     plt.show()
-

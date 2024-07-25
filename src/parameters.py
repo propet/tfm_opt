@@ -23,7 +23,7 @@ PARAMS = {
     "P_GRID_MAX": 10000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
     "MAX_HEAT_POWER": 10000,  # W
-    "MAX_ELECTRIC_DEMAND": 20000,  # W
+    "MAX_ELECTRIC_DEMAND": 4000,  # W
     "DK_RHO": 50,  # Kreisselmeier–Steinhauser factor
     "BAT_ETA_CHARGE": 0.8,  # charge efficiency
     "BAT_ETA_DISCHARGE": 0.9,  # discharge efficiency
@@ -44,6 +44,11 @@ PARAMS = {
     "M_DOT_LOAD_MAX": 1, # kg/s
 
     "MAX_Q_DOT_REQUIRED": 8000,  # W
+    "HOUSE_T_TARGET": 293,  # K
+    "ROCK_WOOL_U": 0.2,  # W/(m2K)
+    "ROCK_WOOL_AREA": 175,  # m2
+    "WINDOWS_U": 1.3,  # W/(m2K)
+    "WINDOWS_AREA": 25,  # m2
     "LOAD_HX_EFF": 0.8,
 
 

@@ -457,7 +457,7 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     # First subplot for inputs C_grid
     axes[0].plot(t, parameters["cost_grid"], label="C_grid", **plot_styles[0])
     axes[0].set_ylabel("money")
-    axes[0].set_title("Cost grid")
+    # axes[0].set_title("Cost grid")
     axes[0].legend()
     axes[0].legend(loc="upper left")
     axes[0].grid(True)
@@ -472,7 +472,7 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     axes[1].plot(t, y[1], label="T_cond", **plot_styles[1])
     axes[1].plot(t, T_load, label="T_load", **plot_styles[2])
     axes[1].set_ylabel("Temperature (K)")
-    axes[1].set_title("Temperature Profiles")
+    # axes[1].set_title("Temperature Profiles")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
 
@@ -484,7 +484,7 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
 
     axes[2].plot(t, u[0], label="P_comp", **plot_styles[0])
     axes[2].set_ylabel("Power[W]")
-    axes[2].set_title("Control Variables")
+    # axes[2].set_title("Control Variables")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
     axes[2].set_xlabel("Time (s)")
@@ -648,6 +648,62 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters):
     return dfdy0, dfdp, dfdu_3
 
 
+def plot_history(hist, only_last=True):
+    # Get inputs
+    h = PARAMS["H"]
+    horizon = PARAMS["HORIZON"]
+    n_steps = int(horizon / h)
+    t0 = 0
+    y0 = np.array([298.34089176, 309.70395426])  # T_tank, T_cond
+
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
+    parameters = PARAMS
+    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
+    parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
+    parameters["p_required"] = dynamic_parameters["p_required"]
+    parameters["t_amb"] = dynamic_parameters["t_amb"]
+    parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
+    parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
+    parameters["y0"] = y0
+
+    storeHistory = History(hist)
+    histories = storeHistory.getValues()
+
+    if only_last:
+        indices = [-1]  # Only take the last index
+    else:
+        indices = range(len(histories["p_compressor"]))  # Loop through all indices
+
+    # loop through histories
+    for i in indices:
+        u = np.zeros((3, n_steps))
+        u[0] = histories["p_compressor"][i]
+        u[1] = histories["m_dot_cond"][i]
+        u[2] = histories["m_dot_load"][i]
+
+        dae_p = np.array(
+            [
+                parameters["CP_WATER"],
+                parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass
+                parameters["U"],
+                6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
+                parameters["t_amb"][0],  # fixed t_amb for all times
+                parameters["LOAD_HX_EFF"],
+            ]
+        )
+
+        y = dae_forward(y0, u, dae_p, n_steps)
+        print("solution:", y[:, -1])
+        if only_last:
+            plot(y, u, n_steps, parameters, save=False, show=True)
+            return
+        else:
+            plot(y, u, n_steps, parameters, show=False)
+
+    plot_film("saves/sand_wo_finn.gif")  # create animation with pictures from tmp folder
+
+
+
 def main(hist=None):
     # Get inputs
     h = PARAMS["H"]
@@ -728,5 +784,5 @@ def main(hist=None):
 
 
 if __name__ == "__main__":
-    main(hist="saves/sand_wo_finn.hst")
-    # main(hist="saves/mdf_wo_finn.hst")
+    plot_history(hist="saves/sand_wo_finn.hst", only_last=False)
+    # plot_history(hist="saves/mdf_wo_finn.hst", only_last=True)

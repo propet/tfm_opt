@@ -273,7 +273,7 @@ def get_parameters():
     t0 = 0
     y0 = np.array([298.34089176, 309.70395426])  # T_tank, T_cond
 
-    dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
     parameters["cost_grid"] = dynamic_parameters["cost_grid"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]

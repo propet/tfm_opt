@@ -500,9 +500,9 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 100,
+        "max_iter": 400,
         "tol": 1e-4,
-        "obj_scaling_factor": 1e-7,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        "obj_scaling_factor": 1e-8,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         "acceptable_tol": 1e-4,
         "acceptable_obj_change_tol": 1e-4,
         # "mu_strategy": "adaptive",
@@ -525,7 +525,7 @@ def run_optimization(parameters, plot=True):
 
     # Check Solution
     if plot:
-        print(sol)
+        # print(sol)
         exit(0)
 
         battery_soc = []
@@ -625,16 +625,19 @@ if __name__ == "__main__":
         "t_cond": 309.70395426,
     }
 
-    dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
     parameters["cost_grid"] = dynamic_parameters["cost_grid"]
     # print(parameters["cost_grid"])
     # exit(0)
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
+    print("q_dot_required: ", parameters["q_dot_required"].shape)
     parameters["p_required"] = dynamic_parameters["p_required"]
+    print("p_required: ", parameters["p_required"].shape)
     parameters["t_amb"] = dynamic_parameters["t_amb"]
+    print("t_amb: ", parameters["t_amb"].shape)
     parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
-    parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
+    print("p_solar_gen: ", parameters["p_solar_gen"].shape)
     parameters["y0"] = y0
 
     run_optimization(parameters, plot=True)
