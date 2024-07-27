@@ -1,4 +1,5 @@
 import os
+import json
 import pickle
 import csv
 import imageio
@@ -160,7 +161,7 @@ def get_q_dot_required(t_amb):
     print("t_amb shape: ", t_amb.shape)
 
     q_dot_required = (rock_wool_u * rock_wool_area + windows_u * windows_area) * (T_target - t_amb)
-    print("q_dot rquired: ", q_dot_required.shape)
+    print("q_dot shape: ", q_dot_required.shape)
     q_dot_required[q_dot_required < 0] = 0
     return q_dot_required
 
@@ -186,6 +187,7 @@ def get_t_amb(t0, h, horizon, year=2022):
     t_amb_every_15min += 273  # from Celsius to Kelvin
 
     t_amb_every_second = np.repeat(t_amb_every_15min, 900)  # 15min == 900s
+    print("t_amb_every_second shape: ", t_amb_every_second.shape)
     return t_amb_every_second[t0 : t0 + horizon : h]
 
 
@@ -242,23 +244,55 @@ def get_solar_field_powers(max_solar_radiation, n_hours):
     return p_gen
 
 
-def get_p_required(t0, h, horizon):
-    # Electrical consumption is a sinusoidal
-    # with minimum at 100W because of the freezer energy consumption,
-    # and maximum of 4kW, because that's the average power contracted with the electricity supplier
+# def get_p_required(t0, h, horizon):
+#     # Electrical consumption is a sinusoidal
+#     # with minimum at 100W because of the freezer energy consumption,
+#     # and maximum of 4kW, because that's the average power contracted with the electricity supplier
+#
+#     # Calculate the sinusoidal function value for each second
+#     # Max consumption at 10:00 AM, with period of 12 hours (f = 1 / (12 * 3600))
+#     # A * sin(w * t) = A * sin(2*pi*f*t)
+#     seconds = np.arange(horizon)
+#     max_electric_demand = PARAMS["MAX_ELECTRIC_DEMAND"]
+#     min_electric_demand = 100  # W
+#     amplitude = (max_electric_demand - min_electric_demand) / 2
+#     vertical_shift = amplitude + min_electric_demand
+#     f = 1 / (12 * 3600)  # period of 12 hours
+#     phase_shift = 10 * 3600  # Calculate phase shift for max at 10 AM
+#     p_electric_demand = amplitude * np.sin(2 * np.pi * f * seconds - phase_shift) + vertical_shift
+#     return p_electric_demand[t0 : t0 + horizon : h]
 
-    # Calculate the sinusoidal function value for each second
-    # Max consumption at 10:00 AM, with period of 12 hours (f = 1 / (12 * 3600))
-    # A * sin(w * t) = A * sin(2*pi*f*t)
-    seconds = np.arange(horizon)
-    max_electric_demand = PARAMS["MAX_ELECTRIC_DEMAND"]
-    min_electric_demand = 100  # W
-    amplitude = (max_electric_demand - min_electric_demand) / 2
-    vertical_shift = amplitude + min_electric_demand
-    f = 1 / (12 * 3600)  # period of 12 hours
-    phase_shift = 10 * 3600  # Calculate phase shift for max at 10 AM
-    p_electric_demand = amplitude * np.sin(2 * np.pi * f * seconds - phase_shift) + vertical_shift
-    return p_electric_demand[t0 : t0 + horizon : h]
+
+def get_p_required(t0, h, horizon):
+    """
+    My own electricity demand for a year
+    Obtained through repsol clients webpage
+    """
+    json_filename = f"{ROOT_DIR}/data/repsol_kwh_demand.json"
+    json_file = open(json_filename)
+    info = json.load(json_file)
+
+    # Initialize an empty list to store the consumption values
+    p_required_by_hour = []
+
+    # Iterate through each day in the JSON data
+    print("n_days: ", len(info))
+    for day in info:
+        # Iterate through each hour
+        for hour_entry in day["data"]:
+            # Append the consumption value to the list
+            p_required_by_hour.append(hour_entry["consumption"])
+            # print(len(day["data"]))
+        if len(day["data"]) != 24:
+            print([day["date"]])
+        # print(day["date"])
+
+    print("hours: ", len(p_required_by_hour))
+
+    p_required_by_second = np.repeat(p_required_by_hour, 3600)  # 1hour == 3600s
+    return p_required_by_second[t0 : t0 + horizon : h]
+
+
 
 
 def get_electric_demand_powers(max_electric_demand, n_hours):
@@ -370,9 +404,10 @@ def jax_to_numpy(jax_func):
 
 
 if __name__ == "__main__":
-    t0 = 100
-    h = 1
-    horizon = 3600 * 24 * 10
+    t0 = 0
+    # t0 = 24 * 3600 * 90
+    h = 100
+    horizon = 3600 * 24 * 365
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -383,11 +418,20 @@ if __name__ == "__main__":
     parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
 
     time = np.arange(t0, t0 + horizon, h)
-    print(time.shape)
-    print(parameters["q_dot_required"].shape)
-    plt.figure(figsize=(8, 6))
-    plt.plot(time, parameters["q_dot_required"], "b-", linewidth=2)
-    plt.xlabel("Time (s)", fontsize=14)
-    plt.ylabel(r"solar_field", fontsize=14)
+    print("time.shape: ", time.shape)
+    print("p_required shape: ", parameters["p_required"].shape)
+
+    fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
+
+    axes[0].plot(time / 3600, parameters["p_required"], label="p_required",  **plot_styles[0])
+    axes[0].legend()
+
+    # plt.plot(time / 86400, parameters["p_required"], "b-", linewidth=2)
+    # plt.xlabel("day", fontsize=14)
+
+    axes[1].plot(time / 3600, parameters["p_solar_gen"], label="p_solar_gen", **plot_styles[1])
+    axes[1].legend()
+    axes[1].set_xlabel("hour", fontsize=14)
+
     plt.grid(True)
     plt.show()
