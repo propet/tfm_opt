@@ -21,7 +21,7 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
-prop_cycle = cycler("color", ["k", "r", "b", "g", "purple"]) + cycler("linestyle", ["-", "--", ":", "-.", (5, (10, 3))])
+prop_cycle = cycler("color", ["k", "r", "b", "g", "purple", "salmon"]) + cycler("linestyle", ["-", "--", ":", "-.", (5, (10, 3)), (0, (3, 5, 1, 5, 1, 5))])
 plot_styles = list(prop_cycle)
 
 
@@ -116,11 +116,13 @@ def load_dict_from_file(filename):
 
 
 def get_dynamic_parameters(t0, h, horizon, year=2022):
+
     dynamic_parameters = {}
-    dynamic_parameters["t_amb"] = get_t_amb(t0, h, horizon, year=2022)
+    t_amb_every_second = get_t_amb_every_second(year=2022)
+    dynamic_parameters["t_amb"] = get_t_amb(t_amb_every_second, t0, h, horizon)
     dynamic_parameters["cost_grid"] = get_cost_grid(t0, h, horizon, year=2022)
     dynamic_parameters["p_solar_gen"] = get_p_solar_gen(t0, h, horizon, year=2022)
-    dynamic_parameters["q_dot_required"] = get_q_dot_required(dynamic_parameters["t_amb"])
+    dynamic_parameters["q_dot_required"] = get_q_dot_required(t_amb_every_second, t0, h, horizon)
     dynamic_parameters["p_required"] = get_p_required(t0, h, horizon)
     return dynamic_parameters
 
@@ -133,7 +135,7 @@ def get_dynamic_parameters(t0, h, horizon, year=2022):
 #     return q_dot_required[t0:t0+horizon:h]
 
 
-def get_q_dot_required(t_amb):
+def get_q_dot_required(t_amb, t0, h, horizon):
     """
     Based on ambient temperature and conduction loses.
 
@@ -161,9 +163,12 @@ def get_q_dot_required(t_amb):
     print("t_amb shape: ", t_amb.shape)
 
     q_dot_required = (rock_wool_u * rock_wool_area + windows_u * windows_area) * (T_target - t_amb)
-    print("q_dot shape: ", q_dot_required.shape)
     q_dot_required[q_dot_required < 0] = 0
-    return q_dot_required
+    print("q_dot shape: ", q_dot_required.shape)
+    print("q_dot_mean: ", np.mean(q_dot_required))
+    print("q_dot_sum: ", np.sum(q_dot_required))
+    print("deltaT_mean: ", np.mean(T_target - t_amb))
+    return q_dot_required[t0 : t0 + horizon : h]
 
 
 # def get_t_amb(t0, h, horizon):
@@ -171,7 +176,11 @@ def get_q_dot_required(t_amb):
 #     return t_amb[t0:t0+horizon:h]
 
 
-def get_t_amb(t0, h, horizon, year=2022):
+def get_t_amb(t_amb_every_second, t0, h, horizon):
+    return t_amb_every_second[t0 : t0 + horizon : h]
+
+
+def get_t_amb_every_second(year=2022):
     filepath = f"{ROOT_DIR}/data/meteosat_madrid_every_15min/248481_40.41_-3.70_{year}.csv"
 
     df = pd.read_csv(
@@ -187,14 +196,14 @@ def get_t_amb(t0, h, horizon, year=2022):
     t_amb_every_15min += 273  # from Celsius to Kelvin
 
     t_amb_every_second = np.repeat(t_amb_every_15min, 900)  # 15min == 900s
-    print("t_amb_every_second shape: ", t_amb_every_second.shape)
-    return t_amb_every_second[t0 : t0 + horizon : h]
+    return t_amb_every_second
 
 
 def get_cost_grid(t0, h, horizon, year=2022):
     n_hours = 8760
     cost_grid_by_hour = get_grid_prices_kwh(n_hours, year=year)
     cost_grid_by_second = np.repeat(cost_grid_by_hour, 3600)  # 1hour == 3600s
+    cost_grid_by_second = cost_grid_by_second / (1000 * 3600)  # $/(kWh) to $/(Ws)
     return cost_grid_by_second[t0 : t0 + horizon : h]
 
 
@@ -290,9 +299,8 @@ def get_p_required(t0, h, horizon):
     print("hours: ", len(p_required_by_hour))
 
     p_required_by_second = np.repeat(p_required_by_hour, 3600)  # 1hour == 3600s
+    p_required_by_second = p_required_by_second * 1000 * 3600  # kWh to Ws
     return p_required_by_second[t0 : t0 + horizon : h]
-
-
 
 
 def get_electric_demand_powers(max_electric_demand, n_hours):
@@ -417,13 +425,20 @@ if __name__ == "__main__":
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
 
+    print("------------")
+    print(np.mean(parameters["cost_grid"]))
+    print(np.mean(parameters["q_dot_required"]))
+    print(np.mean(parameters["p_required"]))
+    print(np.mean(parameters["t_amb"]))
+    print(np.mean(parameters["p_solar_gen"]))
+
     time = np.arange(t0, t0 + horizon, h)
     print("time.shape: ", time.shape)
     print("p_required shape: ", parameters["p_required"].shape)
 
     fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
 
-    axes[0].plot(time / 3600, parameters["p_required"], label="p_required",  **plot_styles[0])
+    axes[0].plot(time / 3600, parameters["p_required"], label="p_required", **plot_styles[0])
     axes[0].legend()
 
     # plt.plot(time / 86400, parameters["p_required"], "b-", linewidth=2)

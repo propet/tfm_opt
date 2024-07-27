@@ -30,13 +30,24 @@ def cop(T):
 
 
 def cop_jax(T):
-    max_cop = 3
+    """
+    piecewise lineal -> non-linear function overall
+    Approximate operating range for a heat pump:
+        -20C to 40C, with a maximum temperature of 70C
+
+    So we set the COP to 4 up to 40C, and linearly decreasing to 0 at 70C
+
+    COP is 0 for T > 343
+    COP is 4 for T < 313
+    COP varies linearly from 4 at 313K to 0 at 343K
+    """
+    max_cop = 4
     min_cop = 0
-    T_upper = 373
-    T_lower = 273
+    T_upper = 343
+    T_lower = 313
     m = (max_cop - min_cop) / (T_upper - T_lower)
     T0 = max_cop + m * T_lower
-    conditions = [T < 273, (T >= 273) & (T < 373), T >= 373]
+    conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
     choices = [max_cop, T0 - m * T, min_cop]
     return jnp.select(conditions, choices)
 
@@ -44,34 +55,44 @@ def cop_jax(T):
 def cop_np(T):
     """
     piecewise lineal -> non-linear function overall
+    Approximate operating range for a heat pump:
+        -20C to 40C, with a maximum temperature of 70C
 
-    COP is 0 for T > 373
-    COP is 3 for T < 273
-    COP varies linearly from 3 at 273K to 0 at 373K
+    So we set the COP to 4 up to 40C, and linearly decreasing to 0 at 70C
+
+    COP is 0 for T > 343
+    COP is 4 for T < 313
+    COP varies linearly from 4 at 313K to 0 at 343K
     """
-    max_cop = 3
+    max_cop = 4
     min_cop = 0
-    T_upper = 373
-    T_lower = 273
+    T_upper = 343
+    T_lower = 313
     m = (max_cop - min_cop) / (T_upper - T_lower)
     T0 = max_cop + m * T_lower
-    conditions = [T < 273, (273 <= T) & (T <= 373), T > 373]
+    conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
     functions = [lambda T: max_cop, lambda T: T0 - m * T, lambda T: min_cop]
     return np.piecewise(T, conditions, functions)
 
 
 def get_dcopdT(T):
     """
-    COP is 0 for T > 373
-    COP is 3 for T < 273
-    COP varies linearly from 3 at 273K to 0 at 373K
+    piecewise lineal -> non-linear function overall
+    Approximate operating range for a heat pump:
+        -20C to 40C, with a maximum temperature of 70C
+
+    So we set the COP to 4 up to 40C, and linearly decreasing to 0 at 70C
+
+    COP is 0 for T > 343
+    COP is 4 for T < 313
+    COP varies linearly from 4 at 313K to 0 at 343K
     """
-    max_cop = 3
+    max_cop = 4
     min_cop = 0
-    T_upper = 373
-    T_lower = 273
+    T_upper = 343
+    T_lower = 313
     m = (max_cop - min_cop) / (T_upper - T_lower)
-    conditions = [T < 273, (273 <= T) & (T <= 373), T > 373]
+    conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
     functions = [lambda T: 0, lambda T: -m, lambda T: 0]
     return np.piecewise(T, conditions, functions)
 
@@ -471,14 +492,15 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     axes[1].plot(t, y[0], label="T_tank", **plot_styles[0])
     axes[1].plot(t, y[1], label="T_cond", **plot_styles[1])
     axes[1].plot(t, T_load, label="T_load", **plot_styles[2])
+    axes[1].plot(t, parameters["t_amb"], label="T_amb", **plot_styles[3])
     axes[1].set_ylabel("Temperature (K)")
     # axes[1].set_title("Temperature Profiles")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
 
     ax1 = axes[1].twinx()
-    ax1.plot(t, Q_dot_load, label="Q_dot_load", **plot_styles[3])
-    ax1.plot(t, P_heat, label="P_heat", **plot_styles[4])
+    ax1.plot(t, Q_dot_load, label="Q_dot_load", **plot_styles[4])
+    ax1.plot(t, P_heat, label="P_heat", **plot_styles[5])
     ax1.set_ylabel("W")
     ax1.legend(loc="upper right")
 
@@ -710,7 +732,7 @@ def main(hist=None):
     horizon = PARAMS["HORIZON"]
     n_steps = int(horizon / h)
     t0 = 0
-    y0 = np.array([298.34089176, 309.70395426])  # T_tank, T_cond
+    y0 = np.array([293, 298])  # T_tank, T_cond
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -735,12 +757,15 @@ def main(hist=None):
         P_comp = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
         P_comp[-int(n_steps / 3) :] = 1e-6
         P_comp[-int(n_steps / 4) :] = parameters["P_COMPRESSOR_MAX"]
+        # P_comp[-int(n_steps / 2) :] = parameters["P_COMPRESSOR_MAX"]
 
-        m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
-        m_dot_cond[-int(n_steps / 3) :] = 1e-6
-        m_dot_cond[-int(n_steps / 6) :] = 0.3
+        # m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
+        m_dot_cond = np.ones((n_steps)) * 1  # kg/s
+        m_dot_cond[-int(n_steps / 4) :] = 1e-4
+        # m_dot_cond[-int(n_steps / 6) :] = 0.3
 
-        m_dot_load = np.ones((n_steps)) * 1e-6  # kg/s
+        # m_dot_load = np.ones((n_steps)) * 1e-6  # kg/s
+        m_dot_load = np.ones((n_steps)) * 0.8  # kg/s
         m_dot_load[-int(n_steps / 3) :] = 0.2
 
         u[0, :] = P_comp  # P_comp
@@ -762,6 +787,7 @@ def main(hist=None):
     print("solution:", y[:, -1])
     print(y.shape)
     print("y[1]: ", y[:, 1])
+    print("u[1]: ", u[:, 1])
     plot(y, u, n_steps, parameters, save=False)
     # plot_animation(y, u, n_steps, parameters)
 
@@ -784,5 +810,7 @@ def main(hist=None):
 
 
 if __name__ == "__main__":
-    plot_history(hist="saves/sand_wo_finn.hst", only_last=False)
+    # main()
+    plot_history(hist="saves/sand_wo_finn.hst", only_last=True)
+    # plot_history(hist="saves/sand_wo_finn.hst", only_last=False)
     # plot_history(hist="saves/mdf_wo_finn.hst", only_last=True)

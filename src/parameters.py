@@ -31,20 +31,20 @@ PARAMS = {
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
-    "TANK_VOLUME": 5.56,  # m3
+    "TANK_VOLUME": 0.1,  # m3
     "MAX_TANK_VOLUME": 1000, # m3
     "MIN_TANK_VOLUME": 1, # m3
     # TODO: make insulation length a design variable
-    "U": 0.04,  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
+    "U": 0.2,  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
     # TODO: make T_AMB time dependant (just like grid prices)
     "T_AMB": 300,  # K (27ºC)
-    "P_COMPRESSOR_MAX": 10000,  # W
+    "P_COMPRESSOR_MAX": 3000,  # W
 
     "M_DOT_COND_MAX": 1, # kg/s
     "M_DOT_LOAD_MAX": 1, # kg/s
 
     "MAX_Q_DOT_REQUIRED": 8000,  # W
-    "HOUSE_T_TARGET": 293,  # K
+    "HOUSE_T_TARGET": 298,  # K
     "ROCK_WOOL_U": 0.2,  # W/(m2K)
     "ROCK_WOOL_AREA": 175,  # m2
     "WINDOWS_U": 1.3,  # W/(m2K)
