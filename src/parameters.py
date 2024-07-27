@@ -31,7 +31,7 @@ PARAMS = {
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
-    "TANK_VOLUME": 0.1,  # m3
+    "TANK_VOLUME": 1,  # m3
     "MAX_TANK_VOLUME": 1000, # m3
     "MIN_TANK_VOLUME": 1, # m3
     # TODO: make insulation length a design variable

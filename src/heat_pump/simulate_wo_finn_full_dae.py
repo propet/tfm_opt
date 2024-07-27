@@ -116,7 +116,7 @@ def cost_function(y, u, parameters):
 def r(y, u, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
     p_compressor = u[0]
     p_heat = get_p_heat(y, u, q_dot_required, t_amb, load_hx_eff, cp_water)
-    # p_heat = jnp.max(jnp.array([0, p_heat]))
+    p_heat = jnp.maximum(0, p_heat)
     r = h * cost_grid * (p_compressor + p_heat)
     return r
 
@@ -213,12 +213,12 @@ def dae_system(y, y_prev, p, u, h):
     p[1] = m_tank
     p[2] = U
     p[3] = A
-    p[4] = T_amb
-    p[5] = load_hx_eff
+    p[4] = load_hx_eff
 
     u[0] = P_comp
     u[1] = m_dot_cond
     u[2] = m_dot_load
+    u[3] = t_amb
 
     """
     f_result = f(y, y_prev, p, u, h)
@@ -236,9 +236,9 @@ def f(y, y_prev, p, u, h):
     return [
         p[1] * p[0] * ((y[0] - y_prev[0]) / h)
         - u[1] * p[0] * y[1]
-        - u[2] * p[0] * (y[0] - p[5] * (y[0] - p[4]))
+        - u[2] * p[0] * (y[0] - p[4] * (y[0] - u[3]))
         + (u[1] + u[2]) * p[0] * y[0]
-        + p[2] * p[3] * (y[0] - p[4])
+        + p[2] * p[3] * (y[0] - u[3])
     ]
 
 
@@ -685,7 +685,6 @@ def plot_history(hist, only_last=True):
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
-    parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
     parameters["y0"] = y0
 
     storeHistory = History(hist)
@@ -698,23 +697,30 @@ def plot_history(hist, only_last=True):
 
     # loop through histories
     for i in indices:
-        u = np.zeros((3, n_steps))
+        u = np.zeros((4, n_steps))
         u[0] = histories["p_compressor"][i]
         u[1] = histories["m_dot_cond"][i]
         u[2] = histories["m_dot_load"][i]
+        u[3] = parameters["t_amb"]
 
+        # p[0] = cp_water
+        # p[1] = m_tank
+        # p[2] = U
+        # p[3] = A
+        # p[4] = load_hx_eff
         dae_p = np.array(
             [
                 parameters["CP_WATER"],
                 parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass
                 parameters["U"],
                 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
-                parameters["t_amb"][0],  # fixed t_amb for all times
                 parameters["LOAD_HX_EFF"],
             ]
         )
 
         y = dae_forward(y0, u, dae_p, n_steps)
+        print("y[1]: ", y[:, 1])
+        print("u[1]: ", u[:, 1])
         print("solution:", y[:, -1])
         if only_last:
             plot(y, u, n_steps, parameters, save=False, show=True)
@@ -732,7 +738,7 @@ def main(hist=None):
     horizon = PARAMS["HORIZON"]
     n_steps = int(horizon / h)
     t0 = 0
-    y0 = np.array([293, 298])  # T_tank, T_cond
+    y0 = np.array([288.42563174, 291.29233026])  # T_tank, T_cond
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -745,7 +751,7 @@ def main(hist=None):
     parameters["y0"] = y0
 
     # Prepare DAE inputs
-    u = np.zeros((3, n_steps))
+    u = np.zeros((4, n_steps))
 
     if hist:
         storeHistory = History(hist)
@@ -753,32 +759,39 @@ def main(hist=None):
         u[0] = histories["p_compressor"][-1]
         u[1] = histories["m_dot_cond"][-1]
         u[2] = histories["m_dot_load"][-1]
+        u[3] = parameters["t_amb"]
+
     else:
         P_comp = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
         P_comp[-int(n_steps / 3) :] = 1e-6
         P_comp[-int(n_steps / 4) :] = parameters["P_COMPRESSOR_MAX"]
         # P_comp[-int(n_steps / 2) :] = parameters["P_COMPRESSOR_MAX"]
 
-        # m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
-        m_dot_cond = np.ones((n_steps)) * 1  # kg/s
+        m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
+        # m_dot_cond = np.ones((n_steps)) * 1  # kg/s
         m_dot_cond[-int(n_steps / 4) :] = 1e-4
         # m_dot_cond[-int(n_steps / 6) :] = 0.3
 
-        # m_dot_load = np.ones((n_steps)) * 1e-6  # kg/s
-        m_dot_load = np.ones((n_steps)) * 0.8  # kg/s
+        m_dot_load = np.ones((n_steps)) * 1e-6  # kg/s
+        # m_dot_load = np.ones((n_steps)) * 0.3  # kg/s
         m_dot_load[-int(n_steps / 3) :] = 0.2
 
         u[0, :] = P_comp  # P_comp
         u[1, :] = m_dot_cond
         u[2, :] = m_dot_load
+        u[3, :] = parameters["t_amb"]
 
+    # p[0] = cp_water
+    # p[1] = m_tank
+    # p[2] = U
+    # p[3] = A
+    # p[4] = load_hx_eff
     dae_p = np.array(
         [
             parameters["CP_WATER"],
             parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass
             parameters["U"],
             6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
-            parameters["t_amb"][0],  # fixed t_amb for all times
             parameters["LOAD_HX_EFF"],
         ]
     )
