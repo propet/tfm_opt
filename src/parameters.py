@@ -14,13 +14,17 @@
 
 PARAMS = {
     "H": 100,  # stepsize [s]
-    "HORIZON": 1000000,  # s
+    "HORIZON": 100000 * 10,  # s
     "N_HOURS": 1000,  # 8760 in a year
-    "MAX_BAT_CAPACITY": 120000,  # Wh
+    "MAX_BAT_CAPACITY": 13000,  # Wh
+    "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) Ws
+    # "E_BAT_MAX_SCALED": 13 * 3600,  # 13 kWs
+    "SOLAR_SIZE": 3000,  # installed power in solar panels W
     "SOC_MIN": 0.1,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
-    "P_BAT_MAX": 10000,  # W
-    "P_GRID_MAX": 10000,  # W
+    # "P_BAT_MAX": 5000,  # W
+    "P_BAT_MAX": 3000,  # W
+    "P_GRID_MAX": 5000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
     "MAX_HEAT_POWER": 10000,  # W
     "MAX_ELECTRIC_DEMAND": 4000,  # W

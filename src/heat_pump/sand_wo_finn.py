@@ -14,99 +14,35 @@ import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
 
-# def obj(opt, design_variables: DesignVariables) -> np.ndarray:
-#     # parameters
-#     parameters = opt.parameters
-#     load_hx_eff = parameters["LOAD_HX_EFF"]
-#     cp_water = parameters["CP_WATER"]
-#     h = parameters["H"]
-#     cost_grid = parameters["cost_grid"]
-#     q_dot_required = parameters["q_dot_required"]
-#     t_amb = parameters["t_amb"]
-#
-#     # design variables
-#     p_compressor = design_variables["m_dot_load"]
-#     t_tank = design_variables["t_tank"]
-#     m_dot_load = design_variables["m_dot_load"]
-#
-#     # Intermediate value
-#     p_heat = q_dot_required - load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
-#     cost = 0
-#     for i in range(len(cost_grid)):
-#         cost += h * cost_grid[i] * (p_compressor[i] + p_heat[i])
-#
-#     return np.array(cost)
-
-
 def obj(opt, design_variables: DesignVariables) -> np.ndarray:
-    cost = cost_function(
-        design_variables["t_tank"],
-        design_variables["p_compressor"],
-        design_variables["m_dot_load"],
-        parameters["H"],
-        parameters["cost_grid"],
-        parameters["q_dot_required"],
-        parameters["t_amb"],
-        parameters["LOAD_HX_EFF"],
-        parameters["CP_WATER"],
-    )
+    # Parameters
+    parameters = opt.parameters
+    h = parameters["H"]
+    cost_grid = parameters["cost_grid"]
+
+    # Design variables
+    p_compressor = design_variables["p_compressor"]
+
+    cost = cost_function(p_compressor, h, cost_grid)
     return np.array(cost)
 
 
-def cost_function(t_tank, p_compressor, m_dot_load, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
-    # p_heat = q_dot_required - load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
-    # cost = 0
-    # for i in range(len(cost_grid)):
-    #     cost += h * cost_grid[i] * (p_compressor[i] + p_heat[i])
-    #
-    # Analytical derivate with respect to p_compressor:
-    # dcost_dp_compressor = h * cost_grid
-    #
-    # Here we do the same but with automatic differentiation using JAX
-    def body_fun(i, cost):
-        return cost + r(
-            jnp.take(t_tank, i),
-            jnp.take(p_compressor, i),
-            jnp.take(m_dot_load, i),
-            h,
-            jnp.take(cost_grid, i),
-            jnp.take(q_dot_required, i),
-            jnp.take(t_amb, i),
-            load_hx_eff,
-            cp_water,
-        )
-
-    cost = jax.lax.fori_loop(0, t_tank.shape[0], body_fun, 0.0)
+def cost_function(p_compressor, h, cost_grid):
+    cost = jnp.sum(h * cost_grid * p_compressor)
     return cost
 
 
-def r(t_tank, p_compressor, m_dot_load, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
-    p_heat = get_p_heat(t_tank, m_dot_load, q_dot_required, t_amb, load_hx_eff, cp_water)
-    p_heat = jnp.maximum(0, p_heat)
-    # p_heat = p_heat ** 2
-    r = h * cost_grid * (p_compressor + p_heat)
-    return r
-
-
-def get_p_heat(t_tank, m_dot_load, q_dot_required, t_amb, load_hx_eff, cp_water):
-    return q_dot_required - load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
-
-
-get_dcostdt_tank_jax = jax.jit(jax.jacobian(cost_function, argnums=0))
-get_dcostdp_compressor_jax = jax.jit(jax.jacobian(cost_function, argnums=1))
-get_dcostdm_dot_load_jax = jax.jit(jax.jacobian(cost_function, argnums=2))
-get_dcostdt_tank = jax_to_numpy(get_dcostdt_tank_jax)
+get_dcostdp_compressor_jax = jax.jit(jax.jacobian(cost_function, argnums=0))
 get_dcostdp_compressor = jax_to_numpy(get_dcostdp_compressor_jax)
-get_dcostdm_dot_load = jax_to_numpy(get_dcostdm_dot_load_jax)
 
 
 def dae1_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # m_tank * cp_water * ((T_tank - T_tank_prev)/h)
-    #     - m_dot_cond * cp_water * T_cond
+    #   - m_dot_cond * cp_water * T_cond
     #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
-    #     + (m_dot_cond + m_dot_load) * cp_water * T_tank
-    #     + U * A * (T_tank - T_amb)
-    #     = 0
+    #   + (m_dot_cond + m_dot_load) * cp_water * T_tank
+    #   + U * A * (T_tank - T_amb)
+    #   = 0
 
     # Parameters
     parameters = opt.parameters
@@ -152,11 +88,43 @@ def dae2_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     t_cond = design_variables["t_cond"]
     m_dot_cond = design_variables["m_dot_cond"]
 
-    dae2 = []
-    for i in range(1, n_steps):
-        dae2.append(cop(t_cond[i]) * p_compressor[i] - m_dot_cond[i] * cp_water * (t_cond[i] - t_tank[i]))
+    dae2 = cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank)
+    return dae2
 
-    return np.array(dae2)
+    # dae2 = []
+    # for i in range(1, n_steps):
+    #     dae2.append(cop(t_cond[i]) * p_compressor[i] - m_dot_cond[i] * cp_water * (t_cond[i] - t_tank[i]))
+    #
+    # return np.array(dae2)
+
+
+def q_required_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
+    # Q_dot_load should be +-5% of q_dot_required
+    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    # 0.95 < Q_dot_load / Q_dot_required < 1.05
+
+    # Parameters
+    parameters = opt.parameters
+    n_steps = parameters["n_steps"]
+    q_dot_required = parameters["q_dot_required"]
+    t_amb = parameters["t_amb"]
+    cp_water = parameters["CP_WATER"]
+    load_hx_eff = parameters["LOAD_HX_EFF"]
+
+    # Design variables
+    t_tank = design_variables["t_tank"]
+    m_dot_load = design_variables["m_dot_load"]
+
+    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
+    return q_dot_load / (q_dot_required + 1e-6)
+
+    # q_dot_required_con = []
+    # for i in range(1, n_steps):
+    #     q_dot_load_i = load_hx_eff * m_dot_load[i] * cp_water * (t_tank[i] - t_amb[i])
+    #     q_dot_required_con.append(q_dot_load_i / (q_dot_required[i] + 1e-6))
+    #
+    # return np.array(q_dot_required_con)
 
 
 def get_constraint_sparse_jacs(parameters, design_variables):
@@ -173,6 +141,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     A = 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3)  # tank surface area (m2)
     cost_grid = parameters["cost_grid"]
     t_amb = parameters["t_amb"]
+    q_dot_required = parameters["q_dot_required"]
     t_tank = design_variables["t_tank"]
     m_dot_load = design_variables["m_dot_load"]
 
@@ -241,27 +210,52 @@ def get_constraint_sparse_jacs(parameters, design_variables):
 
     # dae2:
     # cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
-    ddae2_dp_compressor = sp.lil_matrix((n_steps - 1, n_steps))
-    for i in range(1, n_steps):
-        ddae2_dp_compressor[i - 1, i] = cop(t_cond[i]) + 1e-20
+
+    # ddae2_dp_compressor = sp.lil_matrix((n_steps - 1, n_steps))
+    # for i in range(1, n_steps):
+    #     ddae2_dp_compressor[i - 1, i] = cop(t_cond[i]) + 1e-20
+    # ddae2_dp_compressor = ddae2_dp_compressor.tocsr()
+    # ddae2_dp_compressor = to_required_format(ddae2_dp_compressor)
+    #
+    # ddae2_dm_dot_cond = sp.lil_matrix((n_steps - 1, n_steps))
+    # for i in range(1, n_steps):
+    #     ddae2_dm_dot_cond[i - 1, i] = -cp_water * (t_cond[i] - t_tank[i]) + 1e-20
+    # ddae2_dm_dot_cond = ddae2_dm_dot_cond.tocsr()
+    # ddae2_dm_dot_cond = to_required_format(ddae2_dm_dot_cond)
+    #
+    # ddae2_dt_tank = sp.lil_matrix((n_steps - 1, n_steps))
+    # for i in range(1, n_steps):
+    #     ddae2_dt_tank[i - 1, i] = m_dot_cond[i] * cp_water + 1e-20
+    # ddae2_dt_tank = ddae2_dt_tank.tocsr()
+    # ddae2_dt_tank = to_required_format(ddae2_dt_tank)
+    #
+    # ddae2_dt_cond = sp.lil_matrix((n_steps - 1, n_steps))
+    # for i in range(1, n_steps):
+    #     ddae2_dt_cond[i - 1, i] = get_dcopdT(t_cond[i]) - m_dot_cond[i] * cp_water + 1e-20
+    # ddae2_dt_cond = ddae2_dt_cond.tocsr()
+    # ddae2_dt_cond = to_required_format(ddae2_dt_cond)
+
+    ddae2_dp_compressor = sp.lil_matrix((n_steps, n_steps))
+    for i in range(n_steps):
+        ddae2_dp_compressor[i, i] = cop(t_cond[i]) + 1e-20
     ddae2_dp_compressor = ddae2_dp_compressor.tocsr()
     ddae2_dp_compressor = to_required_format(ddae2_dp_compressor)
 
-    ddae2_dm_dot_cond = sp.lil_matrix((n_steps - 1, n_steps))
-    for i in range(1, n_steps):
-        ddae2_dm_dot_cond[i - 1, i] = -cp_water * (t_cond[i] - t_tank[i]) + 1e-20
+    ddae2_dm_dot_cond = sp.lil_matrix((n_steps, n_steps))
+    for i in range(n_steps):
+        ddae2_dm_dot_cond[i, i] = -cp_water * (t_cond[i] - t_tank[i]) + 1e-20
     ddae2_dm_dot_cond = ddae2_dm_dot_cond.tocsr()
     ddae2_dm_dot_cond = to_required_format(ddae2_dm_dot_cond)
 
-    ddae2_dt_tank = sp.lil_matrix((n_steps - 1, n_steps))
-    for i in range(1, n_steps):
-        ddae2_dt_tank[i - 1, i] = m_dot_cond[i] * cp_water + 1e-20
+    ddae2_dt_tank = sp.lil_matrix((n_steps, n_steps))
+    for i in range(n_steps):
+        ddae2_dt_tank[i, i] = m_dot_cond[i] * cp_water + 1e-20
     ddae2_dt_tank = ddae2_dt_tank.tocsr()
     ddae2_dt_tank = to_required_format(ddae2_dt_tank)
 
-    ddae2_dt_cond = sp.lil_matrix((n_steps - 1, n_steps))
-    for i in range(1, n_steps):
-        ddae2_dt_cond[i - 1, i] = get_dcopdT(t_cond[i]) - m_dot_cond[i] * cp_water + 1e-20
+    ddae2_dt_cond = sp.lil_matrix((n_steps, n_steps))
+    for i in range(n_steps):
+        ddae2_dt_cond[i, i] = get_dcopdT(t_cond[i]) - m_dot_cond[i] * cp_water + 1e-20
     ddae2_dt_cond = ddae2_dt_cond.tocsr()
     ddae2_dt_cond = to_required_format(ddae2_dt_cond)
 
@@ -278,28 +272,50 @@ def get_constraint_sparse_jacs(parameters, design_variables):
         "t_cond",
     ]
 
-    # Initial condition constraints
-    # dp_compressor_0_dp_compressor = sp.lil_matrix((1, n_steps))
-    # dp_compressor_0_dp_compressor[0, 0] = 1
-    # dp_compressor_0_dp_compressor = dp_compressor_0_dp_compressor.tocsr()
-    # dp_compressor_0_dp_compressor = to_required_format(dp_compressor_0_dp_compressor)
-    # p_compressor_0_jac = {"p_compressor": dp_compressor_0_dp_compressor}
-    # p_compressor_0_wrt = ["p_compressor"]
-    #
-    # dp_m_dot_cond_0_dm_dot_con = sp.lil_matrix((1, n_steps))
-    # dp_m_dot_cond_0_dm_dot_con[0, 0] = 1
-    # dp_m_dot_cond_0_dm_dot_con = dp_m_dot_cond_0_dm_dot_con.tocsr()
-    # dp_m_dot_cond_0_dm_dot_con = to_required_format(dp_m_dot_cond_0_dm_dot_con)
-    # m_dot_cond_0_jac = {"m_dot_cond": dp_m_dot_cond_0_dm_dot_con}
-    # m_dot_cond_0_wrt = ["m_dot_cond"]
-    #
-    # dp_m_dot_load_0_dm_dot_con = sp.lil_matrix((1, n_steps))
-    # dp_m_dot_load_0_dm_dot_con[0, 0] = 1
-    # dp_m_dot_load_0_dm_dot_con = dp_m_dot_load_0_dm_dot_con.tocsr()
-    # dp_m_dot_load_0_dm_dot_con = to_required_format(dp_m_dot_load_0_dm_dot_con)
-    # m_dot_load_0_jac = {"m_dot_load": dp_m_dot_load_0_dm_dot_con}
-    # m_dot_load_0_wrt = ["m_dot_load"]
+    # q_required:
+    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    # 0.95 < Q_dot_load / Q_dot_required < 1.05
+    # ->
+    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb))
 
+    # dq_required_dm_dot_load = sp.lil_matrix((n_steps - 1, n_steps))
+    # for i in range(1, n_steps):
+    #     dq_required_dm_dot_load[i - 1, i] = (1 / (q_dot_required[i] + 1e-6)) * (load_hx_eff * cp_water * (t_tank[i] - t_amb[i])) + 1e-20
+    # dq_required_dm_dot_load = dq_required_dm_dot_load.tocsr()
+    # dq_required_dm_dot_load = to_required_format(dq_required_dm_dot_load)
+    #
+    # dq_required_dt_tank = sp.lil_matrix((n_steps - 1, n_steps))
+    # # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb))
+    # for i in range(1, n_steps):
+    #     dq_required_dt_tank[i - 1, i] = (1 / (q_dot_required[i] + 1e-6)) * (load_hx_eff * m_dot_load[i] * cp_water) + 1e-20
+    # dq_required_dt_tank = dq_required_dt_tank.tocsr()
+    # dq_required_dt_tank = to_required_format(dq_required_dt_tank)
+
+    dq_required_dm_dot_load = sp.lil_matrix((n_steps, n_steps))
+    for i in range(n_steps):
+        dq_required_dm_dot_load[i, i] = (1 / (q_dot_required[i] + 1e-6)) * (
+            load_hx_eff * cp_water * (t_tank[i] - t_amb[i])
+        ) + 1e-20
+    dq_required_dm_dot_load = dq_required_dm_dot_load.tocsr()
+    dq_required_dm_dot_load = to_required_format(dq_required_dm_dot_load)
+
+    dq_required_dt_tank = sp.lil_matrix((n_steps, n_steps))
+    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb))
+    for i in range(n_steps):
+        dq_required_dt_tank[i, i] = (1 / (q_dot_required[i] + 1e-6)) * (load_hx_eff * m_dot_load[i] * cp_water) + 1e-20
+    dq_required_dt_tank = dq_required_dt_tank.tocsr()
+    dq_required_dt_tank = to_required_format(dq_required_dt_tank)
+
+    q_required_jac = {
+        "m_dot_load": dq_required_dm_dot_load,
+        "t_tank": dq_required_dt_tank,
+    }
+    q_required_wrt = [
+        "m_dot_load",
+        "t_tank",
+    ]
+
+    # Initial condition constraints
     dp_t_tank_0_dm_dot_con = sp.lil_matrix((1, n_steps))
     dp_t_tank_0_dm_dot_con[0, 0] = 1
     dp_t_tank_0_dm_dot_con = dp_t_tank_0_dm_dot_con.tocsr()
@@ -319,12 +335,8 @@ def get_constraint_sparse_jacs(parameters, design_variables):
         dae1_wrt,
         dae2_jac,
         dae2_wrt,
-        # p_compressor_0_jac,
-        # p_compressor_0_wrt,
-        # m_dot_cond_0_jac,
-        # m_dot_cond_0_wrt,
-        # m_dot_load_0_jac,
-        # m_dot_load_0_wrt,
+        q_required_wrt,
+        q_required_jac,
         t_tank_0_jac,
         t_tank_0_wrt,
         t_cond_0_jac,
@@ -338,7 +350,6 @@ def sens(opt, design_variables: DesignVariables, func_values):
     cp_water = parameters["CP_WATER"]
     h = parameters["H"]
     cost_grid = parameters["cost_grid"]
-    q_dot_required = parameters["q_dot_required"]
     t_amb = parameters["t_amb"]
     t_tank = design_variables["t_tank"]
     p_compressor = design_variables["p_compressor"]
@@ -349,28 +360,16 @@ def sens(opt, design_variables: DesignVariables, func_values):
         dae1_wrt,
         dae2_jac,
         dae2_wrt,
-        # p_compressor_0_jac,
-        # p_compressor_0_wrt,
-        # m_dot_cond_0_jac,
-        # m_dot_cond_0_wrt,
-        # m_dot_load_0_jac,
-        # m_dot_load_0_wrt,
+        q_required_wrt,
+        q_required_jac,
         t_tank_0_jac,
         t_tank_0_wrt,
         t_cond_0_jac,
         t_cond_0_wrt,
     ) = get_constraint_sparse_jacs(parameters, design_variables)
 
-    # def cost_function(t_tank, p_compressor, m_dot_load, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
-    dcostdt_tank = get_dcostdt_tank(
-        t_tank, p_compressor, m_dot_load, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water
-    )
-    dcostdp_compressor = get_dcostdp_compressor(
-        t_tank, p_compressor, m_dot_load, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water
-    )
-    dcostdm_dot_load = get_dcostdm_dot_load(
-        t_tank, p_compressor, m_dot_load, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water
-    )
+    # def cost_function(p_compressor, h, cost_grid):
+    dcostdp_compressor = get_dcostdp_compressor(p_compressor, h, cost_grid)
 
     return {
         # "obj": {
@@ -382,21 +381,17 @@ def sens(opt, design_variables: DesignVariables, func_values):
         # },
         "obj": {
             "p_compressor": dcostdp_compressor,
-            "m_dot_load": dcostdm_dot_load,
-            "t_tank": dcostdt_tank,
         },
         "dae1_constraint": dae1_jac,
         "dae2_constraint": dae2_jac,
-        # "p_compressor_0": p_compressor_0_jac,
-        # "m_dot_cond_0": m_dot_cond_0_jac,
-        # "m_dot_load_0": m_dot_load_0_jac,
+        "q_required_constraint": q_required_jac,
         "t_tank_0": t_tank_0_jac,
         "t_cond_0": t_cond_0_jac,
     }
 
 
 def run_optimization(parameters, plot=True):
-    opt = Opt("sand_wo_finn_full_dae", obj, historyFileName="saves/sand_wo_finn_full_dae.hst")
+    opt = Opt("sand_wo_finn", obj, historyFileName="saves/sand_wo_finn.hst")
 
     # Parameters
     h = parameters["H"]
@@ -432,7 +427,7 @@ def run_optimization(parameters, plot=True):
         "name": "m_dot_load",
         "n_params": n_steps,
         "type": "c",
-        "lower": 1e-3,
+        "lower": 1e-4,
         "upper": parameters["M_DOT_LOAD_MAX"],
         "initial_value": parameters["M_DOT_LOAD_MAX"] / 2,
         "scale": 1 / parameters["M_DOT_LOAD_MAX"],
@@ -481,12 +476,8 @@ def run_optimization(parameters, plot=True):
         dae1_wrt,
         dae2_jac,
         dae2_wrt,
-        # p_compressor_0_jac,
-        # p_compressor_0_wrt,
-        # m_dot_cond_0_jac,
-        # m_dot_cond_0_wrt,
-        # m_dot_load_0_jac,
-        # m_dot_load_0_wrt,
+        q_required_wrt,
+        q_required_jac,
         t_tank_0_jac,
         t_tank_0_wrt,
         t_cond_0_jac,
@@ -508,7 +499,7 @@ def run_optimization(parameters, plot=True):
 
     dae2_constraint: ConstraintInfo = {
         "name": "dae2_constraint",
-        "n_constraints": n_steps - 1,
+        "n_constraints": n_steps,
         "lower": 0,
         "upper": 0,
         "function": dae2_constraint_fun,
@@ -519,50 +510,26 @@ def run_optimization(parameters, plot=True):
     }
     opt.add_constraint_info(dae2_constraint)
 
-    # Initial value constraints
-    # p_compressor_0: ConstraintInfo = {
-    #     "name": "p_compressor_0",
-    #     "n_constraints": 1,
-    #     "lower": parameters["y0"]["p_compressor"],
-    #     "upper": parameters["y0"]["p_compressor"],
-    #     "function": lambda _, design_variables: design_variables["p_compressor"][0],
-    #     "scale": 1 / parameters["y0"]["p_compressor"],
-    #     "wrt": p_compressor_0_wrt,
-    #     "jac": p_compressor_0_jac,
-    # }
-    # opt.add_constraint_info(p_compressor_0)
-    #
-    # m_dot_cond_0: ConstraintInfo = {
-    #     "name": "m_dot_cond_0",
-    #     "n_constraints": 1,
-    #     "lower": parameters["y0"]["m_dot_cond"],
-    #     "upper": parameters["y0"]["m_dot_cond"],
-    #     "function": lambda _, design_variables: design_variables["m_dot_cond"][0],
-    #     "scale": 1 / parameters["y0"]["m_dot_cond"],
-    #     "wrt": m_dot_cond_0_wrt,
-    #     "jac": m_dot_cond_0_jac,
-    # }
-    # opt.add_constraint_info(m_dot_cond_0)
-    #
-    # m_dot_load_0: ConstraintInfo = {
-    #     "name": "m_dot_load_0",
-    #     "n_constraints": 1,
-    #     "lower": parameters["y0"]["m_dot_load"],
-    #     "upper": parameters["y0"]["m_dot_load"],
-    #     "function": lambda _, design_variables: design_variables["m_dot_load"][0],
-    #     "scale": 1 / parameters["y0"]["m_dot_load"],
-    #     "wrt": m_dot_load_0_wrt,
-    #     "jac": m_dot_load_0_jac,
-    # }
-    # opt.add_constraint_info(m_dot_load_0)
+    q_required_constraint: ConstraintInfo = {
+        "name": "q_required_constraint",
+        "n_constraints": n_steps,
+        "lower": 0.95,
+        "upper": 1.05,
+        "function": q_required_constraint_fun,
+        "scale": 1,
+        "wrt": q_required_wrt,
+        "jac": q_required_jac,
+    }
+    opt.add_constraint_info(q_required_constraint)
 
+    # Initial value constraints
     t_tank_0: ConstraintInfo = {
         "name": "t_tank_0",
         "n_constraints": 1,
         "lower": parameters["y0"]["t_tank"],
         "upper": parameters["y0"]["t_tank"],
         "function": lambda _, design_variables: design_variables["t_tank"][0],
-        "scale": 1 / 300,
+        "scale": 1 / parameters["y0"]["t_tank"],
         "wrt": t_tank_0_wrt,
         "jac": t_tank_0_jac,
     }
@@ -574,7 +541,7 @@ def run_optimization(parameters, plot=True):
         "lower": parameters["y0"]["t_cond"],
         "upper": parameters["y0"]["t_cond"],
         "function": lambda _, design_variables: design_variables["t_cond"][0],
-        "scale": 1 / 300,
+        "scale": 1 / parameters["y0"]["t_cond"],
         "wrt": t_cond_0_wrt,
         "jac": t_cond_0_jac,
     }
@@ -584,9 +551,9 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 50,
-        "tol": 1e-3,
-        "obj_scaling_factor": 1e-1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        "max_iter": 200,
+        # "tol": 1e-3,
+        # "obj_scaling_factor": 1e7,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
         # "acceptable_tol": 1e-4,
         # "acceptable_obj_change_tol": 1e-4,
@@ -599,15 +566,13 @@ def run_optimization(parameters, plot=True):
     opt.setup()
     opt.print()
     opt.optProb.printSparsity()
+    # exit(0)
 
     # Run
     sol = opt.optimize(sens=sens)
     # sol = opt.optimize(sens="FD", sensStep=1e-6)
 
     p_compressor = sol.xStar["p_compressor"]
-    print("p_comp mean: ", np.mean(p_compressor))
-    print("c_grid mean: ", np.mean(parameters["cost_grid"]))
-    print("product times horizon: ", np.mean(parameters["cost_grid"]) * np.mean(p_compressor) * horizon)
     m_dot_cond = sol.xStar["m_dot_cond"]
     m_dot_load = sol.xStar["m_dot_load"]
 
@@ -615,88 +580,6 @@ def run_optimization(parameters, plot=True):
     if plot:
         # print(sol)
         exit(0)
-
-        battery_soc = []
-        for h in range(PARAMS["N_HOURS"]):
-            battery_soc.append(e_bat_star[h] / PARAMS["MAX_BAT_CAPACITY"])
-
-        plot_data: PlotData = {
-            "rows": 3,
-            "columns": 1,
-            "axes_data": [
-                {
-                    "i": 0,
-                    "j": 0,
-                    "ylabel": "Price[€/kWh]",
-                    "arrays_data": [
-                        {
-                            "x": hours,
-                            "y": grid_prices_kwh,
-                            "label": None,
-                        }
-                    ],
-                },
-                {
-                    "i": 0,
-                    "j": 1,
-                    "ylabel": "Power[kW]",
-                    "arrays_data": [
-                        {
-                            "x": hours,
-                            "y": p_gen,
-                            "label": "From Solar",
-                        },
-                        {
-                            "x": hours,
-                            "y": (-p_gen + p_bat_star),
-                            "label": "From grid",
-                        },
-                        {
-                            "x": hours,
-                            "y": p_bat_star,
-                            "label": "To battery",
-                        },
-                    ],
-                },
-                {
-                    "i": 0,
-                    "j": 2,
-                    "xlabel": "Time[hours]",
-                    "ylabel": "Battery SOC",
-                    "arrays_data": [
-                        {
-                            "x": hours,
-                            "y": battery_soc,
-                            "label": None,
-                        },
-                    ],
-                },
-            ],
-        }
-
-        filename = (
-            "_".join(
-                f"{key}_{value}"
-                for key, value in PARAMS.items()
-                if key
-                in [
-                    "N_HOURS",
-                    "MAX_BAT_CAPACITY",
-                    "SOC_MIN",
-                    "SOC_MAX",
-                    "P_BAT_MAX",
-                    "P_GRID_MAX",
-                    "MAX_SOLAR_RADIATION",
-                    "MAX_ELECTRIC_DEMAND",
-                    "DK_RHO",
-                    "BAT_ETA_CHARGE",
-                    "BAT_ETA_DISCHARGE",
-                ]
-            )
-            + ".png"
-        )
-        generic_plot(plot_data, filename=filename, sharex=True)
-
     return sol.xStar, sol.fStar
 
 
@@ -721,13 +604,12 @@ if __name__ == "__main__":
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
     print("w_solar_per_w_installed: ", parameters["w_solar_per_w_installed"].shape)
 
- 
     y0 = {
         "p_compressor": 900,  # up to P_COMPRESSOR_MAX
         "m_dot_cond": 4.98853131e-01,
         "m_dot_load": 0.1,
         "t_tank": 298.3,
-        "t_cond": 298.9,
+        "t_cond": 298.5,
     }
     parameters["y0"] = y0
 

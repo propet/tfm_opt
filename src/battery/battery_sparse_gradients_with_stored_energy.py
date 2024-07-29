@@ -97,8 +97,10 @@ def get_constraint_sparse_jacs():
     denergy_de_row = np.repeat(np.arange(N_HOURS), 2)[1:]
     denergy_de_col = np.arange(N_HOURS).repeat(2)[:-1]
     denergy_de = sp.csr_matrix((denergy_de_data, (denergy_de_row, denergy_de_col)), shape=(N_HOURS, N_HOURS))
-    # print(denergy_de.toarray())
-    # exit(0)
+    print(denergy_de.toarray())
+    print(denergy_de.toarray().shape)
+    print(N_HOURS)
+    exit(0)
 
     # Convert to required format
     def to_required_format(mat):

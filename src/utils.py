@@ -21,7 +21,7 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
-prop_cycle = cycler("color", ["k", "r", "b", "g", "purple", "salmon"]) + cycler("linestyle", ["-", "--", ":", "-.", (5, (10, 3)), (0, (3, 5, 1, 5, 1, 5))])
+prop_cycle = cycler("color", ["k", "r", "b", "g", "purple", "salmon"]) + cycler("linestyle", ["-", "--", ":", "-.", (5, (10, 3)), ":"])
 plot_styles = list(prop_cycle)
 
 
@@ -90,7 +90,7 @@ def plot_film(filename):
         image_files.append(file)
     image_files.remove(".gitignore")  # don't process .gitignore
 
-    with imageio.get_writer(filename, mode="I", duration=0.5, loop=0) as writer:  # Adjust duration as needed
+    with imageio.get_writer(filename, mode="I", duration=500, loop=0) as writer:  # Adjust duration as needed
         for filename in image_files:
             image = imageio.imread(f"{directory}/{filename}")
             writer.append_data(image)
@@ -121,7 +121,7 @@ def get_dynamic_parameters(t0, h, horizon, year=2022):
     t_amb_every_second = get_t_amb_every_second(year=2022)
     dynamic_parameters["t_amb"] = get_t_amb(t_amb_every_second, t0, h, horizon)
     dynamic_parameters["cost_grid"] = get_cost_grid(t0, h, horizon, year=2022)
-    dynamic_parameters["p_solar_gen"] = get_p_solar_gen(t0, h, horizon, year=2022)
+    dynamic_parameters["w_solar_per_w_installed"] = get_w_solar_per_w_installed(t0, h, horizon, year=2022)
     dynamic_parameters["q_dot_required"] = get_q_dot_required(t_amb_every_second, t0, h, horizon)
     dynamic_parameters["p_required"] = get_p_required(t0, h, horizon)
     return dynamic_parameters
@@ -207,19 +207,7 @@ def get_cost_grid(t0, h, horizon, year=2022):
     return cost_grid_by_second[t0 : t0 + horizon : h]
 
 
-# def get_p_solar_gen(t0, h, horizon):
-#     max_solar_radiation = PARAMS["MAX_SOLAR_RADIATION"]
-#     seconds_in_day = 24 * 3600
-#     min_solar_radiation = 0
-#     amplitude = (max_solar_radiation - min_solar_radiation) / 2
-#     vertical_shift = amplitude + min_solar_radiation
-#     seconds = np.arange(horizon)
-#     # A * sin(w * t) = A * sin(2*pi*f*t)
-#     p_gen = amplitude * np.sin(2 * np.pi * (1 / seconds_in_day) * (seconds - 6 * 3600)) + vertical_shift
-#     return p_gen[t0:t0+horizon:h]
-
-
-def get_p_solar_gen(t0, h, horizon, year=2022):
+def get_w_solar_per_w_installed(t0, h, horizon, year=2022):
     # Data obtained from SAM
     filepath = f"{ROOT_DIR}/data/sam_solar_power_madrid_every_15min/{year}_1kW.csv"
 
@@ -232,11 +220,9 @@ def get_p_solar_gen(t0, h, horizon, year=2022):
         engine="python",
     )
 
-    p_solar_every_15min = df.iloc[:, 1].to_numpy()  # second column
-    p_solar_every_15min *= 1000  # from kW to W
-
-    p_solar_every_second = np.repeat(p_solar_every_15min, 900)  # 15min == 900s
-    return p_solar_every_second[t0 : t0 + horizon : h]
+    w_solar_per_w_installed_every_15min = df.iloc[:, 1].to_numpy()  # second column
+    w_solar_per_w_installed_every_second = np.repeat(w_solar_per_w_installed_every_15min, 900)  # 15min == 900s
+    return w_solar_per_w_installed_every_second[t0 : t0 + horizon : h]
 
 
 def get_solar_field_powers(max_solar_radiation, n_hours):
@@ -253,29 +239,12 @@ def get_solar_field_powers(max_solar_radiation, n_hours):
     return p_gen
 
 
-# def get_p_required(t0, h, horizon):
-#     # Electrical consumption is a sinusoidal
-#     # with minimum at 100W because of the freezer energy consumption,
-#     # and maximum of 4kW, because that's the average power contracted with the electricity supplier
-#
-#     # Calculate the sinusoidal function value for each second
-#     # Max consumption at 10:00 AM, with period of 12 hours (f = 1 / (12 * 3600))
-#     # A * sin(w * t) = A * sin(2*pi*f*t)
-#     seconds = np.arange(horizon)
-#     max_electric_demand = PARAMS["MAX_ELECTRIC_DEMAND"]
-#     min_electric_demand = 100  # W
-#     amplitude = (max_electric_demand - min_electric_demand) / 2
-#     vertical_shift = amplitude + min_electric_demand
-#     f = 1 / (12 * 3600)  # period of 12 hours
-#     phase_shift = 10 * 3600  # Calculate phase shift for max at 10 AM
-#     p_electric_demand = amplitude * np.sin(2 * np.pi * f * seconds - phase_shift) + vertical_shift
-#     return p_electric_demand[t0 : t0 + horizon : h]
-
-
 def get_p_required(t0, h, horizon):
     """
     My own electricity demand for a year
     Obtained through repsol clients webpage
+    kWh for each hour of the year
+    same as the power in kW for the whole hour
     """
     json_filename = f"{ROOT_DIR}/data/repsol_kwh_demand.json"
     json_file = open(json_filename)
@@ -299,7 +268,7 @@ def get_p_required(t0, h, horizon):
     print("hours: ", len(p_required_by_hour))
 
     p_required_by_second = np.repeat(p_required_by_hour, 3600)  # 1hour == 3600s
-    p_required_by_second = p_required_by_second * 1000 * 3600  # kWh to Ws
+    p_required_by_second = p_required_by_second * 1000  # kW to W
     return p_required_by_second[t0 : t0 + horizon : h]
 
 
@@ -423,14 +392,14 @@ if __name__ == "__main__":
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
-    parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
+    parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
 
     print("------------")
     print(np.mean(parameters["cost_grid"]))
     print(np.mean(parameters["q_dot_required"]))
     print(np.mean(parameters["p_required"]))
     print(np.mean(parameters["t_amb"]))
-    print(np.mean(parameters["p_solar_gen"]))
+    print(np.mean(parameters["w_solar_per_w_installed"]))
 
     time = np.arange(t0, t0 + horizon, h)
     print("time.shape: ", time.shape)
@@ -441,10 +410,11 @@ if __name__ == "__main__":
     axes[0].plot(time / 3600, parameters["p_required"], label="p_required", **plot_styles[0])
     axes[0].legend()
 
-    # plt.plot(time / 86400, parameters["p_required"], "b-", linewidth=2)
-    # plt.xlabel("day", fontsize=14)
+    # axes[0].plot(time / 3600, parameters["cost_grid"], label="cost_grid", **plot_styles[0])
+    # axes[0].legend()
 
-    axes[1].plot(time / 3600, parameters["p_solar_gen"], label="p_solar_gen", **plot_styles[1])
+    # axes[1].plot(time / 3600, parameters["w_solar_per_w_installed"], label="w_solar_per_w_installed", **plot_styles[1])
+    axes[1].plot(time / 3600, parameters["cost_grid"], label="cost_grid", **plot_styles[0])
     axes[1].legend()
     axes[1].set_xlabel("hour", fontsize=14)
 

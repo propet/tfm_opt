@@ -20,7 +20,7 @@ def main():
         parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
         parameters["p_required"] = dynamic_parameters["p_required"]
         parameters["t_amb"] = dynamic_parameters["t_amb"]
-        parameters["p_solar_gen"] = dynamic_parameters["p_solar_gen"]
+        parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
         parameters["y0"] = y0
 
         xStar, objStar = run_optimization(parameters)

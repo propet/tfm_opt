@@ -8,7 +8,6 @@ from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, 
 from pyoptsparse import History
 import jax
 import jax.numpy as jnp
-
 jax.config.update("jax_enable_x64", True)
 
 
@@ -95,7 +94,6 @@ def cost_function(y, u, parameters):
             u[:, i],
             parameters["H"],
             parameters["cost_grid"][i],
-            parameters["q_dot_required"][i],
             parameters["t_amb"][i],
             parameters["LOAD_HX_EFF"],
             parameters["CP_WATER"],
@@ -103,18 +101,10 @@ def cost_function(y, u, parameters):
     return cost
 
 
-def r(y, u, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
+def r(y, u, h, cost_grid, t_amb, load_hx_eff, cp_water):
     p_compressor = u[0]
-    p_heat = get_p_heat(y, u, q_dot_required, t_amb, load_hx_eff, cp_water)
-    p_heat = jnp.maximum(0, p_heat)
-    r = h * cost_grid * (p_compressor + p_heat)
+    r = h * cost_grid * (p_compressor)
     return r
-
-
-def get_p_heat(y, u, q_dot_required, t_amb, load_hx_eff, cp_water):
-    t_tank = y[0]
-    m_dot_load = u[2]
-    return q_dot_required - load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
 
 
 def get_t_load(y, parameters, i):
@@ -140,11 +130,10 @@ def dae_system(y, y_prev, p, u, h):
     ∘ Q_dot_loss = U * A * (T_tank - T_amb)
     ∘ Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
     ∘ Q_dot_load = m_dot_load * cp_water * (T_tank - T_load)
-    ∘ q_dot_required = Q_dot_load + P_heat
 
 
     with unknowns:
-    T_tank, T_load, T_cond, P_heat
+    T_tank, T_load, T_cond
 
 
     Discretized with Backward Euler
@@ -155,15 +144,12 @@ def dae_system(y, y_prev, p, u, h):
         + U * A * (T_tank - T_amb)
         = 0
     ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
-    ∘ (q_dot_required - P_heat) - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = 0
-    ∘ (q_dot_required - P_heat) - m_dot_load * cp_water * (T_tank - T_load) = 0
+    ∘ Q_dot_load - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = 0
+    ∘ Q_dot_load - m_dot_load * cp_water * (T_tank - T_load) = 0
 
-    From the equation
-    ∘ (q_dot_required - P_heat) - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = 0
-    I can isolate P_heat:
-    ∘ P_heat = q_dot_required - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
-    And plug it into the equation ∘ (q_dot_required - P_heat) - m_dot_load * cp_water * (T_tank - T_load) = 0
-    To isolate T_load:
+    From the two last equations for Q_dot_load, I can get T_load a in terms of T_tank
+    load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = m_dot_load * cp_water * (T_tank - T_load)
+    ->
     T_load = T_tank - load_hx_eff * (T_tank - T_amb)
 
     I can plug T_load into the first equation
@@ -190,8 +176,7 @@ def dae_system(y, y_prev, p, u, h):
         = 0
     ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
 
-    and then another two trivial algebraic equations to compute P_heat and T_load:
-    ∘ P_heat = q_dot_required - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    and then to compute T_load:
     ∘ T_load = T_tank - load_hx_eff * (T_tank - T_amb)
 
 
@@ -218,11 +203,11 @@ def dae_system(y, y_prev, p, u, h):
 
 def f(y, y_prev, p, u, h):
     # m_tank * cp_water * ((T_tank - T_tank_prev)/h)
-    #     - m_dot_cond * cp_water * T_cond
+    #   - m_dot_cond * cp_water * T_cond
     #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
-    #     + (m_dot_cond + m_dot_load) * cp_water * T_tank
-    #     + U * A * (T_tank - T_amb)
-    #     = 0
+    #   + (m_dot_cond + m_dot_load) * cp_water * T_tank
+    #   + U * A * (T_tank - T_amb)
+    #   = 0
     return [
         p[1] * p[0] * ((y[0] - y_prev[0]) / h)
         - u[1] * p[0] * y[1]
@@ -364,7 +349,6 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             u_current,
             h,
             parameters["cost_grid"][n],
-            parameters["q_dot_required"][n],
             parameters["t_amb"][n],
             parameters["LOAD_HX_EFF"],
             parameters["CP_WATER"],
@@ -374,7 +358,6 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             u_current,
             h,
             parameters["cost_grid"][n],
-            parameters["q_dot_required"][n],
             parameters["t_amb"][n],
             parameters["LOAD_HX_EFF"],
             parameters["CP_WATER"],
@@ -442,6 +425,20 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
 
     h = parameters["H"]
     q_dot_required = parameters["q_dot_required"]
+    p_required = parameters["p_required"]
+    p_solar = parameters["w_solar_per_w_installed"] * parameters["SOLAR_SIZE"]
+    load_hx_eff = parameters["LOAD_HX_EFF"]
+    cp_water = parameters["CP_WATER"]
+    t_amb = parameters["t_amb"]
+
+    p_compressor = u[0]
+    m_dot_cond = u[1]
+    m_dot_load = u[2]
+    t_tank = y[0]
+    t_cond = y[1]
+    e_bat = parameters["e_bat"]
+    p_bat = parameters["p_bat"]
+    p_grid = - p_solar + p_compressor + p_bat + p_required
 
     # Create time array
     t = np.linspace(0, n_steps * h, n_steps)
@@ -450,22 +447,13 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     if not isinstance(axes, np.ndarray):
         axes = [axes]
 
-    T_load = np.zeros(y.shape[1])
-    P_heat = np.zeros(y.shape[1])
+    t_load = np.zeros(y.shape[1])
     for i in range(y.shape[1]):
-        T_load[i] = get_t_load(y[:, i], parameters, i)
-        P_heat[i] = get_p_heat(
-            y[:, i],
-            u[:, i],
-            parameters["q_dot_required"][i],
-            parameters["t_amb"][i],
-            parameters["LOAD_HX_EFF"],
-            parameters["CP_WATER"],
-        )
+        t_load[i] = get_t_load(y[:, i], parameters, i)
 
-    Q_dot_load = q_dot_required - P_heat
+    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
 
-    # First subplot for inputs C_grid
+    # First subplot for inputs
     axes[0].plot(t, parameters["cost_grid"], label="C_grid", **plot_styles[0])
     axes[0].set_ylabel("money")
     # axes[0].set_title("Cost grid")
@@ -475,37 +463,56 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
 
     ax0 = axes[0].twinx()
     ax0.plot(t, q_dot_required, label="q_dot_required", **plot_styles[1])
+    ax0.plot(t, p_required, label="p_required", **plot_styles[2])
+    ax0.plot(t, p_solar, label="p_solar", **plot_styles[3])
     ax0.set_ylabel("W")
     ax0.legend(loc="upper right")
 
-    # First subplot for T_tank, T_load, and T_cond
-    axes[1].plot(t, y[0], label="T_tank", **plot_styles[0])
-    axes[1].plot(t, y[1], label="T_cond", **plot_styles[1])
-    axes[1].plot(t, T_load, label="T_load", **plot_styles[2])
-    axes[1].plot(t, parameters["t_amb"], label="T_amb", **plot_styles[3])
+    # Second subplot for temperatures and e_bat
+    axes[1].plot(t, t_tank, label="T_tank", **plot_styles[0])
+    # axes[1].plot(t, t_cond, label="T_cond", **plot_styles[1])
+    # axes[1].plot(t, t_load, label="T_load", **plot_styles[2])
+    # axes[1].plot(t, t_amb, label="T_amb", **plot_styles[3])
     axes[1].set_ylabel("Temperature (K)")
     # axes[1].set_title("Temperature Profiles")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
 
     ax1 = axes[1].twinx()
-    ax1.plot(t, Q_dot_load, label="Q_dot_load", **plot_styles[4])
-    ax1.plot(t, P_heat, label="P_heat", **plot_styles[5])
-    ax1.set_ylabel("W")
+    ax1.plot(t, e_bat, label="E_bat", **plot_styles[1])
+    ax1.set_ylabel("Ws")
     ax1.legend(loc="upper right")
 
-    axes[2].plot(t, u[0], label="P_comp", **plot_styles[0])
+
+    # axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
+    # axes[2].plot(t, q_dot_load, label="q_dot_load", **plot_styles[1])
+    # axes[2].set_ylabel("Power[W]")
+    # axes[2].legend(loc="upper left")
+    # axes[2].grid(True)
+    # axes[2].set_xlabel("Time (s)")
+
+    # ax2 = axes[2].twinx()
+    # ax2.plot(t, p_bat, label="P_bat", **plot_styles[2])
+    # ax2.plot(t, p_grid, label="P_grid", **plot_styles[3])
+    # ax2.set_ylabel("Power[W]")
+    # ax2.legend(loc="upper right")
+
+    axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
+    axes[2].plot(t, p_grid, label="P_grid", **plot_styles[1])
+    axes[2].plot(t, p_required, label="p_required", **plot_styles[2])
+    axes[2].plot(t, -p_solar, label="p_solar", **plot_styles[3])
+    axes[2].plot(t, p_bat, label="p_bat", **plot_styles[4])
     axes[2].set_ylabel("Power[W]")
-    # axes[2].set_title("Control Variables")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
     axes[2].set_xlabel("Time (s)")
 
-    ax2 = axes[2].twinx()
-    ax2.plot(t, u[1], label="m_dot_cond", **plot_styles[2])
-    ax2.plot(t, u[2], label="m_dot_load", **plot_styles[3])
-    ax2.set_ylabel("Mass flow rates")
-    ax2.legend(loc="upper right")
+
+    # ax2 = axes[2].twinx()
+    # ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[2])
+    # ax2.plot(t, m_dot_load, label="m_dot_load", **plot_styles[3])
+    # ax2.set_ylabel("Mass flow rates")
+    # ax2.legend(loc="upper right")
 
     # Show the plots
     if show:
@@ -516,107 +523,6 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
 
     if save:
         plt.savefig(f"tmp/frame_{time.time()}.png")
-
-
-# def plot_animation(y, u, n_steps, parameters):
-#     h = parameters["H"]
-#     q_dot_required = parameters["q_dot_required"]
-#
-#     # Create time array
-#     t = np.linspace(0, n_steps * h, n_steps)
-#
-#     T_load = np.zeros(y.shape[1])
-#     P_heat = np.zeros(y.shape[1])
-#     for i in range(y.shape[1]):
-#         T_load[i] = get_t_load(y[:, i], parameters, i)
-#         P_heat[i] = get_p_heat(
-#             y[:, i],
-#             u[:, i],
-#             parameters["q_dot_required"][i],
-#             parameters["t_amb"][i],
-#             parameters["LOAD_HX_EFF"],
-#             parameters["CP_WATER"],
-#         )
-#
-#     Q_dot_load = q_dot_required - P_heat
-#
-#     fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-#
-#     # Set up the initial plot
-#     (line1,) = axes[0].plot([], [], label="T_tank", **plot_styles[0])
-#     (line2,) = axes[0].plot([], [], label="T_cond", **plot_styles[1])
-#     (line3,) = axes[0].plot([], [], label="T_load", **plot_styles[2])
-#     axes[0].set_ylabel("Temperature (K)")
-#     axes[0].set_title("Temperature Profiles")
-#     axes[0].legend(loc="upper left")
-#     axes[0].grid(True)
-#
-#     ax0 = axes[0].twinx()
-#     (line4,) = ax0.plot([], [], label="Q_dot_load", **plot_styles[3])
-#     (line5,) = ax0.plot([], [], label="P_heat", **plot_styles[4])
-#     ax0.set_ylabel("Power (W)")
-#     ax0.legend(loc="upper right")
-#
-#     (line6,) = axes[1].plot([], [], label="P_comp", **plot_styles[0])
-#     (line7,) = axes[1].plot([], [], label="q_dot_required", **plot_styles[1])
-#     axes[1].set_ylabel("Power (W)")
-#     axes[1].set_title("Control Variables")
-#     axes[1].legend(loc="upper left")
-#     axes[1].grid(True)
-#
-#     ax1 = axes[1].twinx()
-#     (line8,) = ax1.plot([], [], label="m_dot_cond", **plot_styles[2])
-#     (line9,) = ax1.plot([], [], label="m_dot_load", **plot_styles[3])
-#     ax1.set_ylabel("Mass flow rates (kg/s)")
-#     ax1.legend(loc="upper right")
-#
-#     axes[1].set_xlabel("Time (s)")
-#
-#     # Set x and y limits
-#     axes[0].set_xlim(0, n_steps * h)
-#     axes[0].set_ylim(min(y.min(), T_load.min()) - 5, max(y.max(), T_load.max()) + 5)
-#     ax0.set_ylim(min(Q_dot_load.min(), P_heat.min()) - 100, max(Q_dot_load.max(), P_heat.max()) + 100)
-#     axes[1].set_ylim(min(u[0].min(), q_dot_required.min()) - 100, max(u[0].max(), q_dot_required.max()) + 100)
-#     ax1.set_ylim(np.min(u[1:]) - 0.1, np.max(u[1:]) + 0.1)
-#
-#     # Initialize the plot lines
-#     def init():
-#         line1.set_data([], [])
-#         line2.set_data([], [])
-#         line3.set_data([], [])
-#         line4.set_data([], [])
-#         line5.set_data([], [])
-#         line6.set_data([], [])
-#         line7.set_data([], [])
-#         line8.set_data([], [])
-#         line9.set_data([], [])
-#         return line1, line2, line3, line4, line5, line6, line7, line8, line9
-#
-#     # Update the plot lines for each frame
-#     def update(frame):
-#         line1.set_data(t[:frame], y[0, :frame])
-#         line2.set_data(t[:frame], y[1, :frame])
-#         line3.set_data(t[:frame], T_load[:frame])
-#         line4.set_data(t[:frame], Q_dot_load[:frame])
-#         line5.set_data(t[:frame], P_heat[:frame])
-#         line6.set_data(t[:frame], u[0, :frame])
-#         line7.set_data(t[:frame], q_dot_required[:frame])
-#         line8.set_data(t[:frame], u[1, :frame])
-#         line9.set_data(t[:frame], u[2, :frame])
-#         return line1, line2, line3, line4, line5, line6, line7, line8, line9
-#
-#     ani = FuncAnimation(
-#         fig,
-#         update,
-#         frames=n_steps,
-#         init_func=init,
-#         blit=True,
-#         repeat=False,
-#         interval=1,  # Adjust this value to change the speed (lower value = faster animation)
-#     )
-#
-#     plt.tight_layout()
-#     plt.show()
 
 
 def fd_gradients(y0, u, dae_p, n_steps, parameters):
@@ -677,6 +583,7 @@ def plot_history(hist, only_last=True):
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
     parameters["y0"] = y0
 
+
     storeHistory = History(hist)
     histories = storeHistory.getValues()
 
@@ -692,6 +599,9 @@ def plot_history(hist, only_last=True):
         u[1] = histories["m_dot_cond"][i]
         u[2] = histories["m_dot_load"][i]
         u[3] = parameters["t_amb"]
+
+        parameters["e_bat"] = histories["e_bat"][i]
+        parameters["p_bat"] = histories["p_bat"][i]
 
         # p[0] = cp_water
         # p[1] = m_tank
@@ -812,7 +722,7 @@ def main(hist=None):
 
 
 if __name__ == "__main__":
-    main()
-    # plot_history(hist="saves/sand_wo_finn_full_dae.hst", only_last=True)
-    # plot_history(hist="saves/sand_wo_finn_full_dae.hst", only_last=False)
+    # main()
+    plot_history(hist="saves/full_sand_wo_finn.hst", only_last=True)
+    # plot_history(hist="saves/sand_wo_finn.hst", only_last=False)
     # plot_history(hist="saves/mdf_wo_finn.hst", only_last=True)
