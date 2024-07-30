@@ -484,14 +484,14 @@ def sens(opt, design_variables: DesignVariables, func_values):
     dcostdp_bat = get_dcostdp_bat(h, cost_grid, p_bat, p_compressor, p_required, p_solar)
 
     return {
-        "obj": {
-            "p_compressor": h * cost_grid,
-            "p_bat": h * cost_grid,
-        },
         # "obj": {
-        #     "p_compressor": dcostdp_compressor,
-        #     "p_bat": dcostdp_bat,
+        #     "p_compressor": h * cost_grid,
+        #     "p_bat": h * cost_grid,
         # },
+        "obj": {
+            "p_compressor": dcostdp_compressor,
+            "p_bat": dcostdp_bat,
+        },
         "dae1_constraint": dae1_jac,
         "dae2_constraint": dae2_jac,
         "q_required_constraint": q_required_jac,
@@ -747,7 +747,7 @@ def run_optimization(parameters, plot=True):
         "print_level": 5,
         "max_iter": 500,
         # "tol": 1e-2,
-        "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        # "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
         # "acceptable_tol": 1e-3,
         # "acceptable_obj_change_tol": 1e-3,

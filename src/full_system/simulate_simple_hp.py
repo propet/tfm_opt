@@ -472,7 +472,7 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     axes[1].plot(t, t_tank, label="T_tank", **plot_styles[0])
     # axes[1].plot(t, t_cond, label="T_cond", **plot_styles[1])
     # axes[1].plot(t, t_load, label="T_load", **plot_styles[2])
-    # axes[1].plot(t, t_amb, label="T_amb", **plot_styles[3])
+    axes[1].plot(t, t_amb, label="T_amb", **plot_styles[3])
     axes[1].set_ylabel("Temperature (K)")
     # axes[1].set_title("Temperature Profiles")
     axes[1].legend(loc="upper left")

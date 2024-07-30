@@ -6,6 +6,7 @@ import imageio
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 from custom_types import PlotData
 import scienceplots
 from parameters import PARAMS
@@ -21,8 +22,127 @@ ROOT_DIR = os.path.join(CURRENT_DIR, "..")
 # Scienceplots style
 plt.style.use(["science", "ieee"])
 plt.rcParams.update({"figure.dpi": "300"})
-prop_cycle = cycler("color", ["k", "r", "b", "g", "purple", "salmon"]) + cycler("linestyle", ["-", "--", ":", "-.", (5, (10, 3)), ":"])
+prop_cycle = cycler("color", ["k", "r", "b", "g", "purple", "salmon"]) + cycler(
+    "linestyle", ["-", "--", ":", "-.", (5, (10, 3)), ":"]
+)
 plot_styles = list(prop_cycle)
+
+
+def get_tank_data():
+    filepath = f"{ROOT_DIR}/data/equipment_costs/water_tanks.csv"
+    df = pd.read_csv(
+        filepath,
+        sep=",",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+    volume = df.iloc[:, 4].to_numpy()
+    cost = df.iloc[:, 5].to_numpy()
+    return volume, cost
+
+
+def get_batteries_data():
+    filepath = f"{ROOT_DIR}/data/equipment_costs/lifepo4_batteries.csv"
+    df = pd.read_csv(
+        filepath,
+        sep=",",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+    watts_second = df.iloc[:, 5].to_numpy()
+    cost = df.iloc[:, 10].to_numpy()
+    return watts_second, cost
+
+
+def get_hp_data():
+    filepath = f"{ROOT_DIR}/data/equipment_costs/heat_pumps.csv"
+    df = pd.read_csv(
+        filepath,
+        sep=",",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+    heat = df.iloc[:, 3].to_numpy()
+    power = df.iloc[:, 5].to_numpy()
+    cost = df.iloc[:, 6].to_numpy()
+    return power, cost, heat
+
+
+def get_hp_depreciation_by_second(hp_power):
+    """
+    hp_power [W]
+    maximum power for compressor, not heat capacity
+    """
+    seconds_in_year = 365 * 24 * 3600
+    years_lifespan = 20
+    cost0 = 871.9339209961945  # from linear regression
+    slope = 1.783401453095622  # [$/W] from linear regression
+    cost = cost0 + slope * hp_power
+    depreciation_by_second = cost / (seconds_in_year * years_lifespan)
+    return depreciation_by_second
+
+
+def get_tank_depreciation_by_second(tank_volume):
+    """
+    tank_volume [m3]
+    """
+    seconds_in_year = 365 * 24 * 3600
+    years_lifespan = 20
+    cost0 = 663.2745177542383  # from linear regression
+    slope = 5235.333812731176  # [$/m3] from linear regression
+    cost = cost0 + slope * tank_volume
+    depreciation_by_second = cost / (seconds_in_year * years_lifespan)
+    return depreciation_by_second
+
+
+def get_battery_depreciation_by_joule(e_bat_max):
+    """
+    e_bat_max [Ws]
+    """
+    cost0 = 11.873235223976735  # from linear regression
+    slope = 0.00016994110156603917  # [$/Wh] -> 600[$/kWh] from linear regression
+    cost = cost0 + slope * e_bat_max
+
+    # https://cdn.autosolar.es/pdf/fichas-tecnicas/Bat-LFP-12,8-25,6V-Smart-ES.pdf
+    n_cycles = 3000
+    dod = 0.7
+
+    # times 2 because in each cycle we have a charge and discharge
+    total_lifespan_energy_moved = n_cycles * 2 * dod * e_bat_max
+    depreciation_by_joule = cost / total_lifespan_energy_moved
+    return depreciation_by_joule
+
+
+def get_solar_panels_depreciation_by_second(solar_installed_power):
+    """
+    solar_installed_power [W]
+    """
+    seconds_in_year = 365 * 24 * 3600
+    years_lifespan = 20
+    price_per_w = 1.161
+    cost = price_per_w * solar_installed_power
+    depreciation_by_second = cost / (seconds_in_year * years_lifespan)
+    return depreciation_by_second
+
+
+def linear_regression(x, y):
+    x = x.reshape(-1, 1)
+
+    # Create and train the model
+    model = LinearRegression()
+    model.fit(x, y)
+
+    # y = y0 + m * x
+    m = model.coef_[0]
+    y0 = model.intercept_
+
+    return y0, m
 
 
 def sigmoid(x):
@@ -380,7 +500,7 @@ def jax_to_numpy(jax_func):
     return numpy_func
 
 
-if __name__ == "__main__":
+def plot_dynamic_parameters():
     t0 = 0
     # t0 = 24 * 3600 * 90
     h = 100
@@ -393,13 +513,6 @@ if __name__ == "__main__":
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
-
-    print("------------")
-    print(np.mean(parameters["cost_grid"]))
-    print(np.mean(parameters["q_dot_required"]))
-    print(np.mean(parameters["p_required"]))
-    print(np.mean(parameters["t_amb"]))
-    print(np.mean(parameters["w_solar_per_w_installed"]))
 
     time = np.arange(t0, t0 + horizon, h)
     print("time.shape: ", time.shape)
@@ -420,3 +533,96 @@ if __name__ == "__main__":
 
     plt.grid(True)
     plt.show()
+
+
+def plot_data_regressions():
+    tank_volume_data, tank_cost_data = get_tank_data()
+    battery_watts_second_data, battery_cost_data = get_batteries_data()
+    hp_power_w_data, hp_cost_data, hp_heat_w_data = get_hp_data()
+
+    # Water tank
+    tank_cost0, tank_slope = linear_regression(tank_volume_data, tank_cost_data)
+    print(f"tank y0: {tank_cost0}, slope: {tank_slope}")
+    tank_volume = np.linspace(0, 4, 1000)
+    tank_cost = tank_cost0 + tank_slope * tank_volume
+    plt.scatter(tank_volume_data, tank_cost_data, **plot_styles[0])
+    plt.plot(tank_volume, tank_cost, **plot_styles[1])
+    plt.title("Water tank cost")
+    plt.ylabel("€")
+    plt.xlabel(r"$m^3$")
+    plt.show()
+
+    # # Water tank scaled from m3 to liters
+    # tank_volume_data  = tank_volume_data * 1000
+    # tank_volume = np.linspace(0, 4000, 1000)
+    # tank_cost0, tank_slope = linear_regression(tank_volume_data, tank_cost_data)
+    # tank_cost = tank_cost0 + tank_slope * tank_volume
+    # plt.scatter(tank_volume_data, tank_cost_data, **plot_styles[0])
+    # plt.plot(tank_volume, tank_cost, **plot_styles[1])
+    # plt.title("Water tank cost")
+    # plt.ylabel("€")
+    # plt.xlabel(r"$l$")
+    # plt.show()
+
+    # Batteries
+    battery_cost0, battery_slope = linear_regression(battery_watts_second_data, battery_cost_data)
+    print(f"battery y0: {battery_cost0}, slope: {battery_slope}")
+    battery_watts_second = np.linspace(0, 90000000)
+    battery_cost = battery_cost0 + battery_slope * battery_watts_second
+    plt.scatter(battery_watts_second_data, battery_cost_data, **plot_styles[0])
+    plt.plot(battery_watts_second, battery_cost, **plot_styles[1])
+    plt.title("Battery cost")
+    plt.xlabel(r"$W \cdot s$")
+    plt.ylabel("€")
+    plt.show()
+
+    # # Batteries scaled from Ws to Wh
+    # battery_kwatts_hour_data  = battery_watts_second_data / 3600 / 1000
+    # battery_cost0, battery_slope = linear_regression(battery_kwatts_hour_data, battery_cost_data)
+    # battery_kwatts_hour = np.linspace(0, 90000000 / 3600 / 1000, 1000)
+    # battery_cost = battery_cost0 + battery_slope * battery_kwatts_hour
+    # plt.scatter(battery_kwatts_hour_data, battery_cost_data, **plot_styles[0])
+    # plt.plot(battery_kwatts_hour, battery_cost, **plot_styles[1])
+    # plt.title("Battery cost")
+    # plt.xlabel(r"$kW \cdot h$")
+    # plt.ylabel("€")
+    # plt.show()
+
+    # Heat pumps
+    hp_cost0, hp_slope = linear_regression(hp_power_w_data, hp_cost_data)
+    print(f"hp y0: {hp_cost0}, slope: {hp_slope}")
+    hp_power_w = np.linspace(1000, 5100, 1000)
+    hp_cost = hp_cost0 + hp_slope * hp_power_w
+    plt.scatter(hp_power_w_data, hp_cost_data, **plot_styles[0])
+    plt.plot(hp_power_w, hp_cost, **plot_styles[1])
+    plt.title("Heat pump cost")
+    plt.xlabel(r"$W$")
+    plt.ylabel("€")
+    plt.show()
+
+    # # Heat pumps scaled from W to kW
+    # hp_power_kw_data = hp_power_w_data / 1000
+    # hp_cost0, hp_slope = linear_regression(hp_power_kw_data, hp_cost_data)
+    # hp_power_kw = np.linspace(1, 5.1, 1000)
+    # hp_cost = hp_cost0 + hp_slope * hp_power_kw
+    # plt.scatter(hp_power_kw_data, hp_cost_data, **plot_styles[0])
+    # plt.plot(hp_power_kw, hp_cost, **plot_styles[1])
+    # plt.title("Heat pump cost")
+    # plt.xlabel(r"$kW$")
+    # plt.ylabel("€")
+    # plt.show()
+
+    # Solar
+    solar_power_kw = np.linspace(0, 10, 1000)
+    solar_panels_price_per_kw = 1161
+    solar_cost = solar_panels_price_per_kw * solar_power_kw
+    plt.plot(solar_power_kw, solar_cost, **plot_styles[0])
+    plt.title("Solar panels cost")
+    plt.xlabel(r"$kW$")
+    plt.ylabel("€")
+    plt.show()
+
+
+if __name__ == "__main__":
+    plot_data_regressions()
+    # plot_dynamic_parameters()

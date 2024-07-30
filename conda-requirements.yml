@@ -15,6 +15,7 @@ dependencies:
   - petsc
   - petsc4py
   - scikits.odes
+  - scikit-learn
   - ipopt
   - openmdao-with-all
   - jax

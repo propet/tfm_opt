@@ -14,7 +14,7 @@
 
 PARAMS = {
     "H": 100,  # stepsize [s]
-    "HORIZON": 100000 * 10,  # s
+    "HORIZON": 100000 * 3,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 13000,  # Wh
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) Ws
