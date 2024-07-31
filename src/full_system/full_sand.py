@@ -3,7 +3,17 @@ from pyoptsparse import OPT, History
 import matplotlib.pyplot as plt
 from parameters import PARAMS
 from opt import Opt
-from utils import get_dynamic_parameters, plot_film, jax_to_numpy
+from utils import (
+    get_dynamic_parameters,
+    get_solar_panels_depreciation_by_second,
+    jax_to_numpy,
+    get_battery_depreciation_by_joule,
+    get_battery_depreciation_by_second,
+    get_solar_panels_depreciation_by_second,
+    get_tank_depreciation_by_second,
+    get_hp_depreciation_by_joule,
+    get_fixed_energy_cost_by_second,
+)
 from typing import List, Dict
 from custom_types import DesignVariables, PlotData, DesignVariableInfo, ConstraintInfo, Parameters
 import scipy.sparse as sp
@@ -16,29 +26,85 @@ jax.config.update("jax_enable_x64", True)
 
 def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Design variables
-    p_bat = design_variables["p_bat"]
     p_compressor = design_variables["p_compressor"]
+    p_bat = design_variables["p_bat"]
+
+    # Sizing
+    parameters = opt.parameters
+    e_bat_max = parameters["E_BAT_MAX"]
+    solar_size = parameters["SOLAR_SIZE"]
+    p_compressor_max = parameters["P_COMPRESSOR_MAX"]
+    tank_volume = parameters["TANK_VOLUME"]
+    p_grid_max = parameters["P_GRID_MAX"]
 
     # Parameters
-    parameters = opt.parameters
-    h = parameters["H"]
-    solar_size = parameters["SOLAR_SIZE"]
+    h = np.ones(p_compressor.shape[0]) * parameters["H"]
     p_required = parameters["p_required"]
-    daily_prices = parameters["daily_prices"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
 
-    cost = cost_function(h, daily_prices, p_bat, p_compressor, p_required, p_solar)
+    cost = cost_function(
+        h,
+        p_bat,
+        p_compressor,
+        p_required,
+        p_solar,
+        e_bat_max,
+        solar_size,
+        p_compressor_max,
+        p_grid_max,
+        tank_volume,
+        pvpc_prices,
+        excess_prices,
+    )
     return np.array(cost)
 
 
-def cost_function(h, daily_prices, p_bat, p_compressor, p_required, p_solar):
+def cost_function(
+    h,
+    p_bat,
+    p_compressor,
+    p_required,
+    p_solar,
+    e_bat_max,
+    solar_size,
+    p_compressor_max,
+    p_grid_max,
+    tank_volume,
+    pvpc_prices,
+    excess_prices,
+):
     p_grid = -p_solar + p_compressor + p_bat + p_required
-    cost = jnp.sum(h * daily_prices * p_grid)
+    cost = (
+        # Variable energy cost
+        # buy at pvpc price, sell at excess price
+        jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid))
+        # buy and sell at the same daily_price
+        # jnp.sum(h * excess_prices * p_grid)
+
+        # Fixed energy cost
+        + h * get_fixed_energy_cost_by_second(p_grid_max)
+
+        # depreciate battery by usage
+        + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
+        # depreciate battery by time
+        # + jnp.sum(h * get_battery_depreciation_by_second(e_bat_max))
+
+        # depreciate solar panels by time
+        + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
+
+        # depreciate heat pump by usage
+        + jnp.sum(h * jnp.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max))
+
+        # depreciate water tank by time
+        + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
+    )
     return cost
 
 
-get_dcostdp_bat_jax = jax.jit(jax.jacobian(cost_function, argnums=2))
-get_dcostdp_compressor_jax = jax.jit(jax.jacobian(cost_function, argnums=3))
+get_dcostdp_bat_jax = jax.jit(jax.jacobian(cost_function, argnums=1))
+get_dcostdp_compressor_jax = jax.jit(jax.jacobian(cost_function, argnums=2))
 get_dcostdp_bat = jax_to_numpy(get_dcostdp_bat_jax)
 get_dcostdp_compressor = jax_to_numpy(get_dcostdp_compressor_jax)
 
@@ -193,7 +259,6 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     m_tank = parameters["TANK_VOLUME"] * parameters["RHO_WATER"]
     U = parameters["U"]
     A = 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3)  # tank surface area (m2)
-    daily_prices = parameters["daily_prices"]
     t_amb = parameters["t_amb"]
     q_dot_required = parameters["q_dot_required"]
     e_bat_max = parameters["E_BAT_MAX"]
@@ -442,20 +507,20 @@ def get_constraint_sparse_jacs(parameters, design_variables):
 def sens(opt, design_variables: DesignVariables, func_values):
     # Parameters
     parameters = opt.parameters
-    load_hx_eff = parameters["LOAD_HX_EFF"]
-    cp_water = parameters["CP_WATER"]
-    t_amb = parameters["t_amb"]
     h = parameters["H"]
-    daily_prices = parameters["daily_prices"]
     p_required = parameters["p_required"]
+    e_bat_max = parameters["E_BAT_MAX"]
+    p_compressor_max = parameters["P_COMPRESSOR_MAX"]
     solar_size = parameters["SOLAR_SIZE"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
+    tank_volume = parameters["TANK_VOLUME"]
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
 
     # Design variables
-    t_tank = design_variables["t_tank"]
-    m_dot_load = design_variables["m_dot_load"]
     p_compressor = design_variables["p_compressor"]
     p_bat = design_variables["p_bat"]
+    e_bat = design_variables["e_bat"]
 
     (
         dae1_jac,
@@ -478,19 +543,37 @@ def sens(opt, design_variables: DesignVariables, func_values):
         e_bat_0_wrt,
     ) = get_constraint_sparse_jacs(parameters, design_variables)
 
-    # p_grid = -p_solar + p_compressor + p_bat + p_required
-    # cost = jnp.sum(h * daily_prices * p_grid)
-    dcostdp_compressor = get_dcostdp_compressor(h, daily_prices, p_bat, p_compressor, p_required, p_solar)
-    dcostdp_bat = get_dcostdp_bat(h, daily_prices, p_bat, p_compressor, p_required, p_solar)
+    dcostdp_bat = get_dcostdp_bat(
+        h,
+        p_bat,
+        p_compressor,
+        p_required,
+        p_solar,
+        e_bat_max,
+        solar_size,
+        p_compressor_max,
+        tank_volume,
+        pvpc_prices,
+        excess_prices,
+    )
+    dcostdp_compressor = get_dcostdp_compressor(
+        h,
+        p_bat,
+        p_compressor,
+        p_required,
+        p_solar,
+        e_bat_max,
+        solar_size,
+        p_compressor_max,
+        tank_volume,
+        pvpc_prices,
+        excess_prices,
+    )
 
     return {
-        # "obj": {
-        #     "p_compressor": h * daily_prices,
-        #     "p_bat": h * daily_prices,
-        # },
         "obj": {
-            "p_compressor": dcostdp_compressor,
             "p_bat": dcostdp_bat,
+            "p_compressor": dcostdp_compressor,
         },
         "dae1_constraint": dae1_jac,
         "dae2_constraint": dae2_jac,
@@ -696,6 +779,7 @@ def run_optimization(parameters, plot=True):
         "name": "p_grid_constraint",
         "n_constraints": n_steps,
         "lower": -parameters["P_GRID_MAX"],
+        # "lower": 0,  # off-grid
         "upper": parameters["P_GRID_MAX"],
         "function": p_grid_constraint_fun,
         "scale": 1 / parameters["P_GRID_MAX"],
@@ -745,9 +829,9 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 500,
+        "max_iter": 1000,
         # "tol": 1e-2,
-        # "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
         # "acceptable_tol": 1e-3,
         # "acceptable_obj_change_tol": 1e-3,
@@ -788,11 +872,12 @@ if __name__ == "__main__":
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
-    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
+    parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
     y0 = {
         "t_tank": 298.3,

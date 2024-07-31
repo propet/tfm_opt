@@ -74,18 +74,34 @@ def get_hp_data():
     return power, cost, heat
 
 
-def get_hp_depreciation_by_second(hp_power):
+def get_generator_data():
+    filepath = f"{ROOT_DIR}/data/equipment_costs/gensets.csv"
+    df = pd.read_csv(
+        filepath,
+        sep=",",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+    power = df.iloc[:, 3].to_numpy()
+    cost = df.iloc[:, 4].to_numpy()
+    return power, cost
+
+
+
+def get_hp_depreciation_by_joule(hp_power):
     """
-    hp_power [W]
-    maximum power for compressor, not heat capacity
+    hp_power [W]: maximum power for compressor, not heat capacity
     """
-    seconds_in_year = 365 * 24 * 3600
     years_lifespan = 20
+    seconds_in_year = 365 * 24 * 3600
+    seconds_in_lifespan = seconds_in_year * years_lifespan
     cost0 = 871.9339209961945  # from linear regression
     slope = 1.783401453095622  # [$/W] from linear regression
     cost = cost0 + slope * hp_power
-    depreciation_by_second = cost / (seconds_in_year * years_lifespan)
-    return depreciation_by_second
+    depreciation_by_joule = cost / (hp_power * seconds_in_lifespan)
+    return depreciation_by_joule
 
 
 def get_tank_depreciation_by_second(tank_volume):
@@ -103,20 +119,35 @@ def get_tank_depreciation_by_second(tank_volume):
 
 def get_battery_depreciation_by_joule(e_bat_max):
     """
-    e_bat_max [Ws]
+    e_bat_max [Ws]: max capacity of the battery
     """
     cost0 = 11.873235223976735  # from linear regression
-    slope = 0.00016994110156603917  # [$/Wh] -> 600[$/kWh] from linear regression
+    slope = 0.00016994110156603917  # [$/Ws] -> 600[$/kWh] from linear regression
     cost = cost0 + slope * e_bat_max
 
     # https://cdn.autosolar.es/pdf/fichas-tecnicas/Bat-LFP-12,8-25,6V-Smart-ES.pdf
-    n_cycles = 3000
+    # n_cycles = 3000
+    n_cycles = 6000
     dod = 0.7
 
-    # times 2 because in each cycle we have a charge and discharge
-    total_lifespan_energy_moved = n_cycles * 2 * dod * e_bat_max
-    depreciation_by_joule = cost / total_lifespan_energy_moved
+    # Depreciate by how much energy has been transferred
+    total_lifespan_energy_transferred = n_cycles * 2 * dod * e_bat_max  # times 2 because in a cycle we charge and discharge
+    depreciation_by_joule = cost / total_lifespan_energy_transferred
     return depreciation_by_joule
+
+
+def get_battery_depreciation_by_second(e_bat_max):
+    """
+    e_bat_max [Ws]: max capacity of the battery
+    """
+    seconds_in_year = 365 * 24 * 3600
+    years_lifespan = 20
+    seconds_in_lifespan = seconds_in_year * years_lifespan
+    cost0 = 11.873235223976735  # from linear regression
+    slope = 0.00016994110156603917  # [$/Ws] -> 600[$/kWh] from linear regression
+    cost = cost0 + slope * e_bat_max
+    depreciation_by_second = cost / seconds_in_lifespan
+    return depreciation_by_second
 
 
 def get_solar_panels_depreciation_by_second(solar_installed_power):
@@ -129,6 +160,26 @@ def get_solar_panels_depreciation_by_second(solar_installed_power):
     cost = price_per_w * solar_installed_power
     depreciation_by_second = cost / (seconds_in_year * years_lifespan)
     return depreciation_by_second
+
+
+def get_generator_depreciation_by_joule(generator_power):
+    """
+    generator_power [W]
+    """
+    years_lifespan = 10
+    seconds_in_year = 365 * 24 * 3600
+    seconds_in_lifespan = seconds_in_year * years_lifespan
+    cost0 = 2637.2943203079794  # from linear regression
+    slope = 0.18673399507937297  # [$/m3] from linear regression
+    cost = cost0 + slope * generator_power
+    depreciation_by_joule = cost / (generator_power * seconds_in_lifespan)
+    return depreciation_by_joule
+
+
+def get_fixed_energy_cost_by_second(p_grid_max):
+    # 39.1 $/(kW*year)
+    fixed_cost_by_second = (p_grid_max * 39.1) / (1000 * 8760 * 3600)
+    return fixed_cost_by_second
 
 
 def linear_regression(x, y):
@@ -236,14 +287,15 @@ def load_dict_from_file(filename):
 
 
 def get_dynamic_parameters(t0, h, horizon, year=2022):
-
     dynamic_parameters = {}
     t_amb_every_second = get_t_amb_every_second(year=2022)
     dynamic_parameters["t_amb"] = get_t_amb(t_amb_every_second, t0, h, horizon)
-    dynamic_parameters["cost_grid"] = get_cost_grid(t0, h, horizon, year=2022)
-    dynamic_parameters["w_solar_per_w_installed"] = get_w_solar_per_w_installed(t0, h, horizon, year=2022)
+    dynamic_parameters["w_solar_per_w_installed"] = get_w_solar_per_w_installed(t0, h, horizon, year=year)
     dynamic_parameters["q_dot_required"] = get_q_dot_required(t_amb_every_second, t0, h, horizon)
     dynamic_parameters["p_required"] = get_p_required(t0, h, horizon)
+    dynamic_parameters["daily_prices"] = get_daily_prices(t0, h, horizon, year=year)
+    dynamic_parameters["pvpc_prices"] = get_pvpc_prices(t0, h, horizon, year=year)
+    dynamic_parameters["excess_prices"] = get_excess_prices(t0, h, horizon, year=year)
     return dynamic_parameters
 
 
@@ -319,12 +371,12 @@ def get_t_amb_every_second(year=2022):
     return t_amb_every_second
 
 
-def get_cost_grid(t0, h, horizon, year=2022):
+def get_daily_prices(t0, h, horizon, year=2022):
     n_hours = 8760
-    cost_grid_by_hour = get_grid_prices_kwh(n_hours, year=year)
-    cost_grid_by_second = np.repeat(cost_grid_by_hour, 3600)  # 1hour == 3600s
-    cost_grid_by_second = cost_grid_by_second / (1000 * 3600)  # $/(kWh) to $/(Ws)
-    return cost_grid_by_second[t0 : t0 + horizon : h]
+    daily_prices_by_hour = get_grid_prices_kwh(n_hours, year=year)
+    daily_prices_by_second = np.repeat(daily_prices_by_hour, 3600)  # 1hour == 3600s
+    daily_prices_by_second = daily_prices_by_second / (1000 * 3600)  # $/(kWh) to $/(Ws)
+    return daily_prices_by_second[t0 : t0 + horizon : h]
 
 
 def get_w_solar_per_w_installed(t0, h, horizon, year=2022):
@@ -407,7 +459,7 @@ def get_electric_demand_powers(max_electric_demand, n_hours):
 
 
 def get_grid_prices_kwh(n_hours, year=2022):
-    directory = f"{ROOT_DIR}/data/grid_prices_hourly/mercado_diario_precio_horario_{year}"
+    directory = f"{ROOT_DIR}/data/omie_daily_prices_hourly/mercado_diario_precio_horario_{year}"
     grid_prices_mwh = []
 
     # Loop over every csv file
@@ -433,6 +485,38 @@ def get_grid_prices_kwh(n_hours, year=2022):
     grid_prices_mwh = grid_prices_mwh[:n_hours]
     grid_prices_kwh = np.array(grid_prices_mwh) * 1e-3
     return grid_prices_kwh
+
+
+def get_pvpc_prices(t0, h, horizon, year=2022):
+    filepath = f"{ROOT_DIR}/data/pvpc_prices_hourly/pvpc_{year}.csv"
+    df = pd.read_csv(
+        filepath,
+        sep=";",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+    pvpc_MWh_hourly = df.iloc[:, 4].to_numpy()
+    pvpc_MWh_by_second = np.repeat(pvpc_MWh_hourly, 3600)  # 1hour == 3600s
+    pvpc_Ws_by_second = pvpc_MWh_by_second / (1e6 * 3600)  # $/(MWh) to $/(Ws)
+    return pvpc_Ws_by_second[t0 : t0 + horizon : h]
+
+
+def get_excess_prices(t0, h, horizon, year=2022):
+    filepath = f"{ROOT_DIR}/data/excess_power_prices_hourly/precio_compensacion_excedentes_{year}.csv"
+    df = pd.read_csv(
+        filepath,
+        sep=";",
+        header=None,
+        skiprows=1,
+        skipfooter=0,
+        engine="python",
+    )
+    excess_price_MWh_hourly = df.iloc[:, 4].to_numpy()
+    excess_price_MWh_by_second = np.repeat(excess_price_MWh_hourly, 3600)  # 1hour == 3600s
+    excess_price_Ws_by_second = excess_price_MWh_by_second / (1e6 * 3600)  # $/(MWh) to $/(Ws)
+    return excess_price_Ws_by_second[t0 : t0 + horizon : h]
 
 
 def ks_max(x: np.ndarray, rho: float = 100):
@@ -499,6 +583,32 @@ def jax_to_numpy(jax_func):
 
     return numpy_func
 
+def plot_prices():
+    t0 = 0
+    # t0 = 24 * 3600 * 90
+    h = 100
+    horizon = 3600 * 24 * 365
+
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
+    parameters = PARAMS
+    daily_prices = dynamic_parameters["daily_prices"]
+    pvpc_prices = dynamic_parameters["pvpc_prices"]
+    excess_prices = dynamic_parameters["excess_prices"]
+    daily_prices = daily_prices * 1e3 * 3600  # Ws to kWh
+    pvpc_prices = pvpc_prices * 1e3 * 3600  # Ws to kWh
+    excess_prices = excess_prices * 1e3 * 3600  # Ws to kWh
+
+    time = np.arange(t0, t0 + horizon, h)
+
+    plt.plot(time / 3600, daily_prices, label="diario", **plot_styles[0])
+    plt.plot(time / 3600, pvpc_prices, label="pvpc", **plot_styles[1])
+    plt.plot(time / 3600, excess_prices, label="compensación", **plot_styles[2])
+
+    plt.legend()
+    plt.xlabel("horas")
+    plt.ylabel(r"€$/kWh$")
+    plt.grid(True)
+    plt.show()
 
 def plot_dynamic_parameters():
     t0 = 0
@@ -508,28 +618,30 @@ def plot_dynamic_parameters():
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
     time = np.arange(t0, t0 + horizon, h)
     print("time.shape: ", time.shape)
     print("p_required shape: ", parameters["p_required"].shape)
 
     fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-
-    axes[0].plot(time / 3600, parameters["p_required"], label="p_required", **plot_styles[0])
+    # axes[0].plot(time / 3600, parameters["p_required"], label="p_required", **plot_styles[0])
+    axes[0].plot(time / 3600, parameters["t_amb"], label="t_amb", **plot_styles[0])
     axes[0].legend()
 
-    # axes[0].plot(time / 3600, parameters["cost_grid"], label="cost_grid", **plot_styles[0])
+    # axes[0].plot(time / 3600, parameters["daily_prices"], label="daily_prices", **plot_styles[0])
     # axes[0].legend()
 
-    # axes[1].plot(time / 3600, parameters["w_solar_per_w_installed"], label="w_solar_per_w_installed", **plot_styles[1])
-    axes[1].plot(time / 3600, parameters["cost_grid"], label="cost_grid", **plot_styles[0])
-    axes[1].legend()
-    axes[1].set_xlabel("hour", fontsize=14)
+    axes[1].plot(time / 3600, parameters["w_solar_per_w_installed"], label="w_solar_per_w_installed", **plot_styles[1])
+    # axes[1].plot(time / 3600, parameters["daily_prices"], label="daily_prices", **plot_styles[0])
+    # axes[1].legend()
+    # axes[1].set_xlabel("hour", fontsize=14)
 
     plt.grid(True)
     plt.show()
@@ -539,18 +651,19 @@ def plot_data_regressions():
     tank_volume_data, tank_cost_data = get_tank_data()
     battery_watts_second_data, battery_cost_data = get_batteries_data()
     hp_power_w_data, hp_cost_data, hp_heat_w_data = get_hp_data()
+    generator_power_w_data, generator_cost_data = get_generator_data()
 
-    # Water tank
-    tank_cost0, tank_slope = linear_regression(tank_volume_data, tank_cost_data)
-    print(f"tank y0: {tank_cost0}, slope: {tank_slope}")
-    tank_volume = np.linspace(0, 4, 1000)
-    tank_cost = tank_cost0 + tank_slope * tank_volume
-    plt.scatter(tank_volume_data, tank_cost_data, **plot_styles[0])
-    plt.plot(tank_volume, tank_cost, **plot_styles[1])
-    plt.title("Water tank cost")
-    plt.ylabel("€")
-    plt.xlabel(r"$m^3$")
-    plt.show()
+    # # Water tank
+    # tank_cost0, tank_slope = linear_regression(tank_volume_data, tank_cost_data)
+    # print(f"tank y0: {tank_cost0}, slope: {tank_slope}")
+    # tank_volume = np.linspace(0, 4, 1000)
+    # tank_cost = tank_cost0 + tank_slope * tank_volume
+    # plt.scatter(tank_volume_data, tank_cost_data, **plot_styles[0])
+    # plt.plot(tank_volume, tank_cost, **plot_styles[1])
+    # plt.title("Water tank cost")
+    # plt.ylabel("€")
+    # plt.xlabel(r"$m^3$")
+    # plt.show()
 
     # # Water tank scaled from m3 to liters
     # tank_volume_data  = tank_volume_data * 1000
@@ -564,17 +677,17 @@ def plot_data_regressions():
     # plt.xlabel(r"$l$")
     # plt.show()
 
-    # Batteries
-    battery_cost0, battery_slope = linear_regression(battery_watts_second_data, battery_cost_data)
-    print(f"battery y0: {battery_cost0}, slope: {battery_slope}")
-    battery_watts_second = np.linspace(0, 90000000)
-    battery_cost = battery_cost0 + battery_slope * battery_watts_second
-    plt.scatter(battery_watts_second_data, battery_cost_data, **plot_styles[0])
-    plt.plot(battery_watts_second, battery_cost, **plot_styles[1])
-    plt.title("Battery cost")
-    plt.xlabel(r"$W \cdot s$")
-    plt.ylabel("€")
-    plt.show()
+    # # Batteries
+    # battery_cost0, battery_slope = linear_regression(battery_watts_second_data, battery_cost_data)
+    # print(f"battery y0: {battery_cost0}, slope: {battery_slope}")
+    # battery_watts_second = np.linspace(0, 90000000)
+    # battery_cost = battery_cost0 + battery_slope * battery_watts_second
+    # plt.scatter(battery_watts_second_data, battery_cost_data, **plot_styles[0])
+    # plt.plot(battery_watts_second, battery_cost, **plot_styles[1])
+    # plt.title("Battery cost")
+    # plt.xlabel(r"$W \cdot s$")
+    # plt.ylabel("€")
+    # plt.show()
 
     # # Batteries scaled from Ws to Wh
     # battery_kwatts_hour_data  = battery_watts_second_data / 3600 / 1000
@@ -588,17 +701,17 @@ def plot_data_regressions():
     # plt.ylabel("€")
     # plt.show()
 
-    # Heat pumps
-    hp_cost0, hp_slope = linear_regression(hp_power_w_data, hp_cost_data)
-    print(f"hp y0: {hp_cost0}, slope: {hp_slope}")
-    hp_power_w = np.linspace(1000, 5100, 1000)
-    hp_cost = hp_cost0 + hp_slope * hp_power_w
-    plt.scatter(hp_power_w_data, hp_cost_data, **plot_styles[0])
-    plt.plot(hp_power_w, hp_cost, **plot_styles[1])
-    plt.title("Heat pump cost")
-    plt.xlabel(r"$W$")
-    plt.ylabel("€")
-    plt.show()
+    # # Heat pumps
+    # hp_cost0, hp_slope = linear_regression(hp_power_w_data, hp_cost_data)
+    # print(f"hp y0: {hp_cost0}, slope: {hp_slope}")
+    # hp_power_w = np.linspace(1000, 5100, 1000)
+    # hp_cost = hp_cost0 + hp_slope * hp_power_w
+    # plt.scatter(hp_power_w_data, hp_cost_data, **plot_styles[0])
+    # plt.plot(hp_power_w, hp_cost, **plot_styles[1])
+    # plt.title("Heat pump cost")
+    # plt.xlabel(r"$W$")
+    # plt.ylabel("€")
+    # plt.show()
 
     # # Heat pumps scaled from W to kW
     # hp_power_kw_data = hp_power_w_data / 1000
@@ -612,17 +725,29 @@ def plot_data_regressions():
     # plt.ylabel("€")
     # plt.show()
 
-    # Solar
-    solar_power_kw = np.linspace(0, 10, 1000)
-    solar_panels_price_per_kw = 1161
-    solar_cost = solar_panels_price_per_kw * solar_power_kw
-    plt.plot(solar_power_kw, solar_cost, **plot_styles[0])
-    plt.title("Solar panels cost")
-    plt.xlabel(r"$kW$")
+    # # Solar
+    # solar_power_kw = np.linspace(0, 10, 1000)
+    # solar_panels_price_per_kw = 1161
+    # solar_cost = solar_panels_price_per_kw * solar_power_kw
+    # plt.plot(solar_power_kw, solar_cost, **plot_styles[0])
+    # plt.title("Solar panels cost")
+    # plt.xlabel(r"$kW$")
+    # plt.ylabel("€")
+    # plt.show()
+
+    # Generators
+    generator_cost0, generator_slope = linear_regression(generator_power_w_data, generator_cost_data)
+    print(f"generator y0: {generator_cost0}, slope: {generator_slope}")
+    generator_power_w = np.linspace(4000, 170000, 1000)
+    generator_cost = generator_cost0 + generator_slope * generator_power_w
+    plt.scatter(generator_power_w_data, generator_cost_data, **plot_styles[0])
+    plt.plot(generator_power_w, generator_cost, **plot_styles[1])
+    plt.title("Diesel generator cost")
+    plt.xlabel(r"$W$")
     plt.ylabel("€")
     plt.show()
 
-
 if __name__ == "__main__":
-    plot_data_regressions()
-    # plot_dynamic_parameters()
+    # plot_data_regressions()
+    # plot_prices()
+    plot_dynamic_parameters()

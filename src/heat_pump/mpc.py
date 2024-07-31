@@ -16,11 +16,13 @@ def main():
     for t0 in range(0, n_seconds, h):
         dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
         parameters = PARAMS
-        parameters["cost_grid"] = dynamic_parameters["cost_grid"]
         parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
         parameters["p_required"] = dynamic_parameters["p_required"]
         parameters["t_amb"] = dynamic_parameters["t_amb"]
         parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
+        parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+        parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
+        parameters["excess_prices"] = dynamic_parameters["excess_prices"]
         parameters["y0"] = y0
 
         xStar, objStar = run_optimization(parameters)

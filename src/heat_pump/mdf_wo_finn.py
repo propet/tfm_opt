@@ -227,8 +227,8 @@ if __name__ == "__main__":
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
-    # print(parameters["cost_grid"])
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    # print(parameters["daily_prices"])
     # exit(0)
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]

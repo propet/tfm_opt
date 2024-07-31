@@ -14,16 +14,14 @@
 
 PARAMS = {
     "H": 100,  # stepsize [s]
-    "HORIZON": 100000 * 3,  # s
+    "HORIZON": 100000 * 10,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 13000,  # Wh
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) Ws
-    # "E_BAT_MAX_SCALED": 13 * 3600,  # 13 kWs
     "SOLAR_SIZE": 3000,  # installed power in solar panels W
     "SOC_MIN": 0.1,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
-    # "P_BAT_MAX": 5000,  # W
-    "P_BAT_MAX": 3000,  # W
+    "P_BAT_MAX": 5000,  # W
     "P_GRID_MAX": 5000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
     "MAX_HEAT_POWER": 10000,  # W
@@ -40,7 +38,6 @@ PARAMS = {
     "MIN_TANK_VOLUME": 1, # m3
     # TODO: make insulation length a design variable
     "U": 0.2,  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
-    # TODO: make T_AMB time dependant (just like grid prices)
     "T_AMB": 300,  # K (27ºC)
     "P_COMPRESSOR_MAX": 3000,  # W
 

@@ -93,7 +93,7 @@ def cost_function(y, u, parameters):
             y[:, i],
             u[:, i],
             parameters["H"],
-            parameters["cost_grid"][i],
+            parameters["daily_prices"][i],
             parameters["t_amb"][i],
             parameters["LOAD_HX_EFF"],
             parameters["CP_WATER"],
@@ -101,9 +101,9 @@ def cost_function(y, u, parameters):
     return cost
 
 
-def r(y, u, h, cost_grid, t_amb, load_hx_eff, cp_water):
+def r(y, u, h, daily_prices, t_amb, load_hx_eff, cp_water):
     p_compressor = u[0]
-    r = h * cost_grid * (p_compressor)
+    r = h * daily_prices * (p_compressor)
     return r
 
 
@@ -348,7 +348,7 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             y_current,
             u_current,
             h,
-            parameters["cost_grid"][n],
+            parameters["daily_prices"][n],
             parameters["t_amb"][n],
             parameters["LOAD_HX_EFF"],
             parameters["CP_WATER"],
@@ -357,7 +357,7 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             y_current,
             u_current,
             h,
-            parameters["cost_grid"][n],
+            parameters["daily_prices"][n],
             parameters["t_amb"][n],
             parameters["LOAD_HX_EFF"],
             parameters["CP_WATER"],
@@ -416,8 +416,8 @@ def dae_adjoints(y, u, dae_p, n_steps, parameters):
 
 
 fig = None
-def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
-    print("plotting...")
+def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True):
+    print(f"plotting...{title}")
     global fig
     # Close the previous figure if it exists
     if fig:
@@ -454,17 +454,17 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
 
     # First subplot for inputs
-    axes[0].plot(t, parameters["cost_grid"], label="C_grid", **plot_styles[0])
+    axes[0].plot(t, parameters["pvpc_prices"], label="pvpc_prices", **plot_styles[0])
+    axes[0].plot(t, parameters["excess_prices"], label="excess_price", **plot_styles[1])
     axes[0].set_ylabel("money")
-    # axes[0].set_title("Cost grid")
     axes[0].legend()
     axes[0].legend(loc="upper left")
     axes[0].grid(True)
+    if title:
+        axes[0].set_title(title)
 
     ax0 = axes[0].twinx()
-    ax0.plot(t, q_dot_required, label="q_dot_required", **plot_styles[1])
-    ax0.plot(t, p_required, label="p_required", **plot_styles[2])
-    ax0.plot(t, p_solar, label="p_solar", **plot_styles[3])
+    ax0.plot(t, q_dot_required, label="q_dot_required", **plot_styles[2])
     ax0.set_ylabel("W")
     ax0.legend(loc="upper right")
 
@@ -576,11 +576,13 @@ def plot_history(hist, only_last=True):
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     parameters["y0"] = y0
 
 
@@ -590,10 +592,12 @@ def plot_history(hist, only_last=True):
     if only_last:
         indices = [-1]  # Only take the last index
     else:
-        indices = range(len(histories["p_compressor"]))  # Loop through all indices
+        # Loop through every x opt results
+        x = 50
+        indices = list(range(0, len(histories["p_compressor"]), x))
 
     # loop through histories
-    for i in indices:
+    for iter, i in enumerate(indices):
         u = np.zeros((4, n_steps))
         u[0] = histories["p_compressor"][i]
         u[1] = histories["m_dot_cond"][i]
@@ -619,16 +623,19 @@ def plot_history(hist, only_last=True):
         )
 
         y = dae_forward(y0, u, dae_p, n_steps)
-        print("y[1]: ", y[:, 1])
-        print("u[1]: ", u[:, 1])
-        print("solution:", y[:, -1])
+        # print("y[1]: ", y[:, 1])
+        # print("u[1]: ", u[:, 1])
+        # print("solution:", y[:, -1])
         if only_last:
             plot(y, u, n_steps, parameters, save=False, show=True)
             return
         else:
-            plot(y, u, n_steps, parameters, show=False)
+            title = f"iter: {iter}/{len(indices)}"
+            plot(y, u, n_steps, parameters, title=title, show=False)
 
-    plot_film("saves/sand_wo_finn.gif")  # create animation with pictures from tmp folder
+    # create animation with pictures from tmp folder
+    filename_gif = hist.replace(".hst", ".gif")
+    plot_film(filename_gif)
 
 
 
@@ -642,7 +649,7 @@ def main(hist=None):
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
@@ -724,5 +731,5 @@ def main(hist=None):
 if __name__ == "__main__":
     # main()
     plot_history(hist="saves/full_sand_wo_finn.hst", only_last=True)
-    # plot_history(hist="saves/sand_wo_finn.hst", only_last=False)
+    # plot_history(hist="saves/full_sand_wo_finn.hst", only_last=False)
     # plot_history(hist="saves/mdf_wo_finn.hst", only_last=True)

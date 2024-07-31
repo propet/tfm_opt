@@ -24,16 +24,16 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     h = parameters["H"]
     solar_size = parameters["SOLAR_SIZE"]
     p_required = parameters["p_required"]
-    cost_grid = parameters["cost_grid"]
+    daily_prices = parameters["daily_prices"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
 
-    cost = cost_function(h, cost_grid, p_compressor, p_required, p_solar)
+    cost = cost_function(h, daily_prices, p_compressor, p_required, p_solar)
     return np.array(cost)
 
 
-def cost_function(h, cost_grid, p_compressor, p_required, p_solar):
+def cost_function(h, daily_prices, p_compressor, p_required, p_solar):
     p_grid = -p_solar + p_compressor + p_required  # +p_bat
-    cost = jnp.sum(h * cost_grid * p_grid)
+    cost = jnp.sum(h * daily_prices * p_grid)
     return cost
 
 
@@ -191,7 +191,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     m_tank = parameters["TANK_VOLUME"] * parameters["RHO_WATER"]
     U = parameters["U"]
     A = 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3)  # tank surface area (m2)
-    cost_grid = parameters["cost_grid"]
+    daily_prices = parameters["daily_prices"]
     t_amb = parameters["t_amb"]
     q_dot_required = parameters["q_dot_required"]
     # e_bat_max = parameters["E_BAT_MAX"]
@@ -444,7 +444,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
     cp_water = parameters["CP_WATER"]
     t_amb = parameters["t_amb"]
     h = parameters["H"]
-    cost_grid = parameters["cost_grid"]
+    daily_prices = parameters["daily_prices"]
     p_required = parameters["p_required"]
     solar_size = parameters["SOLAR_SIZE"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
@@ -476,16 +476,16 @@ def sens(opt, design_variables: DesignVariables, func_values):
         # e_bat_0_wrt,
     ) = get_constraint_sparse_jacs(parameters, design_variables)
 
-    # def cost_function(p_compressor, h, cost_grid):
-    dcostdp_compressor = get_dcostdp_compressor(h, cost_grid, p_compressor, p_required, p_solar)
-    # dcostdp_bat = get_dcostdp_bat(h, cost_grid, p_bat, p_compressor, p_required, p_solar)
+    # def cost_function(p_compressor, h, daily_prices):
+    dcostdp_compressor = get_dcostdp_compressor(h, daily_prices, p_compressor, p_required, p_solar)
+    # dcostdp_bat = get_dcostdp_bat(h, daily_prices, p_bat, p_compressor, p_required, p_solar)
 
     return {
         # "obj": {
-        #     "p_compressor": h * cost_grid,
+        #     "p_compressor": h * daily_prices,
         #     # "m_dot_cond": 0,
-        #     "m_dot_load": -h * cost_grid * load_hx_eff * cp_water * (t_tank - t_amb),
-        #     "t_tank": -h * cost_grid * load_hx_eff * m_dot_load * cp_water,
+        #     "m_dot_load": -h * daily_prices * load_hx_eff * cp_water * (t_tank - t_amb),
+        #     "t_tank": -h * daily_prices * load_hx_eff * m_dot_load * cp_water,
         #     # "t_cond": 0,
         # },
         "obj": {
@@ -785,7 +785,7 @@ if __name__ == "__main__":
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]

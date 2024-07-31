@@ -94,7 +94,7 @@ def cost_function(y, u, parameters):
             y[:, i],
             u[:, i],
             parameters["H"],
-            parameters["cost_grid"][i],
+            parameters["daily_prices"][i],
             parameters["q_dot_required"][i],
             parameters["t_amb"][i],
             parameters["LOAD_HX_EFF"],
@@ -103,11 +103,11 @@ def cost_function(y, u, parameters):
     return cost
 
 
-def r(y, u, h, cost_grid, q_dot_required, t_amb, load_hx_eff, cp_water):
+def r(y, u, h, daily_prices, q_dot_required, t_amb, load_hx_eff, cp_water):
     p_compressor = u[0]
     p_heat = get_p_heat(y, u, q_dot_required, t_amb, load_hx_eff, cp_water)
     p_heat = jnp.maximum(0, p_heat)
-    r = h * cost_grid * (p_compressor + p_heat)
+    r = h * daily_prices * (p_compressor + p_heat)
     return r
 
 
@@ -363,7 +363,7 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             y_current,
             u_current,
             h,
-            parameters["cost_grid"][n],
+            parameters["daily_prices"][n],
             parameters["q_dot_required"][n],
             parameters["t_amb"][n],
             parameters["LOAD_HX_EFF"],
@@ -373,7 +373,7 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             y_current,
             u_current,
             h,
-            parameters["cost_grid"][n],
+            parameters["daily_prices"][n],
             parameters["q_dot_required"][n],
             parameters["t_amb"][n],
             parameters["LOAD_HX_EFF"],
@@ -466,7 +466,7 @@ def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     Q_dot_load = q_dot_required - P_heat
 
     # First subplot for inputs C_grid
-    axes[0].plot(t, parameters["cost_grid"], label="C_grid", **plot_styles[0])
+    axes[0].plot(t, parameters["daily_prices"], label="C_grid", **plot_styles[0])
     axes[0].set_ylabel("money")
     # axes[0].set_title("Cost grid")
     axes[0].legend()
@@ -670,7 +670,7 @@ def plot_history(hist, only_last=True):
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
@@ -732,7 +732,7 @@ def main(hist=None):
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]

@@ -18,17 +18,17 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Parameters
     parameters = opt.parameters
     h = parameters["H"]
-    cost_grid = parameters["cost_grid"]
+    daily_prices = parameters["daily_prices"]
 
     # Design variables
     p_compressor = design_variables["p_compressor"]
 
-    cost = cost_function(p_compressor, h, cost_grid)
+    cost = cost_function(p_compressor, h, daily_prices)
     return np.array(cost)
 
 
-def cost_function(p_compressor, h, cost_grid):
-    cost = jnp.sum(h * cost_grid * p_compressor)
+def cost_function(p_compressor, h, daily_prices):
+    cost = jnp.sum(h * daily_prices * p_compressor)
     return cost
 
 
@@ -139,7 +139,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     m_tank = parameters["TANK_VOLUME"] * parameters["RHO_WATER"]
     U = parameters["U"]
     A = 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3)  # tank surface area (m2)
-    cost_grid = parameters["cost_grid"]
+    daily_prices = parameters["daily_prices"]
     t_amb = parameters["t_amb"]
     q_dot_required = parameters["q_dot_required"]
     t_tank = design_variables["t_tank"]
@@ -349,7 +349,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
     load_hx_eff = parameters["LOAD_HX_EFF"]
     cp_water = parameters["CP_WATER"]
     h = parameters["H"]
-    cost_grid = parameters["cost_grid"]
+    daily_prices = parameters["daily_prices"]
     t_amb = parameters["t_amb"]
     t_tank = design_variables["t_tank"]
     p_compressor = design_variables["p_compressor"]
@@ -368,15 +368,15 @@ def sens(opt, design_variables: DesignVariables, func_values):
         t_cond_0_wrt,
     ) = get_constraint_sparse_jacs(parameters, design_variables)
 
-    # def cost_function(p_compressor, h, cost_grid):
-    dcostdp_compressor = get_dcostdp_compressor(p_compressor, h, cost_grid)
+    # def cost_function(p_compressor, h, daily_prices):
+    dcostdp_compressor = get_dcostdp_compressor(p_compressor, h, daily_prices)
 
     return {
         # "obj": {
-        #     "p_compressor": h * cost_grid,
+        #     "p_compressor": h * daily_prices,
         #     # "m_dot_cond": 0,
-        #     "m_dot_load": -h * cost_grid * load_hx_eff * cp_water * (t_tank - t_amb),
-        #     "t_tank": -h * cost_grid * load_hx_eff * m_dot_load * cp_water,
+        #     "m_dot_load": -h * daily_prices * load_hx_eff * cp_water * (t_tank - t_amb),
+        #     "t_tank": -h * daily_prices * load_hx_eff * m_dot_load * cp_water,
         #     # "t_cond": 0,
         # },
         "obj": {
@@ -590,8 +590,8 @@ if __name__ == "__main__":
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
-    parameters["cost_grid"] = dynamic_parameters["cost_grid"]
-    # print(parameters["cost_grid"])
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    # print(parameters["daily_prices"])
     # exit(0)
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     # print("q_dot_required: ", parameters["q_dot_required"].shape)
