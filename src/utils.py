@@ -326,7 +326,7 @@ def get_q_dot_required(t_amb, t0, h, horizon):
     Taking 3/4 of the side area as wall, and the other 1/3 as windows.
     Consider the walls and roof have 20cm of rock wool insulator.
     """
-    T_target = PARAMS["HOUSE_T_TARGET"]
+    t_target = PARAMS["T_TARGET"]
     rock_wool_u = PARAMS["ROCK_WOOL_U"]
     rock_wool_area = PARAMS["ROCK_WOOL_AREA"]
     windows_u = PARAMS["WINDOWS_U"]
@@ -334,12 +334,12 @@ def get_q_dot_required(t_amb, t0, h, horizon):
 
     print("t_amb shape: ", t_amb.shape)
 
-    q_dot_required = (rock_wool_u * rock_wool_area + windows_u * windows_area) * (T_target - t_amb)
+    q_dot_required = (rock_wool_u * rock_wool_area + windows_u * windows_area) * (t_target - t_amb)
     q_dot_required[q_dot_required < 0] = 0
     print("q_dot shape: ", q_dot_required.shape)
     print("q_dot_mean: ", np.mean(q_dot_required))
     print("q_dot_sum: ", np.sum(q_dot_required))
-    print("deltaT_mean: ", np.mean(T_target - t_amb))
+    print("deltaT_mean: ", np.mean(t_target - t_amb))
     return q_dot_required[t0 : t0 + horizon : h]
 
 

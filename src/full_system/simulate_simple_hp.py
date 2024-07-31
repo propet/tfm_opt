@@ -8,6 +8,7 @@ from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, 
 from pyoptsparse import History
 import jax
 import jax.numpy as jnp
+
 jax.config.update("jax_enable_x64", True)
 
 
@@ -21,19 +22,22 @@ def cop(T):
 def cop_jax(T):
     """
     piecewise lineal -> non-linear function overall
-    Approximate operating range for a heat pump:
-        -20C to 40C, with a maximum temperature of 70C
 
-    So we set the COP to 4 up to 40C, and linearly decreasing to 0 at 70C
+    In the following heat pump technicals
+    https://www.climamarket.eu/en/aquarea-high-performance-mdc-h-generation-wh-mdc07h3e5-cl
+    it mentions reference COP of 4.7 at 35C,
+    and maximum output water temperature of 60C
 
-    COP is 0 for T > 343
-    COP is 4 for T < 313
-    COP varies linearly from 4 at 313K to 0 at 343K
+    So we set the COP to 4.7 up to 50C, and linearly decreasing to 0 at 80C
+
+    COP is 0 for T > 353
+    COP is 4.7 for T < 323
+    COP varies linearly from 4 at 333K to 0 at 373K
     """
-    max_cop = 4
+    max_cop = 4.7
     min_cop = 0
-    T_upper = 343
-    T_lower = 313
+    T_upper = 353
+    T_lower = 323
     m = (max_cop - min_cop) / (T_upper - T_lower)
     T0 = max_cop + m * T_lower
     conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
@@ -42,21 +46,10 @@ def cop_jax(T):
 
 
 def cop_np(T):
-    """
-    piecewise lineal -> non-linear function overall
-    Approximate operating range for a heat pump:
-        -20C to 40C, with a maximum temperature of 70C
-
-    So we set the COP to 4 up to 40C, and linearly decreasing to 0 at 70C
-
-    COP is 0 for T > 343
-    COP is 4 for T < 313
-    COP varies linearly from 4 at 313K to 0 at 343K
-    """
-    max_cop = 4
+    max_cop = 4.7
     min_cop = 0
-    T_upper = 343
-    T_lower = 313
+    T_upper = 353
+    T_lower = 323
     m = (max_cop - min_cop) / (T_upper - T_lower)
     T0 = max_cop + m * T_lower
     conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
@@ -65,21 +58,10 @@ def cop_np(T):
 
 
 def get_dcopdT(T):
-    """
-    piecewise lineal -> non-linear function overall
-    Approximate operating range for a heat pump:
-        -20C to 40C, with a maximum temperature of 70C
-
-    So we set the COP to 4 up to 40C, and linearly decreasing to 0 at 70C
-
-    COP is 0 for T > 343
-    COP is 4 for T < 313
-    COP varies linearly from 4 at 313K to 0 at 343K
-    """
-    max_cop = 4
+    max_cop = 4.7
     min_cop = 0
-    T_upper = 343
-    T_lower = 313
+    T_upper = 353
+    T_lower = 323
     m = (max_cop - min_cop) / (T_upper - T_lower)
     conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
     functions = [lambda T: 0, lambda T: -m, lambda T: 0]
@@ -108,10 +90,11 @@ def r(y, u, h, daily_prices, t_amb, load_hx_eff, cp_water):
 
 
 def get_t_load(y, parameters, i):
+    # T_load = T_tank - load_hx_eff * (T_tank - T_target)
     t_tank = y[0]
-    t_amb = parameters["t_amb"][i]
+    t_target = parameters["T_TARGET"]
     load_hx_eff = parameters["LOAD_HX_EFF"]
-    return t_tank - load_hx_eff * (t_tank - t_amb)
+    return t_tank - load_hx_eff * (t_tank - t_target)
 
 
 def dae_system(y, y_prev, p, u, h):
@@ -128,7 +111,7 @@ def dae_system(y, y_prev, p, u, h):
     ∘ Q_dot_cond = COP * P_comp # W
     ∘ Q_dot_cond = m_dot_cond * cp_water * (T_cond - T_tank)
     ∘ Q_dot_loss = U * A * (T_tank - T_amb)
-    ∘ Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    ∘ Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
     ∘ Q_dot_load = m_dot_load * cp_water * (T_tank - T_load)
 
 
@@ -144,13 +127,13 @@ def dae_system(y, y_prev, p, u, h):
         + U * A * (T_tank - T_amb)
         = 0
     ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
-    ∘ Q_dot_load - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = 0
+    ∘ Q_dot_load - load_hx_eff * m_dot_load * cp_water * (T_tank - T_target) = 0
     ∘ Q_dot_load - m_dot_load * cp_water * (T_tank - T_load) = 0
 
     From the two last equations for Q_dot_load, I can get T_load a in terms of T_tank
-    load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = m_dot_load * cp_water * (T_tank - T_load)
+    load_hx_eff * m_dot_load * cp_water * (T_tank - T_target) = m_dot_load * cp_water * (T_tank - T_load)
     ->
-    T_load = T_tank - load_hx_eff * (T_tank - T_amb)
+    T_load = T_tank - load_hx_eff * (T_tank - T_target)
 
     I can plug T_load into the first equation
     ∘ m_tank * cp_water * ((T_tank - T_tank_prev)/h)
@@ -162,7 +145,7 @@ def dae_system(y, y_prev, p, u, h):
     to get
     ∘ m_tank * cp_water * ((T_tank - T_tank_prev)/h)
         - m_dot_cond * cp_water * T_cond
-        - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
+        - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_target))
         + (m_dot_cond + m_dot_load) * cp_water * T_tank
         + U * A * (T_tank - T_amb)
         = 0
@@ -170,14 +153,14 @@ def dae_system(y, y_prev, p, u, h):
     So now I have a decoupled system, which consist of a dae of two equations:
     ∘ m_tank * cp_water * ((T_tank - T_tank_prev)/h)
         - m_dot_cond * cp_water * T_cond
-        - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
+        - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_target))
         + (m_dot_cond + m_dot_load) * cp_water * T_tank
         + U * A * (T_tank - T_amb)
         = 0
     ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
 
     and then to compute T_load:
-    ∘ T_load = T_tank - load_hx_eff * (T_tank - T_amb)
+    ∘ T_load = T_tank - load_hx_eff * (T_tank - T_target)
 
 
     Making:
@@ -189,6 +172,7 @@ def dae_system(y, y_prev, p, u, h):
     p[2] = U
     p[3] = A
     p[4] = load_hx_eff
+    p[5] = T_target
 
     u[0] = P_comp
     u[1] = m_dot_cond
@@ -204,14 +188,14 @@ def dae_system(y, y_prev, p, u, h):
 def f(y, y_prev, p, u, h):
     # m_tank * cp_water * ((T_tank - T_tank_prev)/h)
     #   - m_dot_cond * cp_water * T_cond
-    #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
+    #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_target))
     #   + (m_dot_cond + m_dot_load) * cp_water * T_tank
     #   + U * A * (T_tank - T_amb)
     #   = 0
     return [
         p[1] * p[0] * ((y[0] - y_prev[0]) / h)
         - u[1] * p[0] * y[1]
-        - u[2] * p[0] * (y[0] - p[4] * (y[0] - u[3]))
+        - u[2] * p[0] * (y[0] - p[4] * (y[0] - p[5]))
         + (u[1] + u[2]) * p[0] * y[0]
         + p[2] * p[3] * (y[0] - u[3])
     ]
@@ -416,6 +400,90 @@ def dae_adjoints(y, u, dae_p, n_steps, parameters):
 
 
 fig = None
+
+
+def plot_only_thermals(y, u, n_steps, parameters, title=None, show=True, block=True, save=True):
+    global fig
+    # Close the previous figure if it exists
+    if fig:
+        plt.close(fig)
+
+    h = parameters["H"]
+    q_dot_required = parameters["q_dot_required"]
+    p_required = parameters["p_required"]
+    load_hx_eff = parameters["LOAD_HX_EFF"]
+    cp_water = parameters["CP_WATER"]
+    t_amb = parameters["t_amb"]
+    t_target = parameters["T_TARGET"]
+
+    p_compressor = u[0]
+    m_dot_cond = u[1]
+    m_dot_load = u[2]
+    t_tank = y[0]
+    t_cond = y[1]
+
+    # Create time array
+    t = np.linspace(0, n_steps * h, n_steps)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+
+    if not isinstance(axes, np.ndarray):
+        axes = [axes]
+
+    t_load = np.zeros(y.shape[1])
+    for i in range(y.shape[1]):
+        t_load[i] = get_t_load(y[:, i], parameters, i)
+
+    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_target)
+
+    # First subplot for inputs
+    axes[0].plot(t, q_dot_required, label="q_dot_required", **plot_styles[0])
+    axes[0].plot(t, q_dot_load, label="q_dot_load", **plot_styles[1])
+    axes[0].set_ylabel("W")
+    axes[0].legend()
+    axes[0].legend(loc="upper left")
+    axes[0].grid(True)
+    if title:
+        axes[0].set_title(title)
+
+    # ax0 = axes[0].twinx()
+    # ax0.plot(t, q_dot_required, label="q_dot_required", **plot_styles[2])
+    # ax0.set_ylabel("W")
+    # ax0.legend(loc="upper right")
+
+    # Second subplot for temperatures and e_bat
+    axes[1].plot(t, t_tank, label="T_tank", **plot_styles[0])
+    axes[1].plot(t, t_cond, label="T_cond", **plot_styles[1])
+    axes[1].plot(t, t_load, label="T_load", **plot_styles[2])
+    axes[1].plot(t, t_amb, label="T_amb", **plot_styles[3])
+    axes[1].set_ylabel("Temperature (K)")
+    # axes[1].set_title("Temperature Profiles")
+    axes[1].legend(loc="upper left")
+    axes[1].grid(True)
+
+    axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
+    # axes[2].plot(t, q_dot_load, label="q_dot_load", **plot_styles[1])
+    axes[2].set_ylabel("Power[W]")
+    axes[2].legend(loc="upper left")
+    axes[2].grid(True)
+    axes[2].set_xlabel("Time (s)")
+
+    ax2 = axes[2].twinx()
+    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[2])
+    ax2.plot(t, m_dot_load, label="m_dot_load", **plot_styles[3])
+    ax2.set_ylabel("Mass flow rates")
+    ax2.legend(loc="upper right")
+
+    # Show the plots
+    if show:
+        # Save and close plot
+        # plt.ion()  # Turn on the interactive mode
+        plt.show(block=block)  # Draw the figure
+        plt.pause(0.3)  # Time for the figure to load
+
+    if save:
+        plt.savefig(f"tmp/frame_{time.time()}.png")
+
+
 def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True):
     print(f"plotting...{title}")
     global fig
@@ -429,6 +497,7 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     p_solar = parameters["w_solar_per_w_installed"] * parameters["SOLAR_SIZE"]
     load_hx_eff = parameters["LOAD_HX_EFF"]
     cp_water = parameters["CP_WATER"]
+    t_target = parameters["T_TARGET"]
     t_amb = parameters["t_amb"]
 
     p_compressor = u[0]
@@ -438,7 +507,7 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     t_cond = y[1]
     e_bat = parameters["e_bat"]
     p_bat = parameters["p_bat"]
-    p_grid = - p_solar + p_compressor + p_bat + p_required
+    p_grid = -p_solar + p_compressor + p_bat + p_required
 
     # Create time array
     t = np.linspace(0, n_steps * h, n_steps)
@@ -451,10 +520,10 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     for i in range(y.shape[1]):
         t_load[i] = get_t_load(y[:, i], parameters, i)
 
-    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
+    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_target)
 
     # First subplot for inputs
-    axes[0].plot(t, parameters["pvpc_prices"], label="pvpc_prices", **plot_styles[0])
+    axes[0].plot(t, parameters["pvpc_prices"], label="pvpc_price", **plot_styles[0])
     axes[0].plot(t, parameters["excess_prices"], label="excess_price", **plot_styles[1])
     axes[0].set_ylabel("money")
     axes[0].legend()
@@ -470,19 +539,20 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
 
     # Second subplot for temperatures and e_bat
     axes[1].plot(t, t_tank, label="T_tank", **plot_styles[0])
-    # axes[1].plot(t, t_cond, label="T_cond", **plot_styles[1])
-    # axes[1].plot(t, t_load, label="T_load", **plot_styles[2])
-    axes[1].plot(t, t_amb, label="T_amb", **plot_styles[3])
+    axes[1].plot(t, np.ones(t_tank.shape[0]) * t_target, label="T_target", **plot_styles[1])
+    # axes[1].plot(t, t_cond, label="T_cond", **plot_styles[2])
+    # axes[1].plot(t, t_load, label="T_load", **plot_styles[3])
+    # axes[1].plot(t, t_amb, label="T_amb", **plot_styles[2])
     axes[1].set_ylabel("Temperature (K)")
     # axes[1].set_title("Temperature Profiles")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
 
     ax1 = axes[1].twinx()
-    ax1.plot(t, e_bat, label="E_bat", **plot_styles[1])
+    # ax1.plot(t, e_bat, label="E_bat", **plot_styles[1])
+    ax1.plot(t, q_dot_load, label="q_dot_load", **plot_styles[4])
     ax1.set_ylabel("Ws")
     ax1.legend(loc="upper right")
-
 
     # axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
     # axes[2].plot(t, q_dot_load, label="q_dot_load", **plot_styles[1])
@@ -498,15 +568,14 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     # ax2.legend(loc="upper right")
 
     axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
-    axes[2].plot(t, p_grid, label="P_grid", **plot_styles[1])
-    axes[2].plot(t, p_required, label="p_required", **plot_styles[2])
-    axes[2].plot(t, -p_solar, label="p_solar", **plot_styles[3])
-    axes[2].plot(t, p_bat, label="p_bat", **plot_styles[4])
+    # axes[2].plot(t, p_grid, label="P_grid", **plot_styles[1])
+    # axes[2].plot(t, p_required, label="p_required", **plot_styles[2])
+    # axes[2].plot(t, -p_solar, label="p_solar", **plot_styles[3])
+    # axes[2].plot(t, p_bat, label="p_bat", **plot_styles[4])
     axes[2].set_ylabel("Power[W]")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
     axes[2].set_xlabel("Time (s)")
-
 
     # ax2 = axes[2].twinx()
     # ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[2])
@@ -585,7 +654,6 @@ def plot_history(hist, only_last=True):
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     parameters["y0"] = y0
 
-
     storeHistory = History(hist)
     histories = storeHistory.getValues()
 
@@ -593,7 +661,7 @@ def plot_history(hist, only_last=True):
         indices = [-1]  # Only take the last index
     else:
         # Loop through every x opt results
-        x = 50
+        x = 10
         indices = list(range(0, len(histories["p_compressor"]), x))
 
     # loop through histories
@@ -612,6 +680,7 @@ def plot_history(hist, only_last=True):
         # p[2] = U
         # p[3] = A
         # p[4] = load_hx_eff
+        # p[5] = t_target
         dae_p = np.array(
             [
                 parameters["CP_WATER"],
@@ -619,11 +688,12 @@ def plot_history(hist, only_last=True):
                 parameters["U"],
                 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
                 parameters["LOAD_HX_EFF"],
+                parameters["T_TARGET"],
             ]
         )
 
         y = dae_forward(y0, u, dae_p, n_steps)
-        # print("y[1]: ", y[:, 1])
+        print("y[1]: ", y[:, 1])
         # print("u[1]: ", u[:, 1])
         # print("solution:", y[:, -1])
         if only_last:
@@ -638,14 +708,19 @@ def plot_history(hist, only_last=True):
     plot_film(filename_gif)
 
 
-
 def main(hist=None):
     # Get inputs
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
     n_steps = int(horizon / h)
     t0 = 0
-    y0 = np.array([300, 309])  # T_tank, T_cond
+    # T_tank, T_cond
+    y0 = np.array(
+        [
+            305.97997466,
+            320,
+        ]
+    )
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -692,6 +767,7 @@ def main(hist=None):
     # p[2] = U
     # p[3] = A
     # p[4] = load_hx_eff
+    # p[5] = t_target
     dae_p = np.array(
         [
             parameters["CP_WATER"],
@@ -699,15 +775,16 @@ def main(hist=None):
             parameters["U"],
             6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
             parameters["LOAD_HX_EFF"],
+            parameters["T_TARGET"],
         ]
     )
 
     y = dae_forward(y0, u, dae_p, n_steps)
     print("solution:", y[:, -1])
     print(y.shape)
-    print("y[1]: ", y[:, 1])
-    print("u[1]: ", u[:, 1])
-    plot(y, u, n_steps, parameters, save=False)
+    print("y[2]: ", y[:, 2])
+    print("u[2]: ", u[:, 2])
+    plot_only_thermals(y, u, n_steps, parameters, save=False)
     # plot_animation(y, u, n_steps, parameters)
 
     # FD derivatives

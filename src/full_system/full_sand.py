@@ -82,21 +82,16 @@ def cost_function(
         jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid))
         # buy and sell at the same daily_price
         # jnp.sum(h * excess_prices * p_grid)
-
         # Fixed energy cost
         + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
-
         # depreciate battery by usage
         + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
         # depreciate battery by time
         # + jnp.sum(h * get_battery_depreciation_by_second(e_bat_max))
-
         # depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
-
         # depreciate heat pump by usage
         + jnp.sum(h * jnp.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max))
-
         # depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
     )
@@ -115,7 +110,7 @@ get_dcostdp_compressor = jax_to_numpy(get_dcostdp_compressor_jax)
 def dae1_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # m_tank * cp_water * ((T_tank - T_tank_prev)/h)
     #   - m_dot_cond * cp_water * T_cond
-    #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
+    #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_target))
     #   + (m_dot_cond + m_dot_load) * cp_water * T_tank
     #   + U * A * (T_tank - T_amb)
     #   = 0
@@ -127,6 +122,7 @@ def dae1_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     cp_water = parameters["CP_WATER"]
     h = parameters["H"]
     t_amb = parameters["t_amb"]
+    t_target = parameters["T_TARGET"]
     m_tank = parameters["TANK_VOLUME"] * parameters["RHO_WATER"]
     U = parameters["U"]
     A = 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3)  # tank surface area (m2)
@@ -142,7 +138,7 @@ def dae1_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
         dae1.append(
             m_tank * cp_water * ((t_tank[i] - t_tank[i - 1]) / h)
             - m_dot_cond[i] * cp_water * t_cond[i]
-            - m_dot_load[i] * cp_water * (t_tank[i] - load_hx_eff * (t_tank[i] - t_amb[i]))
+            - m_dot_load[i] * cp_water * (t_tank[i] - load_hx_eff * (t_tank[i] - t_target))
             + (m_dot_cond[i] + m_dot_load[i]) * cp_water * t_tank[i]
             + U * A * (t_tank[i] - t_amb[i])
         )
@@ -170,14 +166,14 @@ def dae2_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
 
 def q_required_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # Q_dot_load should be +-5% of q_dot_required
-    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
     # 0.95 < Q_dot_load / Q_dot_required < 1.05
 
     # Parameters
     parameters = opt.parameters
     n_steps = parameters["n_steps"]
     q_dot_required = parameters["q_dot_required"]
-    t_amb = parameters["t_amb"]
+    t_target = parameters["T_TARGET"]
     cp_water = parameters["CP_WATER"]
     load_hx_eff = parameters["LOAD_HX_EFF"]
 
@@ -185,8 +181,8 @@ def q_required_constraint_fun(opt, design_variables: DesignVariables) -> np.ndar
     t_tank = design_variables["t_tank"]
     m_dot_load = design_variables["m_dot_load"]
 
-    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
-    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_amb)
+    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
+    q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_target)
     return q_dot_load / q_dot_required
 
 
@@ -259,7 +255,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     m_tank = parameters["TANK_VOLUME"] * parameters["RHO_WATER"]
     U = parameters["U"]
     A = 6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3)  # tank surface area (m2)
-    t_amb = parameters["t_amb"]
+    t_target = parameters["T_TARGET"]
     q_dot_required = parameters["q_dot_required"]
     e_bat_max = parameters["E_BAT_MAX"]
 
@@ -276,7 +272,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     # dae1:
     # m_tank * cp_water * ((T_tank - T_tank_prev)/h)
     #     - m_dot_cond * cp_water * T_cond
-    #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_amb))
+    #     - m_dot_load * cp_water * (T_tank - load_hx_eff * (T_tank - T_target))
     #     + (m_dot_cond + m_dot_load) * cp_water * T_tank
     #     + U * A * (T_tank - T_amb)
     #     = 0
@@ -289,7 +285,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     ddae1_dm_dot_load = sp.lil_matrix((n_steps - 1, n_steps))
     for i in range(1, n_steps):
         ddae1_dm_dot_load[i - 1, i] = (
-            -cp_water * (t_tank[i] - load_hx_eff * (t_tank[i] - t_amb[i])) + cp_water * t_tank[i] + 1e-20
+            -cp_water * (t_tank[i] - load_hx_eff * (t_tank[i] - t_target)) + cp_water * t_tank[i] + 1e-20
         )
     ddae1_dm_dot_load = ddae1_dm_dot_load.tocsr()
     ddae1_dm_dot_load = to_required_format(ddae1_dm_dot_load)
@@ -368,21 +364,21 @@ def get_constraint_sparse_jacs(parameters, design_variables):
         "t_cond",
     ]
 
-    # q_required:
-    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+    # q_required
+    # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
     # 0.95 < Q_dot_load / Q_dot_required < 1.05
     # ->
-    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb))
+    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_target))
     dq_required_dm_dot_load = sp.lil_matrix((n_steps, n_steps))
     for i in range(n_steps):
         dq_required_dm_dot_load[i, i] = (1 / q_dot_required[i]) * (
-            load_hx_eff * cp_water * (t_tank[i] - t_amb[i])
+            load_hx_eff * cp_water * (t_tank[i] - t_target)
         ) + 1e-20
     dq_required_dm_dot_load = dq_required_dm_dot_load.tocsr()
     dq_required_dm_dot_load = to_required_format(dq_required_dm_dot_load)
 
     dq_required_dt_tank = sp.lil_matrix((n_steps, n_steps))
-    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb))
+    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_target))
     for i in range(n_steps):
         dq_required_dt_tank[i, i] = (1 / q_dot_required[i]) * (load_hx_eff * m_dot_load[i] * cp_water) + 1e-20
     dq_required_dt_tank = dq_required_dt_tank.tocsr()
@@ -833,11 +829,11 @@ def run_optimization(parameters, plot=True):
     ipoptOptions = {
         "print_level": 5,
         "max_iter": 100,
-        # "tol": 1e-2,
+        # "tol": 1e-3,
         "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
-        # "acceptable_tol": 1e-3,
-        # "acceptable_obj_change_tol": 1e-3,
+        # "acceptable_tol": 1e-4,
+        # "acceptable_obj_change_tol": 1e-4,
         # "mu_strategy": "adaptive",
         # "alpha_red_factor": 0.2
         # "alpha_for_y": "safer-min-dual-infeas"
@@ -883,8 +879,8 @@ if __name__ == "__main__":
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
     y0 = {
-        "t_tank": 298.3,
-        "t_cond": 298.5,
+        "t_tank": 306.65207722,
+        "t_cond": 317.87997975,
         "e_bat": PARAMS["E_BAT_MAX"] * PARAMS["SOC_MIN"] * 1.1,
     }
     parameters["y0"] = y0
