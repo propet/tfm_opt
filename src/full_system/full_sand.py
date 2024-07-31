@@ -84,7 +84,7 @@ def cost_function(
         # jnp.sum(h * excess_prices * p_grid)
 
         # Fixed energy cost
-        + h * get_fixed_energy_cost_by_second(p_grid_max)
+        + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
 
         # depreciate battery by usage
         + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
@@ -511,6 +511,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
     p_required = parameters["p_required"]
     e_bat_max = parameters["E_BAT_MAX"]
     p_compressor_max = parameters["P_COMPRESSOR_MAX"]
+    p_grid_max = parameters["P_GRID_MAX"]
     solar_size = parameters["SOLAR_SIZE"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
     tank_volume = parameters["TANK_VOLUME"]
@@ -552,6 +553,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
         e_bat_max,
         solar_size,
         p_compressor_max,
+        p_grid_max,
         tank_volume,
         pvpc_prices,
         excess_prices,
@@ -565,6 +567,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
         e_bat_max,
         solar_size,
         p_compressor_max,
+        p_grid_max,
         tank_volume,
         pvpc_prices,
         excess_prices,
@@ -829,7 +832,7 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 1000,
+        "max_iter": 100,
         # "tol": 1e-2,
         "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
