@@ -534,6 +534,7 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
 
     ax0 = axes[0].twinx()
     ax0.plot(t, q_dot_required, label="q_dot_required", **plot_styles[2])
+    ax0.plot(t, q_dot_load, label="q_dot_load", **plot_styles[3])
     ax0.set_ylabel("W")
     ax0.legend(loc="upper right")
 
@@ -549,17 +550,10 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     axes[1].grid(True)
 
     ax1 = axes[1].twinx()
-    # ax1.plot(t, e_bat, label="E_bat", **plot_styles[1])
-    ax1.plot(t, q_dot_load, label="q_dot_load", **plot_styles[4])
+    ax1.plot(t, e_bat, label="E_bat", **plot_styles[1])
+    # ax1.plot(t, q_dot_load, label="q_dot_load", **plot_styles[4])
     ax1.set_ylabel("Ws")
     ax1.legend(loc="upper right")
-
-    # axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
-    # axes[2].plot(t, q_dot_load, label="q_dot_load", **plot_styles[1])
-    # axes[2].set_ylabel("Power[W]")
-    # axes[2].legend(loc="upper left")
-    # axes[2].grid(True)
-    # axes[2].set_xlabel("Time (s)")
 
     # ax2 = axes[2].twinx()
     # ax2.plot(t, p_bat, label="P_bat", **plot_styles[2])
@@ -568,10 +562,10 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     # ax2.legend(loc="upper right")
 
     axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
-    # axes[2].plot(t, p_grid, label="P_grid", **plot_styles[1])
-    # axes[2].plot(t, p_required, label="p_required", **plot_styles[2])
-    # axes[2].plot(t, -p_solar, label="p_solar", **plot_styles[3])
-    # axes[2].plot(t, p_bat, label="p_bat", **plot_styles[4])
+    axes[2].plot(t, p_grid, label="P_grid", **plot_styles[1])
+    axes[2].plot(t, p_required, label="p_required", **plot_styles[2])
+    axes[2].plot(t, -p_solar, label="p_solar", **plot_styles[3])
+    axes[2].plot(t, p_bat, label="p_bat", **plot_styles[4])
     axes[2].set_ylabel("Power[W]")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
@@ -637,11 +631,13 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters):
 
 def plot_history(hist, only_last=True):
     # Get inputs
+    storeHistory = History(hist)
+    histories = storeHistory.getValues()
+
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
     n_steps = int(horizon / h)
     t0 = 0
-    y0 = np.array([298.34089176, 309.70395426])  # T_tank, T_cond
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -652,10 +648,6 @@ def plot_history(hist, only_last=True):
     parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
-    parameters["y0"] = y0
-
-    storeHistory = History(hist)
-    histories = storeHistory.getValues()
 
     if only_last:
         indices = [-1]  # Only take the last index
@@ -666,6 +658,12 @@ def plot_history(hist, only_last=True):
 
     # loop through histories
     for iter, i in enumerate(indices):
+        y0 = np.array([
+            histories["t_tank"][i][0],
+            histories["t_cond"][i][0]
+        ])
+        parameters["y0"] = y0
+
         u = np.zeros((4, n_steps))
         u[0] = histories["p_compressor"][i]
         u[1] = histories["m_dot_cond"][i]

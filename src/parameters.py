@@ -14,7 +14,8 @@
 
 PARAMS = {
     "H": 1000,  # stepsize [s]
-    "HORIZON": 100000 * 10,  # s
+    # "HORIZON": 100000,  # s
+    "HORIZON": 30 * 24 * 3600,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 13000,  # Wh
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) Ws
@@ -29,11 +30,12 @@ PARAMS = {
     "DK_RHO": 50,  # Kreisselmeier–Steinhauser factor
     "BAT_ETA_CHARGE": 0.8,  # charge efficiency
     "BAT_ETA_DISCHARGE": 0.9,  # discharge efficiency
+    "BAT_ETA": 0.9486832980505138,  # charge/discharge efficiency (includes losses in DC/AC conversion). from round-trip efficiency of tesla powerwall
 
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
-    "TANK_VOLUME": 0.001,  # m3
+    "TANK_VOLUME": 1,  # m3
     "MAX_TANK_VOLUME": 1000, # m3
     "MIN_TANK_VOLUME": 1, # m3
     # TODO: make insulation length a design variable

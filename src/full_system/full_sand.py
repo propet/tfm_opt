@@ -183,7 +183,7 @@ def q_required_constraint_fun(opt, design_variables: DesignVariables) -> np.ndar
 
     # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
     q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_target)
-    return q_dot_load / q_dot_required
+    return q_dot_load / (q_dot_required + 1e-6)
 
 
 def battery_soc_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
@@ -202,12 +202,13 @@ def battery_soc_constraint_fun(opt, design_variables: DesignVariables) -> np.nda
 
 def battery_energy_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # Equality constraint
-    # e_bat_h - e_bat_{h-1} - p_bat_h * h = 0
+    # e_bat_h - e_bat_{h-1} - bat_eta * p_bat_h * h = 0
 
     # Parameters
     parameters = opt.parameters
-    n_steps = parameters["n_steps"]
     h = parameters["H"]
+    n_steps = parameters["n_steps"]
+    bat_eta = parameters["BAT_ETA"]
 
     # Design variables
     p_bat = design_variables["p_bat"]
@@ -215,7 +216,7 @@ def battery_energy_constraint_fun(opt, design_variables: DesignVariables) -> np.
 
     energy_constraints = []
     for i in range(1, n_steps):
-        constraint_value = e_bat[i] - e_bat[i - 1] - p_bat[i] * h
+        constraint_value = e_bat[i] - e_bat[i - 1] - bat_eta * p_bat[i] * h
         energy_constraints.append(constraint_value)
 
     return np.array(energy_constraints)
@@ -258,6 +259,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     t_target = parameters["T_TARGET"]
     q_dot_required = parameters["q_dot_required"]
     e_bat_max = parameters["E_BAT_MAX"]
+    bat_eta = parameters["BAT_ETA"]
 
     # Design variables
     t_tank = design_variables["t_tank"]
@@ -366,21 +368,20 @@ def get_constraint_sparse_jacs(parameters, design_variables):
 
     # q_required
     # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
-    # 0.95 < Q_dot_load / Q_dot_required < 1.05
+    # 0.95 < Q_dot_load / (Q_dot_required + 1e-6) < 1.05
     # ->
-    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_target))
+    # (1 / (q_dot_required + 1e-6)) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_target))
     dq_required_dm_dot_load = sp.lil_matrix((n_steps, n_steps))
     for i in range(n_steps):
-        dq_required_dm_dot_load[i, i] = (1 / q_dot_required[i]) * (
+        dq_required_dm_dot_load[i, i] = (1 / (q_dot_required[i] + 1e-6)) * (
             load_hx_eff * cp_water * (t_tank[i] - t_target)
         ) + 1e-20
     dq_required_dm_dot_load = dq_required_dm_dot_load.tocsr()
     dq_required_dm_dot_load = to_required_format(dq_required_dm_dot_load)
 
     dq_required_dt_tank = sp.lil_matrix((n_steps, n_steps))
-    # (1 / q_dot_required) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_target))
     for i in range(n_steps):
-        dq_required_dt_tank[i, i] = (1 / q_dot_required[i]) * (load_hx_eff * m_dot_load[i] * cp_water) + 1e-20
+        dq_required_dt_tank[i, i] = (1 / (q_dot_required[i] + 1e-6)) * (load_hx_eff * m_dot_load[i] * cp_water) + 1e-20
     dq_required_dt_tank = dq_required_dt_tank.tocsr()
     dq_required_dt_tank = to_required_format(dq_required_dt_tank)
 
@@ -409,7 +410,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     ]
 
     # battery_energy_jac
-    # e_bat_h - e_bat_{h-1} - p_bat_h * h = 0
+    # e_bat_h - e_bat_{h-1} - bat_eta * p_bat_h * h = 0
     dbattery_energy_de_bat = sp.lil_matrix((n_steps - 1, n_steps))
     for i in range(1, n_steps):
         dbattery_energy_de_bat[i - 1, i] = 1
@@ -419,7 +420,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
 
     dbattery_energy_dp_bat = sp.lil_matrix((n_steps - 1, n_steps))
     for i in range(1, n_steps):
-        dbattery_energy_dp_bat[i - 1, i] = -h
+        dbattery_energy_dp_bat[i - 1, i] = - bat_eta * h
     dbattery_energy_dp_bat = dbattery_energy_dp_bat.tocsr()
     dbattery_energy_dp_bat = to_required_format(dbattery_energy_dp_bat)
 
@@ -478,6 +479,13 @@ def get_constraint_sparse_jacs(parameters, design_variables):
     e_bat_0_jac = {"e_bat": de_bat_0_de_bat}
     e_bat_0_wrt = ["e_bat"]
 
+    dp_bat_0_dp_bat = sp.lil_matrix((1, n_steps))
+    dp_bat_0_dp_bat[0, 0] = 1
+    dp_bat_0_dp_bat = dp_bat_0_dp_bat.tocsr()
+    dp_bat_0_dp_bat = to_required_format(dp_bat_0_dp_bat)
+    p_bat_0_jac = {"p_bat": dp_bat_0_dp_bat}
+    p_bat_0_wrt = ["p_bat"]
+
     return (
         dae1_jac,
         dae1_wrt,
@@ -497,6 +505,8 @@ def get_constraint_sparse_jacs(parameters, design_variables):
         t_cond_0_wrt,
         e_bat_0_jac,
         e_bat_0_wrt,
+        p_bat_0_jac,
+        p_bat_0_wrt,
     )
 
 
@@ -538,6 +548,8 @@ def sens(opt, design_variables: DesignVariables, func_values):
         t_cond_0_wrt,
         e_bat_0_jac,
         e_bat_0_wrt,
+        p_bat_0_jac,
+        p_bat_0_wrt,
     ) = get_constraint_sparse_jacs(parameters, design_variables)
 
     dcostdp_bat = get_dcostdp_bat(
@@ -583,6 +595,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
         "t_tank_0_constraint": t_tank_0_jac,
         "t_cond_0_constraint": t_cond_0_jac,
         "e_bat_0_constraint": e_bat_0_jac,
+        "p_bat_0_constraint": p_bat_0_jac,
     }
 
 
@@ -591,8 +604,9 @@ def run_optimization(parameters, plot=True):
 
     # Parameters
     h = parameters["H"]
-    horizon = parameters["HORIZON"]
-    n_steps = int(horizon / h)
+    # horizon = parameters["HORIZON"]
+    # n_steps = int(horizon / h)
+    n_steps = parameters["t_amb"].shape[0]
     parameters["n_steps"] = n_steps
     opt.add_parameters(parameters)
 
@@ -710,6 +724,8 @@ def run_optimization(parameters, plot=True):
         t_cond_0_wrt,
         e_bat_0_jac,
         e_bat_0_wrt,
+        p_bat_0_jac,
+        p_bat_0_wrt,
     ) = get_constraint_sparse_jacs(parameters, dummy_design_variables)
 
     dae1_constraint: ConstraintInfo = {
@@ -824,11 +840,23 @@ def run_optimization(parameters, plot=True):
     }
     opt.add_constraint_info(e_bat_0_constraint)
 
+    p_bat_0_constraint: ConstraintInfo = {
+        "name": "p_bat_0_constraint",
+        "n_constraints": 1,
+        "lower": parameters["y0"]["p_bat"],
+        "upper": parameters["y0"]["p_bat"],
+        "function": lambda _, design_variables: design_variables["p_bat"][0],
+        "scale": 1 / parameters["P_BAT_MAX"],
+        "wrt": p_bat_0_wrt,
+        "jac": p_bat_0_jac,
+    }
+    opt.add_constraint_info(p_bat_0_constraint)
+
     # Optimizer
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 100,
+        "max_iter": 500,
         # "tol": 1e-3,
         "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
@@ -859,7 +887,7 @@ def run_optimization(parameters, plot=True):
 
     # Check Solution
     if plot:
-        # print(sol)
+        print(sol)
         exit(0)
     return sol.xStar, sol.fStar
 
@@ -881,7 +909,8 @@ if __name__ == "__main__":
     y0 = {
         "t_tank": 306.65207722,
         "t_cond": 317.87997975,
-        "e_bat": PARAMS["E_BAT_MAX"] * PARAMS["SOC_MIN"] * 1.1,
+        "e_bat": PARAMS["E_BAT_MAX"] * PARAMS["SOC_MAX"],
+        "p_bat": 0,
     }
     parameters["y0"] = y0
 
