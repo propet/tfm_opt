@@ -14,6 +14,8 @@ from cycler import cycler
 import jax
 import jax.numpy as jnp
 
+jax.config.update("jax_enable_x64", True)
+
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.join(CURRENT_DIR, "..")
@@ -198,6 +200,81 @@ def linear_regression(x, y):
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
+
+
+def cop(T):
+    if isinstance(T, jnp.ndarray):
+        return cop_jax(T)
+    else:
+        return cop_np(T)
+
+
+def cop_jax(t):
+    """
+    t: temperature [Kelvin]
+
+    piecewise lineal -> non-linear function overall
+
+    In the following heat pump technicals
+    https://www.daikin.es/content/dam/DACS/document-library/Pdfs-subidos-2022/Monobloc%20EBLA%209-11%20-%2014-16.pdf
+
+    it mentions reference SCOP of 4.8 at 35C (308K) (output water temperature),
+    and SCOP 3.4 at 55C (328K)
+
+    So we set the COP to 4.8 up to 35C, and linearly decreasing to 3.4 at 55C
+    minimum COP value is 0
+    """
+    # cop = cop_0 + m * t
+    # cop_1 = cop_0 + m * t_1 -> cop_0 = cop_1 - m * t_1
+    # cop_3 = 0 = cop_0 + m * t_3 -> t_3 = - cop_0 / m
+    cop_1 = 4.8
+    cop_2 = 3.4
+    t_1 = 308
+    t_2 = 328
+    cop_3 = 0
+    m = (cop_1 - cop_2) / (t_1 - t_2)
+    cop_0 = cop_1 - m * t_1
+    t_3 = - cop_0 / m
+
+    conditions = [t < t_1, (t >= t_1) & (t < t_3), t >= t_3]
+    choices = [cop_1, cop_0 + m * t, cop_3]
+    return jnp.select(conditions, choices)
+
+
+def cop_np(t):
+    # cop = cop_0 + m * t
+    # cop_1 = cop_0 + m * t_1 -> cop_0 = cop_1 - m * t_1
+    # cop_3 = 0 = cop_0 + m * t_3 -> t_3 = - cop_0 / m
+    cop_1 = 4.8
+    cop_2 = 3.4
+    t_1 = 308
+    t_2 = 328
+    cop_3 = 0
+    m = (cop_1 - cop_2) / (t_1 - t_2)
+    cop_0 = cop_1 - m * t_1
+    t_3 = - cop_0 / m
+
+    conditions = [t < t_1, (t >= t_1) & (t < t_3), t >= t_3]
+    functions = [lambda t: cop_1, lambda t: cop_0 + m * t, lambda t: cop_3]
+    return np.piecewise(t, conditions, functions)
+
+
+def get_dcopdT(t):
+    # cop = cop_0 + m * t
+    # cop_1 = cop_0 + m * t_1 -> cop_0 = cop_1 - m * t_1
+    # cop_3 = 0 = cop_0 + m * t_3 -> t_3 = - cop_0 / m
+    cop_1 = 4.8
+    cop_2 = 3.4
+    t_1 = 308
+    t_2 = 328
+    cop_3 = 0
+    m = (cop_1 - cop_2) / (t_1 - t_2)
+    cop_0 = cop_1 - m * t_1
+    t_3 = - cop_0 / m
+
+    conditions = [t < t_1, (t >= t_1) & (t < t_3), t >= t_3]
+    functions = [lambda t: 0, lambda t: m, lambda t: 0]
+    return np.piecewise(t, conditions, functions)
 
 
 def generic_plot(plot_data: PlotData, filename=None, title=None, sharex=False, sharey=False):
@@ -747,7 +824,24 @@ def plot_data_regressions():
     plt.ylabel("€")
     plt.show()
 
+
+def plot_cop():
+    t = np.linspace(253, 420, 1000)
+    cop_arr = cop(t)
+    dcop_values = get_dcopdT(t)
+
+    fig, ax = plt.subplots(figsize=(10, 12))
+    ax.plot(t, cop_arr, **plot_styles[0])
+    ax.set_ylabel("COP")
+    ax.set_xlabel("temperature [K]")
+    ax0 = ax.twinx()
+    ax0.plot(t, dcop_values, **plot_styles[1])
+    ax0.set_ylabel(r"$\frac{dCOP}{dT}$")
+    plt.show()
+
+
 if __name__ == "__main__":
     # plot_data_regressions()
     # plot_prices()
-    plot_dynamic_parameters()
+    # plot_dynamic_parameters()
+    plot_cop()

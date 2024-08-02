@@ -5,6 +5,8 @@ from parameters import PARAMS
 from opt import Opt
 from utils import (
     get_dynamic_parameters,
+    cop,
+    get_dcopdT,
     get_solar_panels_depreciation_by_second,
     jax_to_numpy,
     get_battery_depreciation_by_joule,
@@ -17,7 +19,7 @@ from utils import (
 from typing import List, Dict
 from custom_types import DesignVariables, PlotData, DesignVariableInfo, ConstraintInfo, Parameters
 import scipy.sparse as sp
-from full_system.simulate_simple_hp import dae_forward, dae_adjoints, plot, cop, get_dcopdT
+from full_system.simulate_simple_hp import dae_forward, dae_adjoints, plot
 import jax
 import jax.numpy as jnp
 

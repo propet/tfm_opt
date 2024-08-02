@@ -18,8 +18,8 @@ PARAMS = {
     "HORIZON": 30 * 24 * 3600,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 13000,  # Wh
-    "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) Ws
     "SOLAR_SIZE": 3000,  # installed power in solar panels W
+    "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) Ws
     "SOC_MIN": 0.1,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
     "P_BAT_MAX": 5000,  # W

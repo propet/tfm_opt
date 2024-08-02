@@ -4,68 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
 from parameters import PARAMS
-from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, load_dict_from_file
+from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, load_dict_from_file, cop, get_dcopdT
 from pyoptsparse import History
 import jax
 import jax.numpy as jnp
 
 jax.config.update("jax_enable_x64", True)
-
-
-def cop(T):
-    if isinstance(T, jnp.ndarray):
-        return cop_jax(T)
-    else:
-        return cop_np(T)
-
-
-def cop_jax(T):
-    """
-    piecewise lineal -> non-linear function overall
-
-    In the following heat pump technicals
-    https://www.climamarket.eu/en/aquarea-high-performance-mdc-h-generation-wh-mdc07h3e5-cl
-    it mentions reference COP of 4.7 at 35C,
-    and maximum output water temperature of 60C
-
-    So we set the COP to 4.7 up to 50C, and linearly decreasing to 0 at 80C
-
-    COP is 0 for T > 353
-    COP is 4.7 for T < 323
-    COP varies linearly from 4 at 333K to 0 at 373K
-    """
-    max_cop = 4.7
-    min_cop = 0
-    T_upper = 353
-    T_lower = 323
-    m = (max_cop - min_cop) / (T_upper - T_lower)
-    T0 = max_cop + m * T_lower
-    conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
-    choices = [max_cop, T0 - m * T, min_cop]
-    return jnp.select(conditions, choices)
-
-
-def cop_np(T):
-    max_cop = 4.7
-    min_cop = 0
-    T_upper = 353
-    T_lower = 323
-    m = (max_cop - min_cop) / (T_upper - T_lower)
-    T0 = max_cop + m * T_lower
-    conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
-    functions = [lambda T: max_cop, lambda T: T0 - m * T, lambda T: min_cop]
-    return np.piecewise(T, conditions, functions)
-
-
-def get_dcopdT(T):
-    max_cop = 4.7
-    min_cop = 0
-    T_upper = 353
-    T_lower = 323
-    m = (max_cop - min_cop) / (T_upper - T_lower)
-    conditions = [T < T_lower, (T >= T_lower) & (T < T_upper), T >= T_upper]
-    functions = [lambda T: 0, lambda T: -m, lambda T: 0]
-    return np.piecewise(T, conditions, functions)
 
 
 def cost_function(y, u, parameters):
