@@ -167,9 +167,11 @@ def dae2_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
 
 
 def q_required_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
-    # Q_dot_load should be +-5% of q_dot_required
+    # Q_dot_load should track Q_dot_required with some tolerance
     # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
-    # 0.95 < Q_dot_load / Q_dot_required < 1.05
+    # Q_dot_required - tol < Q_dot_load < Q_dot_required + tol
+    # ->
+    # -tol < Q_dot_load - Q_dot_required < tol
 
     # Parameters
     parameters = opt.parameters
@@ -185,7 +187,7 @@ def q_required_constraint_fun(opt, design_variables: DesignVariables) -> np.ndar
 
     # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
     q_dot_load = load_hx_eff * m_dot_load * cp_water * (t_tank - t_target)
-    return q_dot_load / (q_dot_required + 1e-6)
+    return q_dot_load - q_dot_required
 
 
 def battery_soc_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
@@ -370,20 +372,16 @@ def get_constraint_sparse_jacs(parameters, design_variables):
 
     # q_required
     # Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_target)
-    # 0.95 < Q_dot_load / (Q_dot_required + 1e-6) < 1.05
-    # ->
-    # (1 / (q_dot_required + 1e-6)) * (load_hx_eff * m_dot_load * cp_water * (T_tank - T_target))
+    # -tol < Q_dot_load - Q_dot_required < tol
     dq_required_dm_dot_load = sp.lil_matrix((n_steps, n_steps))
     for i in range(n_steps):
-        dq_required_dm_dot_load[i, i] = (1 / (q_dot_required[i] + 1e-6)) * (
-            load_hx_eff * cp_water * (t_tank[i] - t_target)
-        ) + 1e-20
+        dq_required_dm_dot_load[i, i] = load_hx_eff * cp_water * (t_tank[i] - t_target) + 1e-20
     dq_required_dm_dot_load = dq_required_dm_dot_load.tocsr()
     dq_required_dm_dot_load = to_required_format(dq_required_dm_dot_load)
 
     dq_required_dt_tank = sp.lil_matrix((n_steps, n_steps))
     for i in range(n_steps):
-        dq_required_dt_tank[i, i] = (1 / (q_dot_required[i] + 1e-6)) * (load_hx_eff * m_dot_load[i] * cp_water) + 1e-20
+        dq_required_dt_tank[i, i] = load_hx_eff * m_dot_load[i] * cp_water + 1e-20
     dq_required_dt_tank = dq_required_dt_tank.tocsr()
     dq_required_dt_tank = to_required_format(dq_required_dt_tank)
 
@@ -759,10 +757,10 @@ def run_optimization(parameters, plot=True):
     q_required_constraint: ConstraintInfo = {
         "name": "q_required_constraint",
         "n_constraints": n_steps,
-        "lower": 0.95,
-        "upper": 1.05,
+        "lower": -parameters["q_required_max"] * 1e-2,
+        "upper": parameters["q_required_max"] * 1e-2,
         "function": q_required_constraint_fun,
-        "scale": 1,
+        "scale": 1 / parameters["q_required_max"],
         "wrt": q_required_wrt,
         "jac": q_required_jac,
     }
@@ -858,15 +856,15 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 500,
+        "max_iter": 100,
         # "tol": 1e-3,
         "obj_scaling_factor": 1e1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
         # "acceptable_tol": 1e-4,
         # "acceptable_obj_change_tol": 1e-4,
-        # "mu_strategy": "adaptive",
+        "mu_strategy": "adaptive",
         # "alpha_red_factor": 0.2
-        # "alpha_for_y": "safer-min-dual-infeas"
+        "alpha_for_y": "safer-min-dual-infeas"
         # "alpha_for_y": "primal-and-full"
         # "alpha_for_y": "dual-and-full"
         # "alpha_for_y": "full"
@@ -889,7 +887,7 @@ def run_optimization(parameters, plot=True):
 
     # Check Solution
     if plot:
-        print(sol)
+        # print(sol)
         exit(0)
     return sol.xStar, sol.fStar
 
@@ -897,11 +895,12 @@ def run_optimization(parameters, plot=True):
 if __name__ == "__main__":
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
-    t0 = 0
+    t0 = PARAMS["T0"]
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
+    parameters["q_required_max"] = np.max(parameters["q_dot_required"])
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]

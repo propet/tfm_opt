@@ -14,8 +14,10 @@
 
 PARAMS = {
     "H": 1000,  # stepsize [s]
-    # "HORIZON": 100000,  # s
-    "HORIZON": 30 * 24 * 3600,  # s
+    # "HORIZON": 10000,  # s
+    # "T0": 100 * 24 * 3600,
+    "T0": 0,
+    "HORIZON": 365 * 24 * 3600,  # s
     "N_HOURS": 1000,  # 8760 in a year
     "MAX_BAT_CAPACITY": 13000,  # Wh
     "SOLAR_SIZE": 3000,  # installed power in solar panels W
@@ -35,7 +37,7 @@ PARAMS = {
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
-    "TANK_VOLUME": 1,  # m3
+    "TANK_VOLUME": 0.1,  # m3
     "MAX_TANK_VOLUME": 1000, # m3
     "MIN_TANK_VOLUME": 1, # m3
     # TODO: make insulation length a design variable
@@ -45,8 +47,8 @@ PARAMS = {
 
     # "M_DOT_COND_MAX": 1, # kg/s
     # "M_DOT_LOAD_MAX": 1, # kg/s
-    "M_DOT_COND_MAX": 0.3, # kg/s
-    "M_DOT_LOAD_MAX": 0.3, # kg/s
+    "M_DOT_COND_MAX": 0.5, # kg/s
+    "M_DOT_LOAD_MAX": 0.5, # kg/s
 
     "MAX_Q_DOT_REQUIRED": 8000,  # W
     "T_TARGET": 298,  # K

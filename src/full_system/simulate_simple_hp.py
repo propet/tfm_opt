@@ -580,8 +580,7 @@ def plot_history(hist, only_last=True):
 
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
-    n_steps = int(horizon / h)
-    t0 = 0
+    t0 = PARAMS["T0"]
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -592,6 +591,7 @@ def plot_history(hist, only_last=True):
     parameters["daily_prices"] = dynamic_parameters["daily_prices"]
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
+    n_steps = parameters["t_amb"].shape[0]
 
     if only_last:
         indices = [-1]  # Only take the last index
