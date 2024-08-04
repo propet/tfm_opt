@@ -38,13 +38,14 @@ PARAMS = {
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
-    "MU_WATER": 0.001,  # Water dynamic viscosity (Pa·s)
+    "MU_WATER_AT_300K": 0.000866,  # Water dynamic viscosity (Pa·s) at 300K
+    "MU_WATER_AT_320K": 0.000577,  # Water dynamic viscosity (Pa·s) at 320K
     "K_WATER": 0.6, # Water thermal conductivity [W/(m·K)]
     "PR_WATER": 6.9,  # Prandtl number (dimensionless) for water at 300K $$Pr = \frac{c_p \mu}{k_water}$$
     "TANK_VOLUME": 0.1,  # m3
     "MAX_TANK_VOLUME": 1000, # m3
     "MIN_TANK_VOLUME": 1, # m3
-    "U": 0.245,  # Overall heat transfer coefficient of rockwool insulation (W/(m2·K))
+    "U": 0.245,  # (W/(m2·K)) overall coefficient for 20cm of rock wool insulation
     "T_AMB": 300,  # K (27ºC)
     "P_COMPRESSOR_MAX": 3000,  # W
 
@@ -66,10 +67,22 @@ PARAMS = {
     "EPSILON_CONCRETE": 0.93,  # emissivity of concrete at 300K (dimensionless)
     "T_TARGET": 298,  # K
     # "T_TARGET": 293,  # K
-    "ROCK_WOOL_U": 0.245,  # W/(m2·K)
+    "ROCK_WOOL_U": 0.245,  # W/(m2·K) for 20cm of rock wool insulation
     "ROCK_WOOL_AREA": 175,  # m2
+    "A_WALLS": 100,  # m2, square of 10m side, with height 2.5: 10 * 2.5 * 4 = 100
+    "A_ROOF": 100,  # m2, same as floor area
     "WINDOWS_U": 1.3,  # W/(m2·K)
     "WINDOWS_AREA": 25,  # m2
+    "ROOM_VOLUME": 250,  # [m3], 100m2 de planta y 2.5m de alto
+    "ROOM_AIR_MASS": 1.1614 * 250,  # [kg], rho_air * volume_room
+
+    "H_WALL_IN": 8.9, # W/(m2·K) still air, vertical non reflective wall
+    "H_WALL_OUT": 45, # W/(m2·K) moving air (mean of 6.7m/s and 3.4m/s values)
+    "H_ROOF_IN": 9.26, # W/(m2·K) still air, horizontar surface with upwards heat
+    "H_ROOF_OUT": 45, # W/(m2·K) moving air (mean of 6.7m/s and 3.4m/s values)
+    "U_WALLS": 0.2371,  # [W/(m2·K)] ∘ 1 / U_walls = (1 / h_wall_in) + (1 / rock_wool_u) + (1 / h_wall_out)
+    "U_ROOF": 0.2374,  # [W/(m2·K)] ∘ 1 / U_roof = (1 / h_roof_in) + (1 / rock_wool_u) + (1 / h_roof_out)
+
 
     "K_PEX": 0.41, # PEX thermal conductivity [W/(m·K)]
     "TUBE_INNER_DIAMETER": 0.022225,  # tube inner diameter [m], for 1" pex tube
