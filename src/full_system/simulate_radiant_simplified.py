@@ -78,18 +78,35 @@ def dae_system(y, y_prev, p, u, h):
         ∘ Nu_tube_water = 0.023 * Re_tube_water**0.8 * Pr_water**(1/3)
         ∘ Re_tube_water = (tube_inner_diameter * v * rho_water) / mu_water_at_320K = (4 * m_dot_heating) / (pi * mu_water_at_320K * tube_inner_diameter)
 
+    substitute the values for q_conduction, q_radiation and q_convection in the equations
+    q_conduction_floor = m_dot_heating * cp_water * (t_tank - t_out_heating)
+    q_convection_floor = h_floor_air * floor_area * (t_floor - t_room)
+    q_radiation_floor = stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
 
-    with 6 equations for 6 unknowns:
-    T_floor, T_out_heating, Q_conduction_floor, Q_convection_floor, Q_radiation_floor, T_room
+    ∘ m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes = 0
 
+    ∘ floor_mass * cp_concrete * ((t_floor - t_floor_prev)/h)
+        - m_dot_heating * cp_water * (t_tank - t_out_heating)
+        + h_floor_air * floor_area * (t_floor - t_room)
+        + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
+        = 0
+
+    ∘ room_air_mass * cp_air * ((t_room - t_room_prev)/h)
+        - h_floor_air * floor_area * (t_floor - t_room)
+        - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
+        + U_walls * A_walls * (t_room - t_amb)
+        + U_roof * A_roof * (t_room - t_amb)
+        + U_windows * A_windows * (t_room - t_amb)
+        = 0
+
+
+    with 3 equations for 3 unknowns:
+    t_floor, t_out_heating, t_room
 
     Making:
     t_out_heating      =  y[0]
     t_floor            =  y[1]
     t_room             =  y[2]
-    q_conduction_floor =  y[3]
-    q_convection_floor =  y[4]
-    q_radiation_floor  =  y[5]
 
     floor_mass                      =         p[0]
     cp_concrete                     =         p[1]
@@ -194,27 +211,43 @@ def get_h_tube_water(tube_inner_diameter, mu_water_at_320K, Pr_water, k_water, m
 
 def f(y, y_prev, p, u, h):
     # ∘ floor_mass * cp_concrete * ((t_floor - t_floor_prev)/h)
-    #     - q_conduction_floor
-    #     + q_convection_floor
-    #     + q_radiation_floor
+    #     - m_dot_heating * cp_water * (t_tank - t_out_heating)
+    #     + h_floor_air * floor_area * (t_floor - t_room)
+    #     + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
     #     = 0
     #
     # ∘ room_air_mass * cp_air * ((t_room - t_room_prev)/h)
-    #     - q_convection_floor
-    #     - q_radiation_floor
+    #     - h_floor_air * floor_area * (t_floor - t_room)
+    #     - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
     #     + U_walls * A_walls * (t_room - t_amb)
     #     + U_roof * A_roof * (t_room - t_amb)
     #     + U_windows * A_windows * (t_room - t_amb)
     #     = 0
+    #
+    #     --------------------------------------
+    #     ∘ Nu_floor_air = (h_floor_air * floor_width) / k_air
+    #     ∘ Nu_floor_air = 0.15 * Ra_floor_air**(1/3)
+    #     ∘ Ra_floor_air = Gr_air * Pr_air
+    #     ∘ Gr_floor_air = (gravity_acceleration * air_volumetric_expansion_coeff * np.abs(t_floor - t_room) * L**3) / nu_air**2
+
+    t_out_heating = y[0]
     t_floor = y[1]
-    t_room = y[2]
-    q_conduction_floor = y[3]
-    q_convection_floor = y[4]
-    q_radiation_floor = y[5]
     t_floor_prev = y_prev[1]
+    t_room = y[2]
     t_room_prev = y_prev[2]
+
     floor_mass = p[0]
     cp_concrete = p[1]
+    gravity_acceleration = p[2]
+    air_volumetric_expansion_coeff = p[3]
+    floor_width = p[4]
+    nu_air = p[5]
+    Pr_air = p[6]
+    k_air = p[7]
+    floor_area = p[9]
+    stefan_boltzmann_constant = p[10]
+    epsilon_concrete = p[11]
+    cp_water = p[12]
     room_air_mass = p[19]
     cp_air = p[20]
     A_walls = p[21]
@@ -223,73 +256,11 @@ def f(y, y_prev, p, u, h):
     U_walls = p[24]
     U_roof = p[25]
     U_windows = p[26]
-    t_amb = u[1]
-    return [
-        floor_mass * cp_concrete * ((t_floor - t_floor_prev) / h)
-        - q_conduction_floor
-        + q_convection_floor
-        + q_radiation_floor,
-        room_air_mass * cp_air * ((t_room - t_room_prev) / h)
-        - q_convection_floor
-        - q_radiation_floor
-        + U_walls * A_walls * (t_room - t_amb)
-        + U_roof * A_roof * (t_room - t_amb)
-        + U_windows * A_windows * (t_room - t_amb),
-    ]
-
-
-def g(y, p, u, h):
-    # ∘ q_convection_floor - h_floor_air * floor_area * (T_floor - T_room) = 0
-    #     --------------------------------------
-    #     ∘ Nu_floor_air = (h_floor_air * floor_width) / k_air
-    #     ∘ Nu_floor_air = 0.15 * Ra_floor_air**(1/3)
-    #     ∘ Ra_floor_air = Gr_air * Pr_air
-    #     ∘ Gr_floor_air = (gravity_acceleration * air_volumetric_expansion_coeff * np.abs(t_floor - t_room) * L**3) / nu_air**2
-    #
-    # ∘ q_radiation_floor - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4) = 0
-    #
-    # ∘ q_conduction_floor - m_dot_heating * cp_water * (t_tank - t_out_heating) = 0
-    # ∘ q_conduction_floor - U_tubes * A_tubes * DeltaT_tubes = 0
-    #     --------------------------------------
-    #     ∘ DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (np.log((t_tank - t_floor) / (t_out_heating - t_floor)))
-    #     ∘ U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
-    #     ∘ Nu_tube_water = (h_tube_water * tube_inner_diameter) / k_water
-    #     ∘ Nu_tube_water = 0.023 * Re_tube_water**0.8 * Pr_water**0.3
-    #     ∘ Re_tube_water = (tube_inner_diameter * v * rho_water) / mu_water_at_320K = (4 * m_dot_heating) / (pi * mu_water_at_320K * tube_inner_diameter)
-    t_out_heating = y[0]
-    t_floor = y[1]
-    t_room = y[2]
-    q_conduction_floor = y[3]
-    q_convection_floor = y[4]
-    q_radiation_floor = y[5]
-    gravity_acceleration = p[2]
-    air_volumetric_expansion_coeff = p[3]
-    floor_width = p[4]
-    nu_air = p[5]
-    Pr_air = p[6]
-    k_air = p[7]
-    tube_inner_diameter = p[8]
-    floor_area = p[9]
-    stefan_boltzmann_constant = p[10]
-    epsilon_concrete = p[11]
-    cp_water = p[12]
-    mu_water_at_320K = p[13]
-    Pr_water = p[14]
-    k_water = p[15]
-    k_pex = p[16]
-    tube_thickness = p[17]
-    A_tubes = p[18]
-    A_roof = p[22]
     t_tank = p[27]
-    m_dot_heating = u[0]
 
-    h_tube_water = get_h_tube_water(
-        tube_inner_diameter,
-        mu_water_at_320K,
-        Pr_water,
-        k_water,
-        m_dot_heating,
-    )
+    m_dot_heating = u[0]
+    t_amb = u[1]
+
     h_floor_air = get_h_floor_air(
         t_floor,
         t_room,
@@ -302,6 +273,51 @@ def g(y, p, u, h):
         A_roof,
     )
 
+    return [
+        floor_mass * cp_concrete * ((t_floor - t_floor_prev) / h)
+        - m_dot_heating * cp_water * (t_tank - t_out_heating)
+        + h_floor_air * floor_area * (t_floor - t_room)
+        + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4),
+        room_air_mass * cp_air * ((t_room - t_room_prev) / h)
+        - h_floor_air * floor_area * (t_floor - t_room)
+        - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
+        + U_walls * A_walls * (t_room - t_amb)
+        + U_roof * A_roof * (t_room - t_amb)
+        + U_windows * A_windows * (t_room - t_amb),
+    ]
+
+
+def g(y, p, u, h):
+    # ∘ m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes = 0
+    #     --------------------------------------
+    #     ∘ DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (np.log((t_tank - t_floor) / (t_out_heating - t_floor)))
+    #     ∘ U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
+    #     ∘ Nu_tube_water = (h_tube_water * tube_inner_diameter) / k_water
+    #     ∘ Nu_tube_water = 0.023 * Re_tube_water**0.8 * Pr_water**0.3
+    #     ∘ Re_tube_water = (tube_inner_diameter * v * rho_water) / mu_water_at_320K = (4 * m_dot_heating) / (pi * mu_water_at_320K * tube_inner_diameter)
+    t_out_heating = y[0]
+    t_floor = y[1]
+
+    tube_inner_diameter = p[8]
+    cp_water = p[12]
+    mu_water_at_320K = p[13]
+    Pr_water = p[14]
+    k_water = p[15]
+    k_pex = p[16]
+    tube_thickness = p[17]
+    A_tubes = p[18]
+    t_tank = p[27]
+
+    m_dot_heating = u[0]
+
+    h_tube_water = get_h_tube_water(
+        tube_inner_diameter,
+        mu_water_at_320K,
+        Pr_water,
+        k_water,
+        m_dot_heating,
+    )
+
     DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (
         np.log(np.abs((t_tank - t_floor) / (t_out_heating - t_floor + 1e-6))) + 1e-6
     )  # LMTD with absolute differences
@@ -310,10 +326,7 @@ def g(y, p, u, h):
     U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
 
     return [
-        q_convection_floor - h_floor_air * floor_area * (t_floor - t_room),
-        q_radiation_floor - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4),
-        q_conduction_floor - m_dot_heating * cp_water * (t_tank - t_out_heating),
-        q_conduction_floor - U_tubes * A_tubes * DeltaT_tubes,
+        m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes,
     ]
 
 
@@ -525,11 +538,38 @@ def plot_only_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, 
     t_out_heating = y[0]
     t_floor = y[1]
     t_room = y[2]
-    q_conduction_floor = y[3]
-    q_convection_floor = y[4]
-    q_radiation_floor = y[5]
+
+    gravity_acceleration = dae_p[2]
+    air_volumetric_expansion_coeff = dae_p[3]
+    floor_width = dae_p[4]
+    nu_air = dae_p[5]
+    Pr_air = dae_p[6]
+    k_air = dae_p[7]
+    floor_area = dae_p[9]
+    stefan_boltzmann_constant = dae_p[10]
+    epsilon_concrete = dae_p[11]
+    cp_water = dae_p[12]
+    A_roof = dae_p[22]
+    t_tank = dae_p[27]
+
     m_dot_heating = u[0]
     t_amb = u[1]
+
+    h_floor_air = get_h_floor_air(
+        t_floor,
+        t_room,
+        gravity_acceleration,
+        air_volumetric_expansion_coeff,
+        floor_width,
+        nu_air,
+        Pr_air,
+        k_air,
+        A_roof,
+    )
+
+    q_conduction_floor = m_dot_heating * cp_water * (t_tank - t_out_heating)
+    q_convection_floor = h_floor_air * floor_area * (t_floor - t_room)
+    q_radiation_floor = stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
     if not isinstance(axes, np.ndarray):
@@ -583,12 +623,9 @@ def main():
     # t_out_heating      =  y[0]
     # t_floor            =  y[1]
     # t_room             =  y[2]
-    # q_conduction_floor =  y[3]
-    # q_convection_floor =  y[4]
-    # q_radiation_floor  =  y[5]
     # Be sure that: T_tank > T_out_heating > T_floor > T_room
     parameters["T_TANK"] = 320  # 47C
-    y0 = np.array([311.27404594, 284.38312066, 283.39200342, 3652.68436758, 175.64636715, 478.29016124])
+    y0 = np.array([311.13048069, 283.79712778, 282.07130183])
     parameters["y0"] = y0
 
     # m_dot_heating = u[0]
