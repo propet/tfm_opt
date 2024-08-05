@@ -749,6 +749,6 @@ def main(hist=None):
 
 if __name__ == "__main__":
     # main()
-    plot_history(hist="saves/full_sand_wo_finn.hst", only_last=True)
-    # plot_history(hist="saves/full_sand_wo_finn.hst", only_last=False)
+    plot_history(hist="saves/full_sand_wo_heating.hst", only_last=True)
+    # plot_history(hist="saves/full_sand_wo_heating.hst", only_last=False)
     # plot_history(hist="saves/mdf_wo_finn.hst", only_last=True)

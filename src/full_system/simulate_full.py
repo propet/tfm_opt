@@ -225,8 +225,8 @@ def get_h_floor_air(
     # Absolute value for the difference between t_floor and t_room
     # since if negative, would imply a negative h, which doesn't have physical meaning
     Gr_floor_air = (
-        gravity_acceleration * air_volumetric_expansion_coeff * jnp.abs(t_floor - t_room) * L**3
-    ) / nu_air**2
+        jnp.abs(gravity_acceleration * air_volumetric_expansion_coeff * (t_floor - t_room) * L**3 / nu_air**2) + 1e-6
+    )
     Ra_floor_air = Gr_floor_air * Pr_air
     Nu_floor_air = 0.15 * Ra_floor_air ** (1 / 3)
     h_floor_air = Nu_floor_air * k_air / L
@@ -404,13 +404,14 @@ def g(y, p, u, h):
         k_water,
         m_dot_heating,
     )
-
-    DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (
-        jnp.log(jnp.abs((t_tank - t_floor) / (t_out_heating - t_floor + 1e-6))) + 1e-6
-    )  # LMTD with absolute differences
-    # DeltaT_tubes = ((t_tank - t_floor) + jnp.abs(t_out_heating - t_floor)) / 2  # mean with absolutes
-
     U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
+
+    # LMTD with absolute differences
+    # DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (
+    #     jnp.log(jnp.abs((t_tank - t_floor) / (t_out_heating - t_floor + 1e-6)) + 1e-6) + 1e-6
+    # )
+    # Mean deltaT with absolute differences
+    DeltaT_tubes = ((t_tank - t_floor) + jnp.abs(t_out_heating - t_floor)) / 2
 
     return [
         cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank),
@@ -611,10 +612,51 @@ def dae_adjoints(y, u, dae_p, n_steps, parameters):
     return dCdy_0_adj, dCdp_adj, dCdu_adj
 
 
+def fd_gradients(y0, u, dae_p, n_steps, parameters):
+    """
+    Finite difference of function cost_function
+    with respect
+        initial conditions y0,
+        parameters p,
+        and control signals u at timestep 100
+
+    f'(x) = (f(y+h) - f(y)) / h
+    """
+    delta = 1e-5
+    h = parameters["H"]
+
+    # Initial solution
+    y = solve(y0, u, dae_p, h, n_steps)
+    # print("fd solve: ", y)
+
+    dfdy0 = []
+    for i in range(len(y0)):
+        y0_perturbed = y0.copy()  # Create a new copy of y0
+        y0_perturbed[i] += delta
+        y_perturbed = solve(y0_perturbed, u, dae_p, h, n_steps)
+        dfdy0.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
+
+    dfdp = []
+    for i in range(len(dae_p)):
+        p_perturbed = dae_p.copy()  # Create a new copy of p
+        p_perturbed[i] += delta
+        y_perturbed = solve(y0, u, p_perturbed, h, n_steps)
+        dfdp.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
+
+    dfdu_3 = []
+    for i in range(len(u[:, 0])):
+        u_perturbed = u.copy()  # Create a new copy of u
+        u_perturbed[i, 3] += delta
+        y_perturbed = solve(y0, u_perturbed, dae_p, h, n_steps)
+        dfdu_3.append((cost_function(y_perturbed, u_perturbed, parameters) - cost_function(y, u, parameters)) / delta)
+
+    return dfdy0, dfdp, dfdu_3
+
+
 fig = None
 
 
-def plot_only_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, block=True, save=True):
+def plot_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, block=True, save=True):
     global fig
     # Close the previous figure if it exists
     if fig:
@@ -698,45 +740,222 @@ def plot_only_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, 
         plt.savefig(f"tmp/frame_{time.time()}.png")
 
 
-def fd_gradients(y0, u, dae_p, n_steps, parameters):
-    """
-    Finite difference of function cost_function
-    with respect
-        initial conditions y0,
-        parameters p,
-        and control signals u at timestep 100
+def plot_full(y, u, n_steps, dae_p, parameters, title=None, show=True, block=True, save=True):
+    print(f"plotting...{title}")
+    global fig
+    # Close the previous figure if it exists
+    if fig:
+        plt.close(fig)
 
-    f'(x) = (f(y+h) - f(y)) / h
-    """
-    delta = 1e-5
+    t_cond = y[0]
+    t_tank = y[1]
+    t_out_heating = y[2]
+    t_floor = y[3]
+    t_room = y[4]
+
+    m_dot_cond = u[0]
+    m_dot_heating = u[1]
+    p_compressor = u[2]
+    t_amb = u[3]
+
+    floor_mass = dae_p[0]
+    cp_concrete = dae_p[1]
+    gravity_acceleration = dae_p[2]
+    air_volumetric_expansion_coeff = dae_p[3]
+    floor_width = dae_p[4]
+    nu_air = dae_p[5]
+    Pr_air = dae_p[6]
+    k_air = dae_p[7]
+    tube_inner_diameter = dae_p[8]
+    floor_area = dae_p[9]
+    stefan_boltzmann_constant = dae_p[10]
+    epsilon_concrete = dae_p[11]
+    cp_water = dae_p[12]
+    mu_water_at_320K = dae_p[13]
+    Pr_water = dae_p[14]
+    k_water = dae_p[15]
+    k_pex = dae_p[16]
+    tube_thickness = dae_p[17]
+    A_tubes = dae_p[18]
+    room_air_mass = dae_p[19]
+    cp_air = dae_p[20]
+    A_walls = dae_p[21]
+    A_roof = dae_p[22]
+    A_windows = dae_p[23]
+    U_walls = dae_p[24]
+    U_roof = dae_p[25]
+    U_windows = dae_p[26]
+    m_tank = dae_p[27]
+    U_tank = dae_p[28]
+    A_tank = dae_p[29]
+
     h = parameters["H"]
+    t = np.linspace(0, n_steps * h, n_steps)
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
+    p_required = parameters["p_required"]
+    p_solar = parameters["w_solar_per_w_installed"] * parameters["SOLAR_SIZE"]
+    e_bat = parameters["e_bat"]
+    p_bat = parameters["p_bat"]
+    p_grid = -p_solar + p_compressor + p_bat + p_required
 
-    # Initial solution
-    y = solve(y0, u, dae_p, h, n_steps)
-    # print("fd solve: ", y)
+    # Create time array
+    fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
 
-    dfdy0 = []
-    for i in range(len(y0)):
-        y0_perturbed = y0.copy()  # Create a new copy of y0
-        y0_perturbed[i] += delta
-        y_perturbed = solve(y0_perturbed, u, dae_p, h, n_steps)
-        dfdy0.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
+    if not isinstance(axes, np.ndarray):
+        axes = [axes]
 
-    dfdp = []
-    for i in range(len(dae_p)):
-        p_perturbed = dae_p.copy()  # Create a new copy of p
-        p_perturbed[i] += delta
-        y_perturbed = solve(y0, u, p_perturbed, h, n_steps)
-        dfdp.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
+    # First subplot for inputs
+    axes[0].plot(t, pvpc_prices, label="pvpc_price", **plot_styles[0])
+    axes[0].plot(t, excess_prices, label="excess_price", **plot_styles[1])
+    axes[0].set_ylabel("money")
+    axes[0].legend(loc="upper left")
+    axes[0].grid(True)
+    ax0 = axes[0].twinx()
+    ax0.plot(t, p_required, label="p_required", **plot_styles[2])
+    ax0.plot(t, -p_solar, label="p_solar", **plot_styles[3])
+    ax0.set_ylabel("K")
+    ax0.legend(loc="upper right")
+    if title:
+        axes[0].set_title(title)
 
-    dfdu_3 = []
-    for i in range(len(u[:, 0])):
-        u_perturbed = u.copy()  # Create a new copy of u
-        u_perturbed[i, 3] += delta
-        y_perturbed = solve(y0, u_perturbed, dae_p, h, n_steps)
-        dfdu_3.append((cost_function(y_perturbed, u_perturbed, parameters) - cost_function(y, u, parameters)) / delta)
+    # Second subplot for temperatures and e_bat
+    axes[1].plot(t, t_tank, label="t_tank", **plot_styles[0])
+    axes[1].plot(t, t_out_heating, label="t_out_heating", **plot_styles[1])
+    axes[1].plot(t, t_floor, label="t_floor", **plot_styles[2])
+    axes[1].plot(t, t_room, label="t_room", **plot_styles[3])
+    axes[1].plot(t, t_amb, label="t_amb", **plot_styles[4])
+    axes[1].set_ylabel("Temperature (K)")
+    axes[1].legend(loc="upper left")
+    axes[1].grid(True)
+    ax1 = axes[1].twinx()
+    ax1.plot(t, e_bat, label="E_bat", **plot_styles[5])
+    ax1.set_ylabel("Ws")
+    ax1.legend(loc="upper right")
 
-    return dfdy0, dfdp, dfdu_3
+    # Third subplot for controls
+    axes[2].plot(t, p_grid, label="p_grid", **plot_styles[0])
+    axes[2].plot(t, p_compressor, label="p_comp", **plot_styles[1])
+    axes[2].plot(t, p_bat, label="p_bat", **plot_styles[2])
+    axes[2].set_ylabel("Power[W]")
+    axes[2].legend(loc="upper left")
+    axes[2].grid(True)
+    axes[2].set_xlabel("Time (s)")
+    ax2 = axes[2].twinx()
+    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[3])
+    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[4])
+    ax2.set_ylabel("Mass flow rates")
+    ax2.legend(loc="upper right")
+
+    # Show the plots
+    if show:
+        # Save and close plot
+        # plt.ion()  # Turn on the interactive mode
+        plt.show(block=block)  # Draw the figure
+        plt.pause(0.3)  # Time for the figure to load
+
+    if save:
+        plt.savefig(f"tmp/frame_{time.time()}.png")
+
+
+def plot_history(hist, only_last=True):
+    # Get inputs
+    storeHistory = History(hist)
+    histories = storeHistory.getValues()
+
+    h = PARAMS["H"]
+    horizon = PARAMS["HORIZON"]
+    t0 = PARAMS["T0"]
+
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
+    parameters = PARAMS
+    parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
+    parameters["p_required"] = dynamic_parameters["p_required"]
+    parameters["t_amb"] = dynamic_parameters["t_amb"]
+    parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
+    n_steps = parameters["t_amb"].shape[0]
+
+    if only_last:
+        indices = [-1]  # Only take the last index
+    else:
+        # Loop through every x opt results
+        x = 10
+        indices = list(range(0, len(histories["p_compressor"]), x))
+
+    # loop through histories
+    for iter, i in enumerate(indices):
+        y0 = np.array(
+            [
+                histories["t_cond"][i][0],
+                histories["t_tank"][i][0],
+                histories["t_out_heating"][i][0],
+                histories["t_floor"][i][0],
+                histories["t_room"][i][0],
+            ]
+        )
+        parameters["y0"] = y0
+
+        u = np.zeros((4, n_steps))
+        u[0] = histories["m_dot_cond"][i]
+        u[1] = histories["m_dot_heating"][i]
+        u[2] = histories["p_compressor"][i]
+        u[3] = parameters["t_amb"]
+
+        parameters["e_bat"] = histories["e_bat"][i]
+        parameters["p_bat"] = histories["p_bat"][i]
+
+        dae_p = np.array(
+            [
+                parameters["FLOOR_MASS"],
+                parameters["CP_CONCRETE"],
+                parameters["GRAVITY_ACCELERATION"],
+                parameters["AIR_VOLUMETRIC_EXPANSION_COEFF"],
+                parameters["FLOOR_WIDTH"],
+                parameters["NU_AIR"],
+                parameters["PR_AIR"],
+                parameters["K_AIR"],
+                parameters["TUBE_INNER_DIAMETER"],
+                parameters["FLOOR_AREA"],
+                parameters["STEFAN_BOLTZMANN_CONSTANT"],
+                parameters["EPSILON_CONCRETE"],
+                parameters["CP_WATER"],
+                parameters["MU_WATER_AT_320K"],
+                parameters["PR_WATER"],
+                parameters["K_WATER"],
+                parameters["K_PEX"],
+                parameters["TUBE_THICKNESS"],
+                parameters["A_TUBES"],
+                parameters["ROOM_AIR_MASS"],
+                parameters["CP_AIR"],
+                parameters["A_WALLS"],
+                parameters["A_ROOF"],
+                parameters["WINDOWS_AREA"],
+                parameters["U_WALLS"],
+                parameters["U_ROOF"],
+                parameters["WINDOWS_U"],
+                parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass [kg]
+                parameters["U_TANK"],
+                6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank area [m2]
+            ]
+        )
+
+        y = dae_forward(y0, u, dae_p, n_steps)
+        print("y[1]: ", y[:, 1])
+        # print("u[1]: ", u[:, 1])
+        # print("solution:", y[:, -1])
+        if only_last:
+            plot_full(y, u, n_steps, dae_p, parameters, save=False, show=True)
+            return
+        else:
+            title = f"iter: {iter}/{len(indices)}"
+            plot_full(y, u, n_steps, dae_p, parameters, title=title, show=False)
+
+    # create animation with pictures from tmp folder
+    filename_gif = hist.replace(".hst", ".gif")
+    plot_film(filename_gif)
 
 
 def main():
@@ -762,11 +981,11 @@ def main():
     parameters["T_TANK"] = 320  # 47C
     y0 = np.array(
         [
-            343.95361071,
-            338.49912612,
-            329.1095546,
-            300.17354747,
-            297.56833848,
+            349.69563386,
+            315.20135381,
+            310,
+            302.68932767,
+            298.41519867,
         ]
     )
     parameters["y0"] = y0
@@ -784,7 +1003,7 @@ def main():
     m_dot_cond[-int(n_steps / 6) :] = 0.3
 
     # m_dot_heating
-    m_dot_heating = np.ones((n_steps)) * 1e-3  # kg/s
+    m_dot_heating = np.ones((n_steps)) * 1e-4  # kg/s
     m_dot_heating[: -int(n_steps / 2)] = 0.1
     m_dot_heating[-int(n_steps / 5) :] = 0.1
 
@@ -872,7 +1091,7 @@ def main():
     print(y.shape)
     print("y[2]: ", y[:, 2])
     print("u[2]: ", u[:, 2])
-    plot_only_thermals(y, u, n_steps, dae_p, parameters, save=False)
+    plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
     # plot_animation(y, u, n_steps, parameters)
 
     # # FD derivatives
@@ -894,4 +1113,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    plot_history(hist="saves/full_sand.hst", only_last=True)

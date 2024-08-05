@@ -56,6 +56,7 @@ PARAMS = {
     # "M_DOT_LOAD_MAX": 1, # kg/s
     "M_DOT_COND_MAX": 0.5, # kg/s
     "M_DOT_LOAD_MAX": 0.5, # kg/s
+    "M_DOT_HEATING_MAX": 0.5, # kg/s
 
     "MAX_Q_DOT_REQUIRED": 8000,  # W
     "FLOOR_WIDTH": 10,  # m2 (quare plant)
@@ -87,7 +88,7 @@ PARAMS = {
 
     "K_PEX": 0.41, # PEX thermal conductivity [W/(m·K)]
     "TUBE_INNER_DIAMETER": 0.022225,  # tube inner diameter [m], for 1" pex tube
-    "TUBE_OUTER_DIAMTER": 0.028575,  # tube outer dimater [m], for 1" pex tube
+    "TUBE_OUTER_DIAMETER": 0.028575,  # tube outer dimater [m], for 1" pex tube
     "TUBE_THICKNESS": 0.00635,  # tube thickness [m], for 1" pex tube
     "TUBES_LENGTH": 21,  # [m] with spacing of 0.5m between tubes
     "A_TUBES": 21 * 3.1415 * 0.028575,  # tubes surface area [m2], length * pi * outer_diameter

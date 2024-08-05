@@ -660,6 +660,10 @@ def jax_to_numpy(jax_func):
 
     return numpy_func
 
+
+def sparse_to_required_format(mat):
+    return {"csr": [mat.indptr, mat.indices, mat.data], "shape": list(mat.shape)}
+
 def plot_prices():
     t0 = 0
     # t0 = 24 * 3600 * 90
