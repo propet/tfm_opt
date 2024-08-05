@@ -46,6 +46,7 @@ PARAMS = {
     "MAX_TANK_VOLUME": 1000, # m3
     "MIN_TANK_VOLUME": 1, # m3
     "U": 0.245,  # (W/(m2·K)) overall coefficient for 20cm of rock wool insulation
+    "U_TANK": 0.245,  # (W/(m2·K)) overall coefficient for 20cm of rock wool insulation
     "T_AMB": 300,  # K (27ºC)
     "P_COMPRESSOR_MAX": 3000,  # W
 
