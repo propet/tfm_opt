@@ -14,8 +14,8 @@
 
 PARAMS = {
     "H": 1000,  # stepsize [s]
-    # "T0": 100 * 24 * 3600,
-    "T0": 0,
+    "T0": 100 * 24 * 3600,
+    # "T0": 0,
     "HORIZON": 1000000,  # s
     # "HORIZON": 365 * 24 * 3600,  # s
     # "N_HOURS": 1000,  # 8760 in a year
@@ -23,10 +23,12 @@ PARAMS = {
     "MAX_BAT_CAPACITY": 13000,  # W·h
     "SOLAR_SIZE": 3000,  # installed power in solar panels W
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) W·s
+    "V_BAT": 48,  # [V] nominal battery voltage (The most common voltage used for solar batteries are 6V, 12V, 24V and 48 Volts)
     "SOC_MIN": 0.1,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
     "P_BAT_MAX": 5000,  # W
     "P_GRID_MAX": 5000,  # W
+    "P_GRID_MAX_LIMIT": 100000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
     "MAX_HEAT_POWER": 10000,  # W
     "MAX_ELECTRIC_DEMAND": 4000,  # W
@@ -49,6 +51,7 @@ PARAMS = {
     "U_TANK": 0.245,  # (W/(m2·K)) overall coefficient for 20cm of rock wool insulation
     "T_AMB": 300,  # K (27ºC)
     "P_COMPRESSOR_MAX": 3000,  # W
+    "P_COMPRESSOR_MAX_LIMIT": 10000,  # W
 
     "LOAD_HX_EFF": 0.8,
 
