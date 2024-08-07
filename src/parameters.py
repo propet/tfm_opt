@@ -22,7 +22,9 @@ PARAMS = {
 
     "MAX_BAT_CAPACITY": 13000,  # W·h
     "SOLAR_SIZE": 3000,  # installed power in solar panels W
+    "SOLAR_SIZE_MAX": 20000,  # W for a roof of 100m2, since each kW takes 5.2m2
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) W·s
+    "E_BAT_MAX_LIMIT": 360000000,  # W·s -> 100kWh
     "V_BAT": 48,  # [V] nominal battery voltage (The most common voltage used for solar batteries are 6V, 12V, 24V and 48 Volts)
     "SOC_MIN": 0.1,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
