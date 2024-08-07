@@ -15,6 +15,7 @@ from utils import (
     get_tank_depreciation_by_second,
     get_hp_depreciation_by_joule,
     get_fixed_energy_cost_by_second,
+    get_generator_depreciation_by_joule,
     sparse_to_required_format,
 )
 from typing import List, Dict
@@ -37,8 +38,8 @@ def obj_fun(
     p_grid_max,
     tank_volume,
     t_room,
-    pvpc_prices,
-    excess_prices,
+    diesel_price,
+    generator_efficiency,
     p_required,
     w_solar_per_w_installed,
     h,
@@ -46,27 +47,23 @@ def obj_fun(
 ):
     p_solar = w_solar_per_w_installed * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
+    p_diesel = p_grid / generator_efficiency
     cost = (
-        # Variable energy cost
-        # ∘ buy at pvpc price, sell at excess price, but can't earn money at the end
-        jnp.maximum(0, jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid)))
-        # ∘ buy at pvpc price, sell at excess price
-        # jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid))
-        # ∘ buy and sell at the same daily_price
-        # jnp.sum(h * excess_prices * p_grid)
-        # ∘ Fixed energy cost
-        + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
-        # ∘ depreciate battery by usage
+        # Fixed diesel cost for generator
+        jnp.sum(h * diesel_price * p_diesel)
+        # depreciate generator by usage
+        + jnp.sum(h * get_generator_depreciation_by_joule(p_grid_max))
+        # depreciate battery by usage
         + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
-        # ∘ depreciate battery by time
+        # depreciate battery by time
         # + jnp.sum(h * get_battery_depreciation_by_second(e_bat_max))
-        # ∘ depreciate solar panels by time
+        # depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
-        # ∘ depreciate heat pump by usage
+        # depreciate heat pump by usage
         + jnp.sum(h * jnp.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max))
-        # ∘ depreciate water tank by time
+        # depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
-        # ∘ penalize room temperature far from t_target
+        # penalize room temperature far from t_target
         + jnp.sum(1e-3 * jnp.square(t_room - t_target))
     )
     return cost
@@ -100,8 +97,8 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
     t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
-    pvpc_prices = parameters["pvpc_prices"]
-    excess_prices = parameters["excess_prices"]
+    diesel_price = parameters["DIESEL_PRICE"]
+    generator_efficiency = parameters["GENERATOR_EFFICIENCY"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
 
     objective = obj_fun(
@@ -114,8 +111,8 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
         p_grid_max,
         tank_volume,
         t_room,
-        pvpc_prices,
-        excess_prices,
+        diesel_price,
+        generator_efficiency,
         p_required,
         w_solar_per_w_installed,
         h,
@@ -142,8 +139,8 @@ def obj_sens(opt, design_variables: DesignVariables):
     t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
-    pvpc_prices = parameters["pvpc_prices"]
-    excess_prices = parameters["excess_prices"]
+    diesel_price = parameters["DIESEL_PRICE"]
+    generator_efficiency = parameters["GENERATOR_EFFICIENCY"]
 
     fun_inputs = (
         p_bat,
@@ -155,8 +152,8 @@ def obj_sens(opt, design_variables: DesignVariables):
         p_grid_max,
         tank_volume,
         t_room,
-        pvpc_prices,
-        excess_prices,
+        diesel_price,
+        generator_efficiency,
         p_required,
         w_solar_per_w_installed,
         h,
@@ -1154,9 +1151,9 @@ def p_grid_max_fun(
     p_required,
     w_solar_per_w_installed,
 ):
-    # Upper constraint for p_grid, where p_grid_max is a design variable
-    # -p_grid_max < p_grid < p_grid_max
-    # -1 < p_grid / p_grid_max < 1
+    # Upper constraint for p_grid (alias p_generator), where p_grid_max is a design variable
+    # 0 < p_grid < p_grid_max
+    # 0 < p_grid / p_grid_max < 1
     p_solar = w_solar_per_w_installed * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     return p_grid / p_grid_max
@@ -1520,7 +1517,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
 
 
 def run_optimization(parameters, plot=True):
-    opt = Opt("full_w_sizing", obj, historyFileName="saves/full_w_sizing.hst")
+    opt = Opt("full_offgrid", obj, historyFileName="saves/full_offgrid.hst")
 
     # Parameters
     h = parameters["H"]
@@ -1867,7 +1864,7 @@ def run_optimization(parameters, plot=True):
     p_grid_max_constraint: ConstraintInfo = {
         "name": "p_grid_max_constraint",
         "n_constraints": n_steps,
-        "lower": -1,
+        "lower": 0,
         "upper": 1,
         "function": p_grid_max_constraint_fun,
         "scale": 1,

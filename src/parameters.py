@@ -41,6 +41,15 @@ PARAMS = {
     "BAT_ETA_DISCHARGE": 0.9,  # discharge efficiency
     "BAT_ETA": 0.9486832980505138,  # charge/discharge efficiency (includes losses in DC/AC conversion). from round-trip efficiency of tesla powerwall
 
+    # Lower Heating Value (LHV): 43.1 MJ/kg
+    # density: 832 kg/m3
+    # thus: LHV * density = 35859.2 MJ/m3 = 35859.2*10^6 J/m3
+    # price is: 1500 $/m3
+    # so price
+    # so price per joule is: 1500[$/m3] * (1/(35859.2*10^6))[m3/J] = 4.18302695e-8 [$/m3]
+    "DIESEL_PRICE": 4.18302695e-8,  # $/(W·s),
+    "GENERATOR_EFFICIENCY": 0.3,  # 30%
+
 
     "CP_WATER": 4186,  # Specific heat capacity of water (J/(kg·K))
     "RHO_WATER": 1000,  # Water density (kg/m3)
