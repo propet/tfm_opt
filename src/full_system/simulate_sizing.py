@@ -763,6 +763,7 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     # Design variables
     e_bat = design_variables["e_bat"]
     p_bat = design_variables["p_bat"]
+    p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"]
     tank_volume = design_variables["tank_volume"]
 
@@ -804,7 +805,7 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
-    p_grid = -p_solar + p_compressor + p_bat + p_required
+    p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
 
     # Create time array
     fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
@@ -844,13 +845,14 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     axes[2].plot(t, p_grid, label="p_grid", **plot_styles[0])
     axes[2].plot(t, p_compressor, label="p_comp", **plot_styles[1])
     axes[2].plot(t, p_bat, label="p_bat", **plot_styles[2])
+    axes[2].plot(t, p_waste, label="p_waste", **plot_styles[3])
     axes[2].set_ylabel("Power[W]")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
     axes[2].set_xlabel("Time (s)")
     ax2 = axes[2].twinx()
-    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[3])
-    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[4])
+    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
+    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
     ax2.set_ylabel("Mass flow rates")
     ax2.legend(loc="upper right")
 
@@ -914,6 +916,7 @@ def plot_history(hist, only_last=True):
         design_variables = {}
         design_variables["e_bat"] = histories["e_bat"][i]
         design_variables["p_bat"] = histories["p_bat"][i]
+        design_variables["p_waste"] = histories["p_waste"][i]
         design_variables["solar_size"] = histories["solar_size"][i][0]
         design_variables["tank_volume"] = histories["tank_volume"][i][0]
 
