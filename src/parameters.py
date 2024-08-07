@@ -74,8 +74,7 @@ PARAMS = {
     "K_CONCRETE": 1.4,  # concrete thermal conductivity [W/(m·K)]
     "RHO_CONCRETE": 2300,  # density of concrete [kg/m3]
     "EPSILON_CONCRETE": 0.93,  # emissivity of concrete at 300K (dimensionless)
-    "T_TARGET": 298,  # K
-    # "T_TARGET": 293,  # K
+    "T_TARGET": 293,  # K
     "ROCK_WOOL_U": 0.245,  # W/(m2·K) for 20cm of rock wool insulation
     "ROCK_WOOL_AREA": 175,  # m2
     "A_WALLS": 100,  # m2, square of 10m side, with height 2.5: 10 * 2.5 * 4 = 100

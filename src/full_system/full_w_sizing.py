@@ -36,11 +36,13 @@ def obj_fun(
     p_compressor_max,
     p_grid_max,
     tank_volume,
+    t_room,
     pvpc_prices,
     excess_prices,
     p_required,
     w_solar_per_w_installed,
     h,
+    t_target,
 ):
     p_solar = w_solar_per_w_installed * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
@@ -62,6 +64,8 @@ def obj_fun(
         + jnp.sum(h * jnp.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max))
         # depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
+        # penalize room temperature far from t_target
+        + jnp.sum(1e-3 * jnp.square(t_room - t_target))
     )
     return cost
 
@@ -74,6 +78,7 @@ get_dobj_dsolar_size = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=4)))
 get_dobj_dp_compressor_max = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=5)))
 get_dobj_dp_grid_max = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=6)))
 get_dobj_dtank_volume = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=7)))
+get_dobj_dt_room = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=8)))
 
 
 def obj(opt, design_variables: DesignVariables) -> np.ndarray:
@@ -81,6 +86,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     p_compressor = design_variables["p_compressor"]
     p_bat = design_variables["p_bat"]
     p_waste = design_variables["p_waste"]
+    t_room = design_variables["t_room"]
     e_bat_max = design_variables["e_bat_max"][0]
     solar_size = design_variables["solar_size"][0]
     p_compressor_max = design_variables["p_compressor_max"][0]
@@ -90,6 +96,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Parameters
     parameters = opt.parameters
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
+    t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
@@ -104,11 +111,13 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
         p_compressor_max,
         p_grid_max,
         tank_volume,
+        t_room,
         pvpc_prices,
         excess_prices,
         p_required,
         w_solar_per_w_installed,
         h,
+        t_target,
     )
     return np.array(objective)
 
@@ -118,6 +127,7 @@ def obj_sens(opt, design_variables: DesignVariables):
     p_compressor = design_variables["p_compressor"]
     p_bat = design_variables["p_bat"]
     p_waste = design_variables["p_waste"]
+    t_room = design_variables["t_room"]
     e_bat_max = design_variables["e_bat_max"][0]
     solar_size = design_variables["solar_size"][0]
     p_compressor_max = design_variables["p_compressor_max"][0]
@@ -127,6 +137,7 @@ def obj_sens(opt, design_variables: DesignVariables):
     # Parameters
     parameters = opt.parameters
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
+    t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
     pvpc_prices = parameters["pvpc_prices"]
@@ -141,11 +152,13 @@ def obj_sens(opt, design_variables: DesignVariables):
         p_compressor_max,
         p_grid_max,
         tank_volume,
+        t_room,
         pvpc_prices,
         excess_prices,
         p_required,
         w_solar_per_w_installed,
         h,
+        t_target,
     )
     dobj_dp_bat = get_dobj_dp_bat(*fun_inputs)
     dobj_dp_compressor = get_dobj_dp_compressor(*fun_inputs)
@@ -155,6 +168,7 @@ def obj_sens(opt, design_variables: DesignVariables):
     dobj_dp_compressor_max = get_dobj_dp_compressor_max(*fun_inputs)
     dobj_dp_grid_max = get_dobj_dp_grid_max(*fun_inputs)
     dobj_dtank_volume = get_dobj_dtank_volume(*fun_inputs)
+    dobj_dt_room = get_dobj_dt_room(*fun_inputs)
 
     obj_jac = {
         "p_bat": dobj_dp_bat,
@@ -165,6 +179,7 @@ def obj_sens(opt, design_variables: DesignVariables):
         "p_compressor_max": dobj_dp_compressor_max,
         "p_grid_max": dobj_dp_grid_max,
         "tank_volume": dobj_dtank_volume,
+        "t_room": dobj_dt_room,
     }
     obj_wrt = [
         "p_bat",
@@ -175,6 +190,7 @@ def obj_sens(opt, design_variables: DesignVariables):
         "p_compressor_max",
         "p_grid_max",
         "tank_volume",
+        "t_room",
     ]
     return (obj_jac, obj_wrt)
 
@@ -1308,7 +1324,7 @@ def p_bat_max_fun(
     # -p_bat_max < p_bat < p_bat_max
     # -(e_bat_max[Ws] * (1/3600)[h/s] * c_rate_bat) < p_bat < (e_bat_max[Ws] * (1/3600)[h/s] * c_rate_bat)
     # -1 < p_bat / (e_bat_max[Ws] * (1/3600)[h/s] * c_rate_bat) < 1
-    return p_bat / (e_bat_max * (1/3600) * c_rate_bat)
+    return p_bat / (e_bat_max * (1 / 3600) * c_rate_bat)
 
 
 get_dp_bat_max_dp_bat = jax_to_numpy(jax.jit(jax.jacobian(p_bat_max_fun, argnums=0)))
@@ -1613,7 +1629,7 @@ def run_optimization(parameters, plot=True):
         "name": "t_room",
         "n_params": n_steps,
         "type": "c",
-        "lower": 293,  # target 293K (20C)
+        "lower": parameters["T_TARGET"],
         "upper": 500,
         "initial_value": 300,
         "scale": 1 / 300,
@@ -1698,7 +1714,6 @@ def run_optimization(parameters, plot=True):
         "scale": 100,
     }
     opt.add_design_variables_info(tank_volume)
-
 
     # Constraints
 
