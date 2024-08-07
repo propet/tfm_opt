@@ -1021,6 +1021,7 @@ def battery_energy_constraint_sens(opt, design_variables: DesignVariables):
 
     # Parameters
     parameters = opt.parameters
+    h = parameters["H"]
     n_steps = parameters["n_steps"]
     bat_eta = parameters["BAT_ETA"]
 
@@ -1383,6 +1384,7 @@ def p_bat_max_constraint_sens(opt, design_variables: DesignVariables):
 
 def t_cond_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     dt_cond_0_dt_cond = sp.lil_matrix((1, n_steps))
@@ -1396,6 +1398,7 @@ def t_cond_0_constraint_sens(opt, design_variables: DesignVariables):
 
 def t_tank_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     dt_tank_0_dt_tank = sp.lil_matrix((1, n_steps))
@@ -1409,6 +1412,7 @@ def t_tank_0_constraint_sens(opt, design_variables: DesignVariables):
 
 def t_out_heating_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     dt_out_heating_0_dt_out_heating = sp.lil_matrix((1, n_steps))
@@ -1422,6 +1426,7 @@ def t_out_heating_0_constraint_sens(opt, design_variables: DesignVariables):
 
 def t_floor_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     dt_floor_0_dt_floor = sp.lil_matrix((1, n_steps))
@@ -1435,6 +1440,7 @@ def t_floor_0_constraint_sens(opt, design_variables: DesignVariables):
 
 def t_room_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     dt_room_0_dt_room = sp.lil_matrix((1, n_steps))
@@ -1448,6 +1454,7 @@ def t_room_0_constraint_sens(opt, design_variables: DesignVariables):
 
 def e_bat_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     de_bat_0_de_bat = sp.lil_matrix((1, n_steps))
@@ -1461,6 +1468,7 @@ def e_bat_0_constraint_sens(opt, design_variables: DesignVariables):
 
 def p_bat_0_constraint_sens(opt, design_variables: DesignVariables):
     # Parameters
+    parameters = opt.parameters
     n_steps = parameters["n_steps"]
 
     dp_bat_0_dp_bat = sp.lil_matrix((1, n_steps))
@@ -1520,7 +1528,6 @@ def run_optimization(parameters, plot=True):
     opt = Opt("full_offgrid", obj, historyFileName="saves/full_offgrid.hst")
 
     # Parameters
-    h = parameters["H"]
     n_steps = parameters["t_amb"].shape[0]
     print("n_steps: ", n_steps)
     parameters["n_steps"] = n_steps
@@ -2028,7 +2035,7 @@ def run_optimization(parameters, plot=True):
         print("p_grid_max: ", p_grid_max)
         print("tank_volume: ", tank_volume)
         # print(sol)
-        exit(0)
+
     return sol.xStar, sol.fStar
 
 

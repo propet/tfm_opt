@@ -1127,5 +1127,5 @@ def main():
 
 if __name__ == "__main__":
     # main()
-    # plot_history(hist="saves/full_w_sizing.hst", only_last=True)
-    plot_history(hist="saves/full_offgrid.hst", only_last=True)
+    plot_history(hist="saves/full_w_sizing.hst", only_last=True)
+    # plot_history(hist="saves/full_offgrid.hst", only_last=True)
