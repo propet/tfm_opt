@@ -763,52 +763,24 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     # Design variables
     e_bat = design_variables["e_bat"]
     p_bat = design_variables["p_bat"]
-    p_waste = design_variables["p_waste"]
+    # p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"]
     tank_volume = design_variables["tank_volume"]
 
     # Parameters
-    floor_mass = dae_p[0]
-    cp_concrete = dae_p[1]
-    gravity_acceleration = dae_p[2]
-    air_volumetric_expansion_coeff = dae_p[3]
-    floor_width = dae_p[4]
-    nu_air = dae_p[5]
-    Pr_air = dae_p[6]
-    k_air = dae_p[7]
-    tube_inner_diameter = dae_p[8]
-    floor_area = dae_p[9]
-    stefan_boltzmann_constant = dae_p[10]
-    epsilon_concrete = dae_p[11]
-    cp_water = dae_p[12]
-    mu_water_at_320K = dae_p[13]
-    Pr_water = dae_p[14]
-    k_water = dae_p[15]
-    k_pex = dae_p[16]
-    tube_thickness = dae_p[17]
-    A_tubes = dae_p[18]
-    room_air_mass = dae_p[19]
-    cp_air = dae_p[20]
-    A_walls = dae_p[21]
-    A_roof = dae_p[22]
-    A_windows = dae_p[23]
-    U_walls = dae_p[24]
-    U_roof = dae_p[25]
-    U_windows = dae_p[26]
-    m_tank = dae_p[27]
-    U_tank = dae_p[28]
-    A_tank = dae_p[29]
-
     h = parameters["H"]
     t = np.linspace(0, n_steps * h, n_steps)
+    t = t / 3600
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
-    p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
+    # p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
+    p_grid = -p_solar + p_compressor + p_bat + p_required
 
-    # Create time array
-    fig, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
+    # Create time array and set figsize to A4 dimensions (8.27 x 11.69 inches)
+    fig, axes = plt.subplots(3, 1, figsize=(8.27, 11.69), sharex=True)
+    fig.subplots_adjust(hspace=0.5)  # # Adjust the spacing between subplots
 
     if not isinstance(axes, np.ndarray):
         axes = [axes]
@@ -816,14 +788,14 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     # First subplot for inputs
     axes[0].plot(t, pvpc_prices, label="pvpc_price", **plot_styles[0])
     axes[0].plot(t, excess_prices, label="excess_price", **plot_styles[1])
-    axes[0].set_ylabel("money")
-    axes[0].legend(loc="upper left")
+    axes[0].set_ylabel(r"€$/(kW \cdot h)$")
+    axes[0].legend()
     axes[0].grid(True)
     ax0 = axes[0].twinx()
     ax0.plot(t, p_required, label="p_required", **plot_styles[2])
     ax0.plot(t, -p_solar, label="p_solar", **plot_styles[3])
     ax0.set_ylabel("K")
-    ax0.legend(loc="upper right")
+    ax0.legend()
     if title:
         axes[0].set_title(title)
 
@@ -845,11 +817,11 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     axes[2].plot(t, p_grid, label="p_grid", **plot_styles[0])
     axes[2].plot(t, p_compressor, label="p_comp", **plot_styles[1])
     axes[2].plot(t, p_bat, label="p_bat", **plot_styles[2])
-    axes[2].plot(t, p_waste, label="p_waste", **plot_styles[3])
+    # axes[2].plot(t, p_waste, label="p_waste", **plot_styles[3])
     axes[2].set_ylabel("Power[W]")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
-    axes[2].set_xlabel("Time (s)")
+    axes[2].set_xlabel("Time [h]")
     ax2 = axes[2].twinx()
     ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
     ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
@@ -865,6 +837,114 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
 
     if save:
         plt.savefig(f"tmp/frame_{time.time()}.png")
+
+
+def save_plot(fig, ax, filename):
+    fig.savefig(filename, format='svg')
+    plt.close(fig)
+
+
+def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, show=True, block=True, save=True):
+    # States
+    t_cond = y[0] - 273  # to C
+    t_tank = y[1] - 273  # to C
+    t_out_heating = y[2] - 273  # to C
+    t_floor = y[3] - 273  # to C
+    t_room = y[4] - 273  # to C
+
+    # Controls
+    m_dot_cond = u[0]
+    m_dot_heating = u[1]
+    p_compressor = u[2] / 1000  # to kW
+    t_amb = u[3] - 273  # to C
+
+    # Design variables
+    e_bat = design_variables["e_bat"]
+    e_bat_max = design_variables["e_bat_max"]
+    p_bat = design_variables["p_bat"] / 1000  # to kW
+    # p_waste = design_variables["p_waste"]
+    solar_size = design_variables["solar_size"]
+    tank_volume = design_variables["tank_volume"]
+
+    # Parameters
+    h = parameters["H"]
+    t = np.linspace(0, n_steps * h, n_steps)
+    t = t / 3600  # s to h
+    pvpc_prices = parameters["pvpc_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
+    excess_prices = parameters["excess_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
+    p_required = parameters["p_required"] / 1000  # to kW
+    p_solar = parameters["w_solar_per_w_installed"] * solar_size / 1000  # to kW
+    # p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
+    p_grid = -p_solar + p_compressor + p_bat + p_required
+
+
+    # A4: (8.27, 11.69)
+
+    # Plot: prices
+    # fig, ax = plt.subplots(figsize=(8.27, 3.9))  # Half of A4 height
+    fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
+    ax.plot(t, pvpc_prices, label="PVPC", **plot_styles[0])
+    ax.plot(t, excess_prices, label="Diario", **plot_styles[1])
+    ax.set_ylabel(r"€$/(kW \cdot h)$")
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    ax.grid(True)
+    ax.set_xticklabels([])  # Hide x-axis labels
+    ax.set_xlabel('')  # Remove x-axis label
+    save_plot(fig, ax, 'saves/plot_prices.svg')
+
+    # Plot: solar
+    fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
+    ax.plot(t, p_solar, label="Solar", **plot_styles[0])
+    ax.plot(t, p_required, label="Consumo", **plot_styles[1])
+    ax.set_ylabel("Potencia [kW]")
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    ax.grid(True)
+    ax.set_xticklabels([])  # Hide x-axis labels
+    ax.set_xlabel('')  # Remove x-axis label
+    save_plot(fig, ax, 'saves/plot_generated_consumed.svg')
+
+    # Plot: Temperatures and E_bat
+    fig, ax = plt.subplots(figsize=(8.27, 2.4))
+    ax.plot(t, t_tank, label="Tanque", **plot_styles[0])
+    ax.plot(t, t_out_heating, label="Salida suelo", **plot_styles[1])
+    ax.plot(t, t_floor, label="Suelo", **plot_styles[2])
+    ax.plot(t, t_room, label="Habitación", **plot_styles[3])
+    ax.plot(t, t_amb, label="Ambiente", **plot_styles[4])
+    ax.set_ylabel("Temperatura [ºC]")
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    ax.grid(True)
+    ax.set_xticklabels([])  # Hide x-axis labels
+    ax.set_xlabel('')  # Remove x-axis label
+    save_plot(fig, ax, 'saves/plot_temperatures.svg')
+
+    # Plot: battery energy
+    fig, ax = plt.subplots(figsize=(8.27, 2.4))
+    ax.plot(t, e_bat / e_bat_max, **plot_styles[0])
+    ax.set_ylabel("SOC Batería")
+    ax.grid(True)
+    ax.set_xticklabels([])  # Hide x-axis labels
+    ax.set_xlabel('')  # Remove x-axis label
+    save_plot(fig, ax, 'saves/plot_battery_soc.svg')
+    # ax_right = ax.twinx()
+    # ax_right.plot(t, e_bat, label="E_bat", **plot_styles[5])
+    # ax_right.set_ylabel("Ws")
+    # ax_right.legend(loc="upper right", fontsize=8)
+    # Plot: Controls
+
+    fig, ax = plt.subplots(figsize=(8.27, 2.4))
+    ax.plot(t, p_grid, label="Red", **plot_styles[0])
+    ax.plot(t, p_compressor, label="Compresor", **plot_styles[1])
+    ax.plot(t, p_bat, label="Batería", **plot_styles[2])
+    ax.set_ylabel("Potencia [kW]")
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    ax.grid(True)
+    ax.set_xlabel("Tiempo [h]")
+    # ax_right = ax.twinx()
+    # ax_right.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
+    # ax_right.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
+    # ax_right.set_ylabel("Mass Flow Rates")
+    # ax_right.legend(loc="upper right", fontsize=8)
+    save_plot(fig, ax, 'saves/plot_controls.svg')
 
 
 def plot_history(hist, only_last=True):
@@ -915,8 +995,9 @@ def plot_history(hist, only_last=True):
 
         design_variables = {}
         design_variables["e_bat"] = histories["e_bat"][i]
+        design_variables["e_bat_max"] = histories["e_bat_max"][i][0]
         design_variables["p_bat"] = histories["p_bat"][i]
-        design_variables["p_waste"] = histories["p_waste"][i]
+        # design_variables["p_waste"] = histories["p_waste"][i]
         design_variables["solar_size"] = histories["solar_size"][i][0]
         design_variables["tank_volume"] = histories["tank_volume"][i][0]
 
@@ -960,7 +1041,8 @@ def plot_history(hist, only_last=True):
         # print("u[1]: ", u[:, 1])
         # print("solution:", y[:, -1])
         if only_last:
-            plot_full(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
+            save_plots(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
+            # plot_full(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
             return
         else:
             title = f"iter: {iter}/{len(indices)}"
