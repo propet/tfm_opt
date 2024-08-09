@@ -856,6 +856,7 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     m_dot_cond = u[0]
     m_dot_heating = u[1]
     p_compressor = u[2] / 1000  # to kW
+    print("p_compressor max [kW]: ", np.max(p_compressor))
     t_amb = u[3] - 273  # to C
 
     # Design variables
@@ -1077,11 +1078,11 @@ def main():
     parameters["T_TANK"] = 320  # 47C
     y0 = np.array(
         [
-            349.69563386,
-            315.20135381,
-            310,
-            302.68932767,
-            298.41519867,
+            309,
+            307,
+            305,
+            295,
+            294,
         ]
     )
     parameters["y0"] = y0
@@ -1107,7 +1108,8 @@ def main():
     # m_dot_heating[-int(n_steps / 3) :] = 0.1
 
     # p_compressor
-    p_compressor = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
+    # p_compressor = np.ones((n_steps)) * parameters["P_COMPRESSOR_MAX"]
+    p_compressor = np.ones((n_steps)) * 300
     p_compressor[-int(n_steps / 3) :] = 1e-6
     p_compressor[-int(n_steps / 4) :] = parameters["P_COMPRESSOR_MAX"]
     # P_comp[-int(n_steps / 2) :] = parameters["P_COMPRESSOR_MAX"]

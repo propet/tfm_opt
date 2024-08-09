@@ -1424,17 +1424,70 @@ def t_room_0_constraint_sens(opt, design_variables: DesignVariables):
     return (t_room_0_jac, t_room_0_wrt)
 
 
+def e_bat_0_fun(
+    e_bat_0,
+    e_bat_max,
+    soc_min,
+):
+    # Initial condition:
+    # The battery is at its lowest
+    # e_bat_0 = e_bat_max * soc_min + 1000[Ws]
+    # e_bat_0 - e_bat_max * soc_min = 0
+    return e_bat_0 - e_bat_max * soc_min - 1000
+
+
+get_de_bat_0_de_bat = jax_to_numpy(jax.jit(jax.jacobian(e_bat_0_fun, argnums=0)))
+get_de_bat_0_de_bat_max = jax_to_numpy(jax.jit(jax.jacobian(e_bat_0_fun, argnums=1)))
+
+
+def e_bat_0_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
+    # Design variables
+    e_bat_0 = design_variables["e_bat"][0]
+    e_bat_max = design_variables["e_bat_max"][0]
+
+    # Parameters
+    parameters = opt.parameters
+    soc_min = parameters["SOC_MIN"]
+
+    return e_bat_0_fun(
+        e_bat_0,
+        e_bat_max,
+        soc_min,
+    )
+
+
 def e_bat_0_constraint_sens(opt, design_variables: DesignVariables):
+    # Design variables
+    e_bat_0 = design_variables["e_bat"][0]
+    e_bat_max = design_variables["e_bat_max"][0]
+
     # Parameters
     parameters = opt.parameters
     n_steps = parameters["n_steps"]
+    soc_min = parameters["SOC_MIN"]
 
     de_bat_0_de_bat = sp.lil_matrix((1, n_steps))
-    de_bat_0_de_bat[0, 0] = 1
-    de_bat_0_de_bat = de_bat_0_de_bat.tocsr()
-    de_bat_0_de_bat = sparse_to_required_format(de_bat_0_de_bat)
-    e_bat_0_jac = {"e_bat": de_bat_0_de_bat}
-    e_bat_0_wrt = ["e_bat"]
+    de_bat_0_de_bat_max = sp.lil_matrix((1, 1))
+
+    fun_inputs = (
+        e_bat_0,
+        e_bat_max,
+        soc_min,
+    )
+    de_bat_0_de_bat[0, 0] = get_de_bat_0_de_bat(*fun_inputs)
+    de_bat_0_de_bat_max[0, 0] = get_de_bat_0_de_bat_max(*fun_inputs)
+
+    de_bat_0_de_bat = sparse_to_required_format(de_bat_0_de_bat.tocsr())
+    de_bat_0_de_bat_max = sparse_to_required_format(de_bat_0_de_bat_max.tocsr())
+
+    e_bat_0_jac = {
+        "e_bat": de_bat_0_de_bat,
+        "e_bat_max": de_bat_0_de_bat_max,
+    }
+    e_bat_0_wrt = [
+        "e_bat",
+        "e_bat_max",
+    ]
     return (e_bat_0_jac, e_bat_0_wrt)
 
 
@@ -1940,9 +1993,9 @@ def run_optimization(parameters, plot=True):
     e_bat_0_constraint: ConstraintInfo = {
         "name": "e_bat_0_constraint",
         "n_constraints": 1,
-        "lower": parameters["y0"]["e_bat"],
-        "upper": parameters["y0"]["e_bat"],
-        "function": lambda _, design_variables: design_variables["e_bat"][0],
+        "lower": 0,
+        "upper": 0,
+        "function": e_bat_0_constraint_fun,
         "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
         "wrt": e_bat_0_wrt,
         "jac": e_bat_0_jac,
@@ -1953,7 +2006,7 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 500,
+        "max_iter": 800,
         # "tol": 1e-3,
         # "obj_scaling_factor": 1e3,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",
@@ -1992,7 +2045,7 @@ def run_optimization(parameters, plot=True):
         print("e_bat_max: ", e_bat_max)
         print("p_bat_max: ", (e_bat_max * parameters["C_RATE_BAT"] / 3600))
         print("solar_size: ", solar_size)
-        print("p_compressor_max", p_compressor_max)
+        print("p_compressor_max:", p_compressor_max)
         print("p_grid_max: ", p_grid_max)
         print("tank_volume: ", tank_volume)
         # print(sol)
@@ -2015,12 +2068,11 @@ if __name__ == "__main__":
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
     y0 = {
-        "t_cond": 330,
-        "t_tank": 310,
-        "t_out_heating": 337.13903948,
-        "t_floor": 303.15567351,
-        "t_room": 300.65425203,
-        "e_bat": PARAMS["E_BAT_MAX"] * PARAMS["SOC_MAX"],
+        "t_cond": 308.7801,
+        "t_tank": 307.646,
+        "t_out_heating": 304.54,
+        "t_floor": 295,
+        "t_room": 293.79,
         "p_bat": 1e-2,
     }
     parameters["y0"] = y0
