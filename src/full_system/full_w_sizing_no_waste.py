@@ -2006,7 +2006,7 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5,
-        "max_iter": 800,
+        "max_iter": 1000,
         # "tol": 1e-3,
         # "obj_scaling_factor": 1e3,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "nlp_scaling_method": "gradient-based",

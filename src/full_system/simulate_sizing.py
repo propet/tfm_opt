@@ -5,7 +5,20 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
 from parameters import PARAMS
-from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, load_dict_from_file, cop, get_dcopdT
+from utils import (
+    get_dynamic_parameters,
+    plot_styles,
+    jax_to_numpy,
+    plot_film,
+    load_dict_from_file,
+    cop,
+    get_dcopdT,
+    get_fixed_energy_cost_by_second,
+    get_battery_depreciation_by_joule,
+    get_solar_panels_depreciation_by_second,
+    get_hp_depreciation_by_joule,
+    get_tank_depreciation_by_second,
+)
 from pyoptsparse import History
 import jax
 import jax.numpy as jnp
@@ -840,7 +853,7 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
 
 
 def save_plot(fig, ax, filename):
-    fig.savefig(filename, format='svg')
+    fig.savefig(filename, format="svg")
     plt.close(fig)
 
 
@@ -856,12 +869,12 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     m_dot_cond = u[0]
     m_dot_heating = u[1]
     p_compressor = u[2] / 1000  # to kW
-    print("p_compressor max [kW]: ", np.max(p_compressor))
     t_amb = u[3] - 273  # to C
 
     # Design variables
     e_bat = design_variables["e_bat"]
     e_bat_max = design_variables["e_bat_max"]
+    p_grid_max = design_variables["p_grid_max"]
     p_bat = design_variables["p_bat"] / 1000  # to kW
     # p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"]
@@ -890,8 +903,8 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
-    ax.set_xlabel('')  # Remove x-axis label
-    save_plot(fig, ax, 'saves/plot_prices.svg')
+    ax.set_xlabel("")  # Remove x-axis label
+    save_plot(fig, ax, "saves/plot_prices.svg")
 
     # Plot: solar
     fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
@@ -901,8 +914,8 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
-    ax.set_xlabel('')  # Remove x-axis label
-    save_plot(fig, ax, 'saves/plot_generated_consumed.svg')
+    ax.set_xlabel("")  # Remove x-axis label
+    save_plot(fig, ax, "saves/plot_generated_consumed.svg")
 
     # Plot: Temperatures
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -916,8 +929,8 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
-    ax.set_xlabel('')  # Remove x-axis label
-    save_plot(fig, ax, 'saves/plot_temperatures.svg')
+    ax.set_xlabel("")  # Remove x-axis label
+    save_plot(fig, ax, "saves/plot_temperatures.svg")
 
     # Plot: battery energy
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -925,8 +938,8 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.set_ylabel("SOC Batería")
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
-    ax.set_xlabel('')  # Remove x-axis label
-    save_plot(fig, ax, 'saves/plot_battery_soc.svg')
+    ax.set_xlabel("")  # Remove x-axis label
+    save_plot(fig, ax, "saves/plot_battery_soc.svg")
     # ax_right = ax.twinx()
     # ax_right.plot(t, e_bat, label="E_bat", **plot_styles[5])
     # ax_right.set_ylabel("Ws")
@@ -946,7 +959,36 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     # ax_right.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
     # ax_right.set_ylabel("Mass Flow Rates")
     # ax_right.legend(loc="upper right", fontsize=8)
-    save_plot(fig, ax, 'saves/plot_controls.svg')
+    save_plot(fig, ax, "saves/plot_controls.svg")
+
+
+def get_costs(histories, parameters):
+    p_compressor = histories["p_compressor"][-1]
+    solar_size = histories["solar_size"][-1]
+    p_bat = histories["p_bat"][-1]
+    p_grid_max = histories["p_grid_max"][-1]
+    e_bat_max = histories["e_bat_max"][-1]
+    tank_volume = histories["tank_volume"][-1]
+    p_compressor_max = histories["p_compressor_max"][-1]
+    t_room = histories["t_room"][-1]
+
+    h = np.ones(p_compressor.shape[0]) * parameters["H"]
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
+    p_required = parameters["p_required"]
+    t_target = parameters["T_TARGET"]
+    p_solar = parameters["w_solar_per_w_installed"] * solar_size
+    p_grid = -p_solar + p_compressor + p_bat + p_required
+
+    return {
+        "variable_energy_cost": np.sum(h * np.maximum(pvpc_prices * p_grid, excess_prices * p_grid)),
+        "fixed_energy_cost": np.sum(h * get_fixed_energy_cost_by_second(p_grid_max)),
+        "battery drep": np.sum(h * np.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
+        "solar drep": np.sum(h * get_solar_panels_depreciation_by_second(solar_size)),
+        "HP drep": np.sum(h * np.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max)),
+        "tank drep": np.sum(h * get_tank_depreciation_by_second(tank_volume)),
+        "T penalization": np.sum(5e-4 * jnp.square(t_room - t_target)),
+    }
 
 
 def plot_history(hist, only_last=True):
@@ -976,6 +1018,10 @@ def plot_history(hist, only_last=True):
         x = 10
         indices = list(range(0, len(histories["p_compressor"]), x))
 
+    costs = get_costs(histories, parameters)
+    print(costs)
+    print("p_compressor max:", np.max(histories["p_compressor"][-1]))
+
     # loop through histories
     for iter, i in enumerate(indices):
         y0 = np.array(
@@ -996,12 +1042,16 @@ def plot_history(hist, only_last=True):
         u[3] = parameters["t_amb"]
 
         design_variables = {}
+        design_variables["p_compressor"] = histories["p_compressor"][i]
+        design_variables["m_dot_heating"] = histories["m_dot_heating"][i]
+        design_variables["m_dot_cond"] = histories["m_dot_cond"][i]
         design_variables["e_bat"] = histories["e_bat"][i]
         design_variables["e_bat_max"] = histories["e_bat_max"][i][0]
         design_variables["p_bat"] = histories["p_bat"][i]
         # design_variables["p_waste"] = histories["p_waste"][i]
         design_variables["solar_size"] = histories["solar_size"][i][0]
         design_variables["tank_volume"] = histories["tank_volume"][i][0]
+        design_variables["p_grid_max"] = histories["p_grid_max"][i][0]
 
         dae_p = np.array(
             [
