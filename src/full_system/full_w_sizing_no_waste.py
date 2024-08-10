@@ -66,7 +66,7 @@ def obj_fun(
         # ∘ depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
         # ∘ penalize room temperature far from t_target
-        + jnp.sum(5e-4 * jnp.square(t_room - t_target))
+        + jnp.sum(1e-4 * jnp.square(t_room - t_target))
     )
     return cost
 
@@ -1431,9 +1431,9 @@ def e_bat_0_fun(
 ):
     # Initial condition:
     # The battery is at its lowest
-    # e_bat_0 = e_bat_max * soc_min + 1000[Ws]
-    # e_bat_0 - e_bat_max * soc_min = 0
-    return e_bat_0 - e_bat_max * soc_min - 1000
+    # e_bat_0 = e_bat_max * soc_min + 10000
+    # e_bat_0 - e_bat_max * soc_min - 10000 = 0
+    return e_bat_0 - e_bat_max * soc_min - 10000
 
 
 get_de_bat_0_de_bat = jax_to_numpy(jax.jit(jax.jacobian(e_bat_0_fun, argnums=0)))
@@ -1550,7 +1550,14 @@ def sens(opt, design_variables: DesignVariables, func_values):
 
 
 def run_optimization(parameters, plot=True):
-    opt = Opt("full_w_sizing", obj, historyFileName="saves/full_w_sizing.hst")
+    historyFileName = "saves/full_w_sizing.hst"
+    opt = Opt("full_w_sizing", obj, historyFileName=historyFileName)
+
+    dvs_from_last = True
+    history = None
+    if dvs_from_last:
+        history = History(historyFileName)
+        history = history.getValues()
 
     # Parameters
     n_steps = parameters["t_amb"].shape[0]
@@ -1568,7 +1575,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 1e-3,
         "upper": parameters["M_DOT_COND_MAX"],
-        "initial_value": parameters["M_DOT_COND_MAX"] / 2,
+        "initial_value": history["m_dot_cond"][-1] if history else parameters["M_DOT_COND_MAX"] / 2,
         "scale": 1 / parameters["M_DOT_COND_MAX"],
     }
     opt.add_design_variables_info(m_dot_cond)
@@ -1579,7 +1586,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 1e-3,
         "upper": parameters["M_DOT_HEATING_MAX"],
-        "initial_value": parameters["M_DOT_HEATING_MAX"] / 2,
+        "initial_value": history["m_dot_heating"][-1] if history else parameters["M_DOT_HEATING_MAX"] / 2,
         "scale": 1 / parameters["M_DOT_HEATING_MAX"],
     }
     opt.add_design_variables_info(m_dot_heating)
@@ -1590,7 +1597,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": parameters["P_COMPRESSOR_MAX_LIMIT"] / 2,
+        "initial_value": history["p_compressor"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 2,
         "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
     }
     opt.add_design_variables_info(p_compressor)
@@ -1607,7 +1614,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 273,
         "upper": 500,
-        "initial_value": 300,
+        "initial_value": history["t_cond"][-1] if history else 300,
         "scale": 1 / 300,
     }
     opt.add_design_variables_info(t_cond)
@@ -1618,7 +1625,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 273,
         "upper": 500,
-        "initial_value": 300,
+        "initial_value": history["t_tank"][-1] if history else 300,
         "scale": 1 / 300,
     }
     opt.add_design_variables_info(t_tank)
@@ -1629,7 +1636,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 273,
         "upper": 500,
-        "initial_value": 300,
+        "initial_value": history["t_out_heating"][-1] if history else 300,
         "scale": 1 / 300,
     }
     opt.add_design_variables_info(t_out_heating)
@@ -1640,7 +1647,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 253,
         "upper": 500,
-        "initial_value": 300,
+        "initial_value": history["t_floor"][-1] if history else 300,
         "scale": 1 / 300,
     }
     opt.add_design_variables_info(t_floor)
@@ -1651,7 +1658,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": parameters["T_TARGET"],
         "upper": 500,
-        "initial_value": 300,
+        "initial_value": history["t_room"][-1] if history else 300,
         "scale": 1 / 300,
     }
     opt.add_design_variables_info(t_room)
@@ -1663,7 +1670,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": 0,
+        "initial_value": history["p_bat"][-1] if history else 0,
         "scale": 1 / parameters["P_BAT_MAX_LIMIT"],
     }
     opt.add_design_variables_info(p_bat)
@@ -1674,7 +1681,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": parameters["E_BAT_MAX_LIMIT"] / 10,
+        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 10,
         "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
     }
     opt.add_design_variables_info(e_bat)
@@ -1686,7 +1693,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["E_BAT_MAX_LIMIT"],
-        "initial_value": 10,
+        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 5,
         "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
     }
     opt.add_design_variables_info(e_bat_max)
@@ -1697,7 +1704,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["SOLAR_SIZE_MAX"],
-        "initial_value": 10,
+        "initial_value": history["solar_size"][-1] if history else parameters["SOLAR_SIZE_MAX"] / 10,
         "scale": 1 / parameters["SOLAR_SIZE_MAX"],
     }
     opt.add_design_variables_info(solar_size)
@@ -1708,7 +1715,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_COMPRESSOR_MAX_LIMIT"],
-        "initial_value": 10,
+        "initial_value": history["p_compressor_max"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 10,
         "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
     }
     opt.add_design_variables_info(p_compressor_max)
@@ -1719,7 +1726,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_GRID_MAX_LIMIT"],
-        "initial_value": parameters["P_GRID_MAX_LIMIT"],
+        "initial_value": history["p_grid_max"][-1] if history else parameters["P_GRID_MAX_LIMIT"] / 10,
         "scale": 1 / parameters["P_GRID_MAX_LIMIT"],
     }
     opt.add_design_variables_info(p_grid_max)
@@ -1730,7 +1737,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0.001,  # 0.001[m3] -> 1[l]
         "upper": 10,
-        "initial_value": 0.001,
+        "initial_value": history["tank_volume"][-1] if history else 0.001,
         "scale": 100,
     }
     opt.add_design_variables_info(tank_volume)
@@ -2005,27 +2012,22 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
-        "print_level": 5,
-        "max_iter": 1000,
-        # "tol": 1e-3,
-        # "obj_scaling_factor": 1e3,  # tells IPOPT how to internally handle the scaling without distorting the gradients
-        # "nlp_scaling_method": "gradient-based",
-        # "acceptable_tol": 1e-4,
-        # "acceptable_obj_change_tol": 1e-4,
+        "print_level": 5, # up to 12
+        "max_iter": 5000,
+        # "tol": 1e-5,
+        "obj_scaling_factor": 1e-1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        # "acceptable_tol": 1e-5,
+        # "acceptable_obj_change_tol": 1e-5,
         "mu_strategy": "adaptive",
-        # "alpha_red_factor": 0.2
         "alpha_for_y": "safer-min-dual-infeas",
-        # "alpha_for_y": "primal-and-full"
-        # "alpha_for_y": "dual-and-full"
-        # "alpha_for_y": "full"
-        "mumps_mem_percent": 16000,
+        "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)
 
     # Setup and check optimization problem
     opt.setup()
-    opt.print()
-    opt.optProb.printSparsity()
+    # opt.print()
+    # opt.optProb.printSparsity()
     # exit(0)
 
     # Run

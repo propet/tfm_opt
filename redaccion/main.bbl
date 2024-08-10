@@ -1,0 +1,94 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global}
+    \entry{dubey2024llama}{article}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{10}{}{%
+        {{hash=517ae3236e034cf4fdea5b47025e3973}{%
+           family={Dubey},
+           familyi={D\bibinitperiod},
+           given={Abhimanyu},
+           giveni={A\bibinitperiod}}}%
+        {{hash=7cd1f80eda1bcdcfef29a10ede4dd146}{%
+           family={Jauhri},
+           familyi={J\bibinitperiod},
+           given={Abhinav},
+           giveni={A\bibinitperiod}}}%
+        {{hash=06842da7f77ff44040c8321fd64885f3}{%
+           family={Pandey},
+           familyi={P\bibinitperiod},
+           given={Abhinav},
+           giveni={A\bibinitperiod}}}%
+        {{hash=608d46a077e616c07f7f9f841f4de3ae}{%
+           family={Kadian},
+           familyi={K\bibinitperiod},
+           given={Abhishek},
+           giveni={A\bibinitperiod}}}%
+        {{hash=2e761a0ae1d9bbf5f560537144813f20}{%
+           family={Al-Dahle},
+           familyi={A\bibinithyphendelim D\bibinitperiod},
+           given={Ahmad},
+           giveni={A\bibinitperiod}}}%
+        {{hash=1debd101fb9be92bb0eece4c427841d9}{%
+           family={Letman},
+           familyi={L\bibinitperiod},
+           given={Aiesha},
+           giveni={A\bibinitperiod}}}%
+        {{hash=457cd19c088f0576b2d4d9823277fe38}{%
+           family={Mathur},
+           familyi={M\bibinitperiod},
+           given={Akhil},
+           giveni={A\bibinitperiod}}}%
+        {{hash=a7fbe7fc6a5ce250cabe9388e690c55b}{%
+           family={Schelten},
+           familyi={S\bibinitperiod},
+           given={Alan},
+           giveni={A\bibinitperiod}}}%
+        {{hash=d5eae71ab93d6aef82689401f1018de6}{%
+           family={Yang},
+           familyi={Y\bibinitperiod},
+           given={Amy},
+           giveni={A\bibinitperiod}}}%
+        {{hash=277117db6b938bd36379979ac719cc02}{%
+           family={Fan},
+           familyi={F\bibinitperiod},
+           given={Angela},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{cd704062f81a62eab86198dd3fba0e91}
+      \strng{fullhash}{910840e77c2ea25c8f4b81b398b703d1}
+      \strng{bibnamehash}{cd704062f81a62eab86198dd3fba0e91}
+      \strng{authorbibnamehash}{cd704062f81a62eab86198dd3fba0e91}
+      \strng{authornamehash}{cd704062f81a62eab86198dd3fba0e91}
+      \strng{authorfullhash}{910840e77c2ea25c8f4b81b398b703d1}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:2407.21783}
+      \field{title}{The Llama 3 Herd of Models}
+      \field{year}{2024}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

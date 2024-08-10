@@ -1,0 +1,133 @@
+\documentclass[a4paper,11pt,twoside]{report}
+\usepackage[left=25mm,right=25mm,top=25mm,bottom=25mm,includehead,includefoot,headsep=15mm,footskip=15mm]{geometry}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage[backend=biber,style=numeric]{biblatex}
+\addbibresource{references.bib}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,      % color of internal links (sections, etc.)
+    urlcolor=blue,       % color of external links
+    pdftitle={Optimización energética de sistema híbrido con bomba de calor, suelo radiante, fotovoltaica y almacenamiento para vivienda},    % title
+    pdfauthor={Luis D. Aranda Sánchez},     % author
+    pdfkeywords={palabra1, palabra2, código1, etc.} % list of keywords
+}
+
+% Font change to Arial
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+
+% Chapter titles in uppercase and larger font
+\titleformat{\chapter}[hang]{\large\bfseries}{\thechapter.}{1em}{\MakeUppercase}
+\titleformat{\section}[hang]{\bfseries}{\thesection.}{1em}{}
+\titleformat{\subsection}[hang]{\bfseries}{\thesubsection.}{1em}{}
+
+% Fancyhdr setup
+\setlength{\headheight}{14.30174pt} % Adjust to recommended value, slightly larger for safety
+\fancyhf{} % Clear all headers and footers
+\fancyhead[LE]{\nouppercase{\leftmark}}
+\fancyhead[RO]{Optimización energética para vivienda}
+\fancyfoot[LE]{\thepage}
+\fancyfoot[RE]{Escuela Técnica Superior de Ingenieros Industriales (UPM)}
+\fancyfoot[LO]{Luis D. Aranda Sánchez}
+\fancyfoot[RO]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+\fancypagestyle{myfancy}{
+    \fancyhf{} % Clear all headers and footers
+    \fancyhead[LE]{\nouppercase{\leftmark}}
+    \fancyhead[RO]{Optimización energética para vivienda}
+    \fancyfoot[LE]{\thepage}
+    \fancyfoot[RE]{Escuela Técnica Superior de Ingenieros Industriales (UPM)}
+    \fancyfoot[LO]{Luis D. Aranda Sánchez}
+    \fancyfoot[RO]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \renewcommand{\footrulewidth}{0.4pt}
+}
+
+\fancypagestyle{simple}{
+    \fancyhf{} % Clear all headers and footers
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% Line spacing
+\setstretch{1.2}
+
+% Document starts here
+\begin{document}
+
+% Portada
+\begin{titlepage}
+    \centering
+    {\scshape\LARGE Universidad Politécnica de Madrid \par}
+    \vspace{1cm}
+    {\scshape\Large Escuela Técnica Superior de Ingenieros Industriales\par}
+    \vspace{1.5cm}
+    {\huge\bfseries Optimización energética de sistema híbrido con bomba de calor, suelo radiante, fotovoltaica y almacenamiento para vivienda \par}
+    \vspace{1.5cm}
+    {\Large\bfseries Trabajo de Fin de Máster\par}
+    \vspace{0.5cm}
+    {\large Máster Universitario en Ingeniería de la Energía \par}
+    \vspace{2cm}
+    {\Large Luis D. Aranda Sánchez\par}
+    \vfill
+    Director: Javier Rodriguez Martín
+    \vfill
+    {\large Septiembre 6, 2024\par}
+\end{titlepage}
+
+% Resumen (máximo de 5 páginas, incluyendo al final Palabras clave)
+\clearpage
+\pagestyle{simple}
+% \newpage
+\chapter*{Resumen}
+\addcontentsline{toc}{chapter}{Resumen}
+\input{capitulos/resumen/main.tex}
+
+% Índice (paginado)
+\clearpage
+\pagestyle{simple}
+% \newpage
+\tableofcontents
+
+% Introducción (donde se incluya los antecedentes y justificación)
+\clearpage
+\pagestyle{myfancy}
+\newpage
+\chapter{Introducción}
+\input{capitulos/introduccion/main.tex}
+
+% Objetivos
+\chapter{Objetivos}
+\input{capitulos/objetivos/main.tex}
+
+% Metodología
+\chapter{Metodología}
+\input{capitulos/metodologia/main.tex}
+
+% Resultados y discusión (incluyendo la valoración de impactos y de aspectos de responsabilidad legal, ética y profesional relacionados con el trabajo)
+\chapter{Resultados y Discusión}
+\input{capitulos/resultados_discusion/main.tex}
+
+% Conclusiones
+\chapter{Conclusiones}
+\input{capitulos/conclusiones/main.tex}
+
+% Planificación temporal y presupuesto
+\chapter{Planificación Temporal y Presupuesto}
+\input{capitulos/planificacion_presupuesto/main.tex}
+
+% Bibliografía
+\newpage
+\addcontentsline{toc}{chapter}{Bibliografía}
+\printbibliography
+
+\end{document}

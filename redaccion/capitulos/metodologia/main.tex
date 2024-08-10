@@ -1,0 +1,77 @@
+\section{Optimización basada en gradientes con restricciones}
+
+\subsection{Gradientes}
+
+La optimización paramétrica sin el uso de gradientes no es escalable para
+problemas con un gran número de variables de diseño, como ocurre en problemas
+de control óptimo, optimización topológica, o aprendizaje automático.
+
+Los algoritmos libres de gradiente buscan el óptimo poblando el espacio de
+diseño y evaluando la función objetivo en estos puntos. Sin embargo, al
+introducir más variables de diseño, el espacio crece exponencialmente, así como
+el número de puntos a evaluar.
+
+Asumiendo que la evaluación de cada punto tiene un coste computacional no
+despreciable, el uso de estos algoritmos se vuelve inviable para problemas con
+más de unas pocas decenas de variables de diseño. El volumen de un hipercubo
+n-dimensional crece como:
+
+\begin{equation}
+	V = l^n
+\end{equation}
+
+donde $l$ es la longitud del lado y $n$ es la dimensión.
+
+\begin{figure}[h] \centering
+	% Insertar aquí la imagen del cubo en 1, 2 y 3 dimensiones
+	\caption{Representación de un hipercubo en 1, 2 y 3 dimensiones}
+	\label{fig:hypercube}
+\end{figure}
+
+Mientras que el espacio de diseño crece exponencialmente en volumen con el
+incremento de las variables de diseño, la distancia entre dos puntos dentro
+de este volumen no lo hace de manera tan drástica. Para un hipercubo
+n-dimensional, su diagonal viene dada por:
+
+\begin{equation}
+	d = l\sqrt{n}
+\end{equation}
+
+Los algoritmos basados en gradientes, en lugar de poblar el espacio de
+diseño, lo navegan avanzando hacia el óptimo por un camino determinado por
+el gradiente de la función objetivo respecto a las variables de diseño.
+
+\begin{figure}[h] \centering
+	% Insertar aquí la imagen del camino dentro de un cubo 3-dimensional
+	\caption{Camino de optimización en un espacio tridimensional}
+	\label{fig:optimization_path}
+\end{figure}
+
+Esta estrategia permite la optimización de problemas con un gran número de
+incógnitas. Por ejemplo, el modelo de lenguaje Llama 3.1-405 de Meta
+utiliza 405 mil millones de variables \cite{dubey2024llama}.
+
+
+% Reescribir
+Y por qué funciona a pesar de que en principio introducir más variables, podría llevar
+a la producción de muchos más mínimos locales?
+
+En espacios con muchas dimensiones, se dan pocos mínimos locales porque la mayoría
+de puntos son de inflexión, puntos de silla.
+Para que se diese un mínimo local, la función debe de ser convexa en todas las variables
+para ese punto, lo cual es cada vez menos probable con más dimensiones(variables).
+% Reescribir
+
+\begin{figure}[h] \centering
+	% Insertar aquí la imagen de un punto de silla
+	\caption{Punto de silla en 3 dimensiones}
+	\label{fig:inflexion_point}
+\end{figure}
+
+
+\subsection{Restricciones}
+
+La gran mayoría de los problemas en ingeniería requieren el uso de
+restricciones en su formulación. Estas restricciones pueden ser de igualdad o
+desigualdad y representan limitaciones físicas, económicas o de diseño que
+deben satisfacerse durante el proceso de optimización.

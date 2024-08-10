@@ -1,0 +1,34 @@
+Se optimiza conjuntamente el control y dimensionamiento de un sistema
+energético para una vivienda equipada con bomba de calor, paneles
+fotovoltaicos, y almacenamiento en forma de baterías y tanque de agua.
+
+La optimización basada en gradientes explora el uso de derivadas adjuntas para
+el sistema de ecuaciones diferenciales algebraicas que describen el sistema
+térmico. Además, se implementa la simulación y optimización conjunta mediante
+el método SAND (Simultaneous ANalysis and Design), también conocido como "todo
+a la vez" (all-at-once).
+
+La demanda eléctrica se basa en un perfil de consumo real extraído de una
+vivienda existente, mientras que el consumo de calor se estima para una
+vivienda localizada en Madrid con calefacción de suelo radiante.
+
+Para un año completo, se obtienen las señales de control de los equipos y los
+tamaños óptimos de los componentes (potencia de la bomba de calor, potencia
+instalada de paneles solares, potencia máxima contratada con la
+comercializadora, capacidad de la batería y volumen del tanque de agua) que
+minimizan el coste total, manteniendo simultáneamente la temperatura de la
+vivienda estable y cercana a los 20°C.
+
+Se analizan tres escenarios: 
+
+\begin{itemize} \item Vivienda off-grid (desconectada de la red eléctrica).
+\item Vivienda conectada a la red, vendiendo excedentes de energía al precio de
+mercado. \item Vivienda bajo la modalidad de autoconsumo con compensación
+simplificada, donde el término variable en la factura de la electricidad no
+puede ser negativo, limitando así la compensación económica por el excedente de
+electricidad volcada a la red. \end{itemize}
+
+
+\begin{flushleft} \textbf{Palabras clave:} optimización, derivadas adjuntas,
+diferenciación automática, control óptimo, eficiencia energética, pyoptsparse.
+\end{flushleft}

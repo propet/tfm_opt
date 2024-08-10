@@ -14,10 +14,10 @@
 
 PARAMS = {
     "H": 1000,  # stepsize [s]
-    "T0": 70 * 24 * 3600,
+    "T0": 150 * 24 * 3600,
     # "T0": 0,
-    # "HORIZON": 1000000,  # s
-    "HORIZON": 10 * 24 * 3600,  # s
+    # "HORIZON": 100000,  # s
+    "HORIZON": 100 * 24 * 3600,  # s
     # "HORIZON": 100 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 

@@ -987,7 +987,7 @@ def get_costs(histories, parameters):
         "solar drep": np.sum(h * get_solar_panels_depreciation_by_second(solar_size)),
         "HP drep": np.sum(h * np.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max)),
         "tank drep": np.sum(h * get_tank_depreciation_by_second(tank_volume)),
-        "T penalization": np.sum(5e-4 * jnp.square(t_room - t_target)),
+        "T penalization": np.sum(1e-4 * jnp.square(t_room - t_target)),
     }
 
 
@@ -1021,6 +1021,11 @@ def plot_history(hist, only_last=True):
     costs = get_costs(histories, parameters)
     print(costs)
     print("p_compressor max:", np.max(histories["p_compressor"][-1]))
+    print("p_compressor_max:", histories["p_compressor_max"][-1])
+    print("p_grid_max:", histories["p_grid_max"][-1])
+    print("e_bat_max:", histories["e_bat_max"][-1])
+    print("tank_volume:", histories["tank_volume"][-1])
+    print("solar_size:", histories["solar_size"][-1])
 
     # loop through histories
     for iter, i in enumerate(indices):
@@ -1093,8 +1098,8 @@ def plot_history(hist, only_last=True):
         # print("u[1]: ", u[:, 1])
         # print("solution:", y[:, -1])
         if only_last:
-            save_plots(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
-            # plot_full(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
+            # save_plots(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
+            plot_full(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
             return
         else:
             title = f"iter: {iter}/{len(indices)}"
