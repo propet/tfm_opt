@@ -42,6 +42,7 @@ def obj_fun(
     w_solar_per_w_installed,
     h,
     t_target,
+    t_amb,
 ):
     p_solar = w_solar_per_w_installed * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required
@@ -66,7 +67,9 @@ def obj_fun(
         # ∘ depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
         # ∘ penalize room temperature far from t_target
-        + jnp.sum(1e-4 * jnp.square(t_room - t_target))
+        # + jnp.sum(1e-4 * jnp.square(t_room - t_target))
+        # + jnp.sum(1e-3 * jnp.square(t_room - t_target) * jnp.maximum(0, t_room - t_amb) / (t_room + 1e-6))
+        # + jnp.sum(1e-4 * jnp.square(jnp.maximum(t_room, t_amb) - t_target))
     )
     return cost
 
@@ -99,6 +102,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     p_required = parameters["p_required"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
+    t_amb = parameters["t_amb"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
 
     objective = obj_fun(
@@ -116,6 +120,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
         w_solar_per_w_installed,
         h,
         t_target,
+        t_amb,
     )
     return np.array(objective)
 
@@ -138,6 +143,7 @@ def obj_sens(opt, design_variables: DesignVariables):
     p_required = parameters["p_required"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
+    t_amb = parameters["t_amb"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
 
     fun_inputs = (
@@ -155,6 +161,7 @@ def obj_sens(opt, design_variables: DesignVariables):
         w_solar_per_w_installed,
         h,
         t_target,
+        t_amb,
     )
     dobj_dp_bat = get_dobj_dp_bat(*fun_inputs)
     dobj_dp_compressor = get_dobj_dp_compressor(*fun_inputs)
@@ -2013,9 +2020,9 @@ def run_optimization(parameters, plot=True):
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
         "print_level": 5, # up to 12
-        "max_iter": 5000,
+        "max_iter": 2000,
         # "tol": 1e-5,
-        "obj_scaling_factor": 1e-1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
+        # "obj_scaling_factor": 1e-1,  # tells IPOPT how to internally handle the scaling without distorting the gradients
         # "acceptable_tol": 1e-5,
         # "acceptable_obj_change_tol": 1e-5,
         "mu_strategy": "adaptive",
