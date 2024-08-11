@@ -1,14 +1,16 @@
 [0] Config.pm:307> INFO - This is Biber 2.19
 [0] Config.pm:310> INFO - Logfile is 'main.blg'
-[38] biber:340> INFO - === sáb ago 10, 2024, 20:31:48
+[38] biber:340> INFO - === dom ago 11, 2024, 13:04:31
 [47] Biber.pm:419> INFO - Reading 'main.bcf'
-[77] Biber.pm:979> INFO - Found 1 citekeys in bib section 0
-[85] Biber.pm:4419> INFO - Processing section 0
-[90] Biber.pm:4610> INFO - Looking for bibtex file 'references.bib' for section 0
-[90] bibtex.pm:1713> INFO - LaTeX decoding ...
-[91] bibtex.pm:1519> INFO - Found BibTeX data source 'references.bib'
-[114] UCollate.pm:68> INFO - Overriding locale 'es-ES' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[114] UCollate.pm:68> INFO - Overriding locale 'es-ES' defaults 'variable = shifted' with 'variable = non-ignorable'
-[114] Biber.pm:4239> INFO - Sorting list 'nty/global//global/global' of type 'entry' with template 'nty' and locale 'es-ES'
-[115] bbl.pm:660> INFO - Writing 'main.bbl' with encoding 'UTF-8'
-[116] bbl.pm:763> INFO - Output to main.bbl
+[75] Biber.pm:979> INFO - Found 2 citekeys in bib section 0
+[81] Biber.pm:4419> INFO - Processing section 0
+[88] Biber.pm:4610> INFO - Looking for bibtex file 'references.bib' for section 0
+[89] bibtex.pm:1713> INFO - LaTeX decoding ...
+[90] bibtex.pm:1519> INFO - Found BibTeX data source 'references.bib'
+[125] UCollate.pm:68> INFO - Overriding locale 'es-ES' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[125] UCollate.pm:68> INFO - Overriding locale 'es-ES' defaults 'variable = shifted' with 'variable = non-ignorable'
+[125] Biber.pm:4239> INFO - Sorting list 'nty/global//global/global' of type 'entry' with template 'nty' and locale 'es-ES'
+[129] bbl.pm:660> INFO - Writing 'main.bbl' with encoding 'UTF-8'
+[129] bbl.pm:763> INFO - Output to main.bbl
+[129] Biber.pm:131> WARN - legacy month field 'January' in entry 'mdobook' is not an integer - this will probably not sort properly.
+[129] Biber.pm:133> INFO - WARNINGS: 1

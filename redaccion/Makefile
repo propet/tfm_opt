@@ -4,7 +4,7 @@
 MAIN = main
 
 # Compiling command
-LATEX = pdflatex
+LATEX = pdflatex -shell-escape
 BIBER = biber  # Uncomment if you use BibLaTeX
 
 # List of included files

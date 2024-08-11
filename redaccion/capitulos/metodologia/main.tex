@@ -1,6 +1,6 @@
 \section{Optimización basada en gradientes con restricciones}
 
-\subsection{Gradientes}
+\subsection{Optimización con y sin gradientes}
 
 La optimización paramétrica sin el uso de gradientes no es escalable para
 problemas con un gran número de variables de diseño, como ocurre en problemas
@@ -10,6 +10,13 @@ Los algoritmos libres de gradiente buscan el óptimo poblando el espacio de
 diseño y evaluando la función objetivo en estos puntos. Sin embargo, al
 introducir más variables de diseño, el espacio crece exponencialmente, así como
 el número de puntos a evaluar.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.6\textwidth]{./capitulos/metodologia/images/volume_curse_of_dimensionality_print}
+	\caption{Crecimiento exponencial del número de puntos a poblar con el número de dimensiones.}
+	\label{fig:hypercube}
+\end{figure}
 
 Asumiendo que la evaluación de cada punto tiene un coste computacional no
 despreciable, el uso de estos algoritmos se vuelve inviable para problemas con
@@ -22,11 +29,10 @@ n-dimensional crece como:
 
 donde $l$ es la longitud del lado y $n$ es la dimensión.
 
-\begin{figure}[h] \centering
-	% Insertar aquí la imagen del cubo en 1, 2 y 3 dimensiones
-	\caption{Representación de un hipercubo en 1, 2 y 3 dimensiones}
-	\label{fig:hypercube}
-\end{figure}
+
+Los algoritmos basados en gradientes, en lugar de poblar el espacio de
+diseño, lo navegan avanzando hacia el óptimo por un camino determinado por
+el gradiente de la función objetivo respecto a las variables de diseño.
 
 Mientras que el espacio de diseño crece exponencialmente en volumen con el
 incremento de las variables de diseño, la distancia entre dos puntos dentro
@@ -37,35 +43,25 @@ n-dimensional, su diagonal viene dada por:
 	d = l\sqrt{n}
 \end{equation}
 
-Los algoritmos basados en gradientes, en lugar de poblar el espacio de
-diseño, lo navegan avanzando hacia el óptimo por un camino determinado por
-el gradiente de la función objetivo respecto a las variables de diseño.
+Nótese que el aumento no es exponencial con el número de dimensiones, ni
+tan siquiera es lineal.
 
-\begin{figure}[h] \centering
-	% Insertar aquí la imagen del camino dentro de un cubo 3-dimensional
-	\caption{Camino de optimización en un espacio tridimensional}
-	\label{fig:optimization_path}
-\end{figure}
+Si el número de iteraciones realizadas por el algoritmo de optimización
+es proporcional a la longitud del camino entre los puntos inicial y final(óptimo),
+entonces el coste computacional crece con la raiz del número de dimensiones, o
+variables de diseño.
 
 Esta estrategia permite la optimización de problemas con un gran número de
-incógnitas. Por ejemplo, el modelo de lenguaje Llama 3.1-405 de Meta
-utiliza 405 mil millones de variables \cite{dubey2024llama}.
+incógnitas. Por ejemplo, el modelo de lenguaje Llama-3.1-405b de Meta
+utiliza 405 mil millones de variables \cite{dubey2024llama}, o parámetros como
+se conocen en el contexto del aprendizaje automático.
 
 
-% Reescribir
-Y por qué funciona a pesar de que en principio introducir más variables, podría llevar
-a la producción de muchos más mínimos locales?
-
-En espacios con muchas dimensiones, se dan pocos mínimos locales porque la mayoría
-de puntos son de inflexión, puntos de silla.
-Para que se diese un mínimo local, la función debe de ser convexa en todas las variables
-para ese punto, lo cual es cada vez menos probable con más dimensiones(variables).
-% Reescribir
-
-\begin{figure}[h] \centering
-	% Insertar aquí la imagen de un punto de silla
-	\caption{Punto de silla en 3 dimensiones}
-	\label{fig:inflexion_point}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.4\textwidth]{./capitulos/metodologia/images/gradient_based_vs_gradient_free.png}
+    \caption{Los algoritmos de optimización que emplean gradientes escalan mucho mejor con el número de variables de diseño. (Adaptado de Martins y Ning \cite{mdobook}, p. 22)}
+    \label{fig:gradient_based_vs_gradient_free}
 \end{figure}
 
 

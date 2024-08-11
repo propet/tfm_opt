@@ -88,6 +88,49 @@
       \field{title}{The Llama 3 Herd of Models}
       \field{year}{2024}
     \endentry
+    \entry{mdobook}{book}{}
+      \name{author}{2}{}{%
+        {{hash=f78019558101a841974c5f3b5a885657}{%
+           family={Martins},
+           familyi={M\bibinitperiod},
+           given={Joaquim\bibnamedelimb R.\bibnamedelimi R.\bibnamedelimi A.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod\bibinitdelim R\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=93ca2cb81a3707f9a26c8b4c7425e445}{%
+           family={Ning},
+           familyi={N\bibinitperiod},
+           given={Andrew},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Cambridge, UK}%
+      }
+      \list{publisher}{1}{%
+        {Cambridge University Press}%
+      }
+      \strng{namehash}{55dc6cf10b12287e88ed45c38cbd30af}
+      \strng{fullhash}{55dc6cf10b12287e88ed45c38cbd30af}
+      \strng{bibnamehash}{55dc6cf10b12287e88ed45c38cbd30af}
+      \strng{authorbibnamehash}{55dc6cf10b12287e88ed45c38cbd30af}
+      \strng{authornamehash}{55dc6cf10b12287e88ed45c38cbd30af}
+      \strng{authorfullhash}{55dc6cf10b12287e88ed45c38cbd30af}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{9781108833417}
+      \field{month}{1}
+      \field{title}{Engineering Design Optimization}
+      \field{year}{2022}
+      \verb{doi}
+      \verb 10.1017/9781108980647
+      \endverb
+      \verb{urlraw}
+      \verb https://mdobook.github.io
+      \endverb
+      \verb{url}
+      \verb https://mdobook.github.io
+      \endverb
+    \endentry
   \enddatalist
 \endrefsection
 \endinput
