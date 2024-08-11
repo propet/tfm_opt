@@ -80,11 +80,9 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Parameters
     parameters = opt.parameters
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
-    t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
-    t_amb = parameters["t_amb"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
 
     objective = obj_fun(
@@ -117,11 +115,9 @@ def obj_sens(opt, design_variables: DesignVariables):
     # Parameters
     parameters = opt.parameters
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
-    t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
-    t_amb = parameters["t_amb"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
 
     fun_inputs = (
@@ -1654,7 +1650,7 @@ def run_optimization(parameters, plot=True):
         "lower": None,
         "upper": None,
         "initial_value": history["p_bat"][-1] if history else 0,
-        "scale": 1 / parameters["P_BAT_MAX_LIMIT"],
+        "scale": 1 / (parameters["P_BAT_MAX_LIMIT"] / 10),
     }
     opt.add_design_variables_info(p_bat)
 
@@ -1664,8 +1660,8 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 10,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "initial_value": history["e_bat"][-1] if history else parameters["SOC_MIN"] * parameters["E_BAT_MAX_LIMIT"] / 10,
+        "scale": 1 / (parameters["E_BAT_MAX_LIMIT"] / 10),
     }
     opt.add_design_variables_info(e_bat)
 
@@ -1676,7 +1672,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["E_BAT_MAX_LIMIT"],
-        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 5,
+        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 10,
         "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
     }
     opt.add_design_variables_info(e_bat_max)
@@ -1687,7 +1683,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["SOLAR_SIZE_MAX"],
-        "initial_value": history["solar_size"][-1] if history else parameters["SOLAR_SIZE_MAX"] / 10,
+        "initial_value": history["solar_size"][-1] if history else parameters["SOLAR_SIZE_MAX"] / 2,
         "scale": 1 / parameters["SOLAR_SIZE_MAX"],
     }
     opt.add_design_variables_info(solar_size)
@@ -1698,7 +1694,8 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_COMPRESSOR_MAX_LIMIT"],
-        "initial_value": history["p_compressor_max"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 10,
+        # "initial_value": history["p_compressor_max"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 10,
+        "initial_value": 2000,
         "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
     }
     opt.add_design_variables_info(p_compressor_max)
@@ -1995,10 +1992,10 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 1000,
+        "max_iter": 800,
         # "obj_scaling_factor": 1e-1,
-        "mu_strategy": "adaptive",
-        "alpha_for_y": "safer-min-dual-infeas",
+        # "mu_strategy": "adaptive",
+        # "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)

@@ -289,6 +289,6 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)

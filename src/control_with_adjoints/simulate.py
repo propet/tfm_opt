@@ -26,35 +26,6 @@ import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
 
-def cost_function(y, u, parameters):
-    cost = 0
-    for i in range(y.shape[1]):
-        cost += r(
-            y[:, i],
-            u[:, i],
-            parameters["H"],
-            parameters["daily_prices"][i],
-            parameters["t_amb"][i],
-            parameters["LOAD_HX_EFF"],
-            parameters["CP_WATER"],
-        )
-    return cost
-
-
-def r(y, u, h, daily_prices, t_amb, load_hx_eff, cp_water):
-    p_compressor = u[0]
-    r = h * daily_prices * (p_compressor)
-    return r
-
-
-def get_t_out_heating(y, parameters, i):
-    # T_out_heating = T_tank - load_hx_eff * (T_tank - T_room)
-    t_tank = y[0]
-    t_room = parameters["t_room"]
-    load_hx_eff = parameters["LOAD_HX_EFF"]
-    return t_tank - load_hx_eff * (t_tank - t_room)
-
-
 def dae_system(y, y_prev, p, u, h):
     r"""
     Solve the following system of non-linear equations
@@ -266,26 +237,6 @@ def get_h_tube_water(tube_inner_diameter, mu_water_at_320K, Pr_water, k_water, m
     return h_tube_water
 
 
-# def get_h_tube_water(tube_inner_diameter, mu_water_at_320K, Pr_water, k_water, m_dot_heating):
-#     """
-#     Assuming that the flow is always in turbulent region
-#     Which is not the case
-#     So we are overestimating the convective coefficient here
-#
-#     Using Sieder-Tate correlation for the Nusselt number
-#     """
-#     # Re_water = (4 * m_dot_heating) / (pi * mu_water_at_320K * tube_inner_diameter)
-#     # Nu_water = 0.023 * Re_water**0.8 * Pr_water**0.3
-#     # h_tube_water = Nu_water * k_water / tube_inner_diameter
-#     pi = 3.141592
-#
-#     Re_tube_water = (4 * m_dot_heating) / (pi * mu_water_at_320K * tube_inner_diameter)
-#     mu_water_at_300K = 0.000866
-#     Nu_tube_water = 0.027 * Re_tube_water**0.8 * Pr_water ** (1 / 3) * (mu_water_at_320K / mu_water_at_300K) ** 0.14
-#     h_tube_water = Nu_tube_water * k_water / tube_inner_diameter
-#     return h_tube_water
-
-
 def f(y, y_prev, p, u, h):
     # ∘ m_tank * cp_water * ((t_tank - t_tank_prev)/h)
     #     - m_dot_cond * cp_water * t_cond
@@ -448,11 +399,24 @@ def solve(y_0, u, dae_p, h, n_steps):
     return y
 
 
-def adjoint_gradients(y, u, p, n_steps, parameters):
+def j_compressor_cost(y, u, h, excess_prices):
+    p_compressor = u[2]
+    return jnp.sum(h * excess_prices * p_compressor)
+
+
+def j_t_room_min(y, u, h, excess_prices):
+    t_room = y[4]
+    return jnp.min(t_room)
+
+
+def adjoint_gradients(y, u, p, h, n_steps, parameters, j_fun):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
-    min_p C = Σr(y_n, p, u_n)
+    j(y, u, p) = Σr(y_n, p, u_n)
+    ó
+    j(y, u, p) = min(y)
+    min_p C = j(y, u, p)
     s.t.
         f(y_n, y_(n-1), p, u_n) = 0
         g(y_n, p, u_n) = 0
@@ -463,68 +427,56 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
     by augmenting the system
     p' = 0
 
-    min_{p_n} C = Σr(y_n, p_n, u_n)
+    min_{p_n} C = j(y, u, p)
         f(y_n, y_(n-1), p_n, u_n) = 0
         g(y_n, p_n, u_n) = 0
         (p_n - p_(n-1)) / h = 0
 
     Lagrangian:
-    L = Σr(y_n, p_n, u_n)
+    L = j(y, u, p)
         - Σ λ_n f(y_n, y_(n-1), p_n, u_n)
         - Σ ν_n g(y_n, p_n, u_n)
         - Σ μ_n (p_n - p_(n-1))
 
-    ∂L/∂y_n = 0 = ∂r(y_n, p_n, u_n)/∂y_n
+    ∂L/∂y_n = 0 = ∂j(y, u, p)/∂y_n
                   - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂y_n
                   - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_(n+1))/∂y_n
                   - ν_n ∂g(y_n, p_n, u_n)/∂y_n
-    ∂L/∂p_n = 0 = ∂r(y_n, p_n, u_n)/∂p_n
+    ∂L/∂p_n = 0 = ∂j(y, u, p)/∂p_n
                   - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂p_n
                   - ν_n ∂g(y_n, p_n, u_n)/∂p_n
                   - μ_n + μ_(n+1)
-    ∂L/∂u_n = ∂C/∂u_n = ∂r(y_n, p_n, u_n)/∂u_n
+    ∂L/∂u_n = ∂C/∂u_n = ∂j(y, u, p)/∂u_n
                         - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
                         - ν_n ∂g(y_n, p_n, u_n)/∂u_n
 
     Solve for λ_n and μ_n at each step:
-    [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1}, u_{n+1})/∂y_n)^T]
-    [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
+    [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂j/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1}, u_{n+1})/∂y_n)^T]
+    [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂j/∂p_n + μ_{n+1})^T                               ]
                               [μ_n]
     Terminal conditions:
-    [∂f/∂y_N^T  ∂g/∂y_N^T  0] [λ_N]   [(∂r/∂y_N)^T]
-    [∂f/∂p_N^T  ∂g/∂p_N^T  I] [ν_N] = [(∂r/∂p_N)^T]
+    [∂f/∂y_N^T  ∂g/∂y_N^T  0] [λ_N]   [(∂j/∂y_N)^T]
+    [∂f/∂p_N^T  ∂g/∂p_N^T  I] [ν_N] = [(∂j/∂p_N)^T]
                               [μ_N]
     Solve for initial timestep:
-    ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
-    ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
+    ∂L/∂y_0 = ∂C/∂y_0 = (∂j/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
+    ∂L/∂p_0 = ∂C/∂p_0 = (∂j/∂p_0 + μ_1)^T
     """
-    h = parameters["H"]
-
     # Obtain shapes of jacobians
     # JACOBIANS
     # jax.jacobian will automatically
     # use jax.jacrev or jax.jacfwd
     # based on the number of inputs and outputs
-    get_drdy_jax = jax.jit(jax.jacobian(r, argnums=0))
-    get_drdu_jax = jax.jit(jax.jacobian(r, argnums=1))
-    get_dfdy_jax = jax.jit(jax.jacobian(f, argnums=0))
-    get_dfdy_prev_jax = jax.jit(jax.jacobian(f, argnums=1))
-    get_dfdp_jax = jax.jit(jax.jacobian(f, argnums=2))
-    get_dfdu_jax = jax.jit(jax.jacobian(f, argnums=3))
-    get_dgdy_jax = jax.jit(jax.jacobian(g, argnums=0))
-    get_dgdp_jax = jax.jit(jax.jacobian(g, argnums=1))
-    get_dgdu_jax = jax.jit(jax.jacobian(g, argnums=2))
-
-    # Convert JAX jacobian functions to NumPy functions
-    get_drdy = jax_to_numpy(get_drdy_jax)
-    get_drdu = jax_to_numpy(get_drdu_jax)
-    get_dfdy = jax_to_numpy(get_dfdy_jax)
-    get_dfdy_prev = jax_to_numpy(get_dfdy_prev_jax)
-    get_dfdp = jax_to_numpy(get_dfdp_jax)
-    get_dfdu = jax_to_numpy(get_dfdu_jax)
-    get_dgdy = jax_to_numpy(get_dgdy_jax)
-    get_dgdp = jax_to_numpy(get_dgdp_jax)
-    get_dgdu = jax_to_numpy(get_dgdu_jax)
+    # and convert JAX jacobian functions to NumPy functions
+    get_djdy      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=0)))
+    get_djdu      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=1)))
+    get_dfdy      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=0)))
+    get_dfdy_prev = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=1)))
+    get_dfdp      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=2)))
+    get_dfdu      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=3)))
+    get_dgdy      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=0)))
+    get_dgdp      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=1)))
+    get_dgdu      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=2)))
 
     # Obtain shapes of jacobians
     dfdy = get_dfdy(y[:, 1], y[:, 0], p, u[:, 0], h)
@@ -554,25 +506,9 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
         dgdy_n = get_dgdy(y_current, p, u_current, h)
         dgdu_n = get_dgdu(y_current, p, u_current, h)
         dgdp_n = get_dgdp(y_current, p, u_current, h)
-        drdy_n = get_drdy(
-            y_current,
-            u_current,
-            h,
-            parameters["daily_prices"][n],
-            parameters["t_amb"][n],
-            parameters["LOAD_HX_EFF"],
-            parameters["CP_WATER"],
-        )
-        drdu_n = get_drdu(
-            y_current,
-            u_current,
-            h,
-            parameters["daily_prices"][n],
-            parameters["t_amb"][n],
-            parameters["LOAD_HX_EFF"],
-            parameters["CP_WATER"],
-        )
-        drdp_n = np.zeros(n_params)
+        djdy_n = get_djdy(y, u, h, parameters["excess_prices"][n])[:, n]
+        djdu_n = get_djdu(y, u, h, parameters["excess_prices"][n])[:, n]
+        djdp_n = np.zeros(n_params)
 
         if n == n_steps - 1:
             # Terminal condition
@@ -580,7 +516,7 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n)^T]
             #                           [μ_n]
             A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
-            b = np.concatenate([drdy_n, drdp_n])
+            b = np.concatenate([djdy_n, djdp_n])
             adjs = np.linalg.solve(A, b)
             adj_lambda[:, n] = adjs[:n_odes]
             adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
@@ -590,15 +526,15 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
             # ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
             # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
             dfdy_prev = get_dfdy_prev(y[:, 1], y[:, 0], p, u[:, 1], h)
-            dCdy_0 = drdy_n - np.dot(adj_lambda[:, 1].T, dfdy_prev)
-            dCdp_0 = drdp_n + adj_mu[:, 1]
+            dCdy_0 = djdy_n - np.dot(adj_lambda[:, 1].T, dfdy_prev)
+            dCdp_0 = djdp_n + adj_mu[:, 1]
         else:
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
             #                           [μ_n]
             dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], p, u[:, n + 1], h)
             A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
-            b = np.concatenate([drdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev), drdp_n + adj_mu[:, n + 1]])
+            b = np.concatenate([djdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev), djdp_n + adj_mu[:, n + 1]])
             adjs = np.linalg.solve(A, b)
             adj_lambda[:, n] = adjs[:n_odes]
             adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
@@ -607,27 +543,26 @@ def adjoint_gradients(y, u, p, n_steps, parameters):
         # ∂L/∂u_n = ∂C/∂u_n = ∂r(y_n, p_n, u_n)/∂u_n
         #                     - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
         #                     - ν_n ∂g(y_n, p_n, u_n)/∂u_n
-        dCdu[:, n] = drdu_n - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
+        dCdu[:, n] = djdu_n - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
         # toc = time.time()
         # print(toc - tic)
 
     return dCdy_0, dCdp_0, dCdu
 
 
-def dae_forward(y0, u, dae_p, n_steps):
-    h = PARAMS["H"]
+def dae_forward(y0, u, dae_p, h, n_steps):
     y = solve(y0, u, dae_p, h, n_steps)
     return y
 
 
-def dae_adjoints(y, u, dae_p, n_steps, parameters):
-    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, n_steps, parameters)
+def dae_adjoints(y, u, dae_p, h, n_steps, parameters, j_fun):
+    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, h, n_steps, parameters, j_fun)
     return dCdy_0_adj, dCdp_adj, dCdu_adj
 
 
-def fd_gradients(y0, u, dae_p, n_steps, parameters):
+def fd_gradients(y0, u, dae_p, n_steps, parameters, j_fun):
     """
-    Finite difference of function cost_function
+    Finite difference of function j_fun
     with respect
         initial conditions y0,
         parameters p,
@@ -637,6 +572,7 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters):
     """
     delta = 1e-5
     h = parameters["H"]
+    excess_prices = parameters["excess_prices"]
 
     # Initial solution
     y = solve(y0, u, dae_p, h, n_steps)
@@ -647,21 +583,21 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters):
         y0_perturbed = y0.copy()  # Create a new copy of y0
         y0_perturbed[i] += delta
         y_perturbed = solve(y0_perturbed, u, dae_p, h, n_steps)
-        dfdy0.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
+        dfdy0.append((j_fun(y_perturbed, u, h, excess_prices) - j_fun(y, u, h, excess_prices)) / delta)
 
     dfdp = []
     for i in range(len(dae_p)):
         p_perturbed = dae_p.copy()  # Create a new copy of p
         p_perturbed[i] += delta
         y_perturbed = solve(y0, u, p_perturbed, h, n_steps)
-        dfdp.append((cost_function(y_perturbed, u, parameters) - cost_function(y, u, parameters)) / delta)
+        dfdp.append((j_fun(y_perturbed, u, h, excess_prices) - j_fun(y, u, h, excess_prices)) / delta)
 
     dfdu_3 = []
     for i in range(len(u[:, 0])):
         u_perturbed = u.copy()  # Create a new copy of u
         u_perturbed[i, 3] += delta
         y_perturbed = solve(y0, u_perturbed, dae_p, h, n_steps)
-        dfdu_3.append((cost_function(y_perturbed, u_perturbed, parameters) - cost_function(y, u, parameters)) / delta)
+        dfdu_3.append((j_fun(y_perturbed, u_perturbed, h, excess_prices) - j_fun(y, u, h, excess_prices)) / delta)
 
     return dfdy0, dfdp, dfdu_3
 
@@ -855,7 +791,7 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     save_plot(fig, ax, f"saves/plot_simulation_compressor.svg")
 
 
-def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, show=True, block=True, save=True):
+def plot_full(y, u, i, histories, parameters, title=None, show=True, block=True, save=True):
     print(f"plotting...{title}")
     global fig
     # Close the previous figure if it exists
@@ -876,21 +812,24 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     t_amb = u[3]
 
     # Design variables
-    e_bat = design_variables["e_bat"]
-    p_bat = design_variables["p_bat"]
-    # p_waste = design_variables["p_waste"]
-    solar_size = design_variables["solar_size"]
-    tank_volume = design_variables["tank_volume"]
+    e_bat = histories["e_bat"][i]
+    p_bat = histories["p_bat"][i]
 
     # Parameters
+    solar_size = parameters["SOLAR_SIZE"]
+    e_bat_max = parameters["E_BAT_MAX"]
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
+    p_required = parameters["p_required"]
     h = parameters["H"]
+    t_amb = parameters["t_amb"]
+    n_steps = parameters["t_amb"].shape[0]
     t = np.linspace(0, n_steps * h, n_steps)
     t = t / 3600
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
-    # p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
     # Create time array and set figsize to A4 dimensions (8.27 x 11.69 inches)
@@ -932,7 +871,6 @@ def plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=None, sh
     axes[2].plot(t, p_grid, label="p_grid", **plot_styles[0])
     axes[2].plot(t, p_compressor, label="p_comp", **plot_styles[1])
     axes[2].plot(t, p_bat, label="p_bat", **plot_styles[2])
-    # axes[2].plot(t, p_waste, label="p_waste", **plot_styles[3])
     axes[2].set_ylabel("Power[W]")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
@@ -959,13 +897,13 @@ def save_plot(fig, ax, filename):
     plt.close(fig)
 
 
-def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, show=True, block=True, save=True):
+def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True, save=True):
     # States
-    t_cond = y[0] - 273  # to C
-    t_tank = y[1] - 273  # to C
-    t_out_heating = y[2] - 273  # to C
-    t_floor = y[3] - 273  # to C
-    t_room = y[4] - 273  # to C
+    t_cond = y[0] - 273  # K to ºC
+    t_tank = y[1] - 273  # K to ºC
+    t_out_heating = y[2] - 273  # K to ºC
+    t_floor = y[3] - 273  # K to ºC
+    t_room = y[4] - 273  # K to ºC
 
     # Controls
     m_dot_cond = u[0]
@@ -974,31 +912,28 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     t_amb = u[3] - 273  # to C
 
     # Design variables
-    e_bat = design_variables["e_bat"]
-    e_bat_max = design_variables["e_bat_max"]
-    p_grid_max = design_variables["p_grid_max"]
-    p_bat = design_variables["p_bat"] / 1000  # to kW
-    # p_waste = design_variables["p_waste"]
-    solar_size = design_variables["solar_size"]
-    tank_volume = design_variables["tank_volume"]
+    e_bat = histories["e_bat"][i]
+    p_bat = histories["p_bat"][i] / 1000  # to kW
 
     # Parameters
+    solar_size = parameters["SOLAR_SIZE"]
+    e_bat_max = parameters["E_BAT_MAX"]
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
+    p_required = parameters["p_required"]
     h = parameters["H"]
+    t_amb = parameters["t_amb"] - 273  # K to ºC
+    n_steps = parameters["t_amb"].shape[0]
     t = np.linspace(0, n_steps * h, n_steps)
-    t = t / 3600  # s to h
+    t = t / 3600
     pvpc_prices = parameters["pvpc_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
     excess_prices = parameters["excess_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
     p_required = parameters["p_required"] / 1000  # to kW
     p_solar = parameters["w_solar_per_w_installed"] * solar_size / 1000  # to kW
-    # p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
-
-    # A4: (8.27, 11.69)
-
     # Plot: prices
-    # fig, ax = plt.subplots(figsize=(8.27, 3.9))  # Half of A4 height
-    fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
+    fig, ax = plt.subplots(figsize=(8.27, 2.4))  # A4: (8.27, 11.69)
     ax.plot(t, pvpc_prices, label="PVPC", **plot_styles[0])
     ax.plot(t, excess_prices, label="Diario", **plot_styles[1])
     ax.set_ylabel(r"€$/(kW \cdot h)$")
@@ -1006,7 +941,7 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_prices.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_prices.svg")
 
     # Plot: solar
     fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
@@ -1017,7 +952,7 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_generated_consumed.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_generated_consumed.svg")
 
     # Plot: Temperatures
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -1032,7 +967,7 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_temperatures.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_temperatures.svg")
 
     # Plot: battery energy
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -1041,13 +976,9 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_battery_soc.svg")
-    # ax_right = ax.twinx()
-    # ax_right.plot(t, e_bat, label="E_bat", **plot_styles[5])
-    # ax_right.set_ylabel("Ws")
-    # ax_right.legend(loc="upper right", fontsize=8)
-    # Plot: Controls
+    save_plot(fig, ax, f"saves/plot_{title}_battery_soc.svg")
 
+    # Plot: Controls
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
     ax.plot(t, p_grid, label="Red", **plot_styles[0])
     ax.plot(t, p_compressor, label="Compresor", **plot_styles[1])
@@ -1061,24 +992,29 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     # ax_right.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
     # ax_right.set_ylabel("Mass Flow Rates")
     # ax_right.legend(loc="upper right", fontsize=8)
-    save_plot(fig, ax, "saves/plot_controls.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_controls.svg")
 
 
-def get_costs(histories, parameters):
+def get_costs(histories, y, u, parameters):
+    # States
+    t_room = y[4]
+
+    # Design variables
     p_compressor = histories["p_compressor"][-1]
-    solar_size = histories["solar_size"][-1]
     p_bat = histories["p_bat"][-1]
-    p_grid_max = histories["p_grid_max"][-1]
-    e_bat_max = histories["e_bat_max"][-1]
-    tank_volume = histories["tank_volume"][-1]
-    p_compressor_max = histories["p_compressor_max"][-1]
-    t_room = histories["t_room"][-1]
 
-    h = np.ones(p_compressor.shape[0]) * parameters["H"]
+    # Parameters
+    solar_size = parameters["SOLAR_SIZE"]
+    p_grid_max = parameters["P_GRID_MAX"]
+    e_bat_max = parameters["E_BAT_MAX"]
+    tank_volume = parameters["TANK_VOLUME"]
+    p_compressor_max = parameters["P_COMPRESSOR_MAX"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
     t_target = parameters["T_TARGET"]
+
+    h = np.ones(p_compressor.shape[0]) * parameters["H"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
@@ -1108,7 +1044,7 @@ def plot_history(hist, only_last=True):
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
-    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     n_steps = parameters["t_amb"].shape[0]
@@ -1120,26 +1056,19 @@ def plot_history(hist, only_last=True):
         x = 10
         indices = list(range(0, len(histories["p_compressor"]), x))
 
-    costs = get_costs(histories, parameters)
-    print(costs)
-    print("p_compressor max:", np.max(histories["p_compressor"][-1]))
-    print("p_compressor_max:", histories["p_compressor_max"][-1])
-    print("p_grid_max:", histories["p_grid_max"][-1])
-    print("e_bat_max:", histories["e_bat_max"][-1])
-    print("tank_volume:", histories["tank_volume"][-1])
-    print("solar_size:", histories["solar_size"][-1])
 
     # loop through histories
     for iter, i in enumerate(indices):
-        y0 = np.array(
-            [
-                histories["t_cond"][i][0],
-                histories["t_tank"][i][0],
-                histories["t_out_heating"][i][0],
-                histories["t_floor"][i][0],
-                histories["t_room"][i][0],
-            ]
-        )
+        y0 = {
+            "t_cond": 308.7801,
+            "t_tank": 307.646,
+            "t_out_heating": 304.54,
+            "t_floor": 295,
+            "t_room": 293.79,
+            "e_bat": parameters["SOC_MIN"] * parameters["E_BAT_MAX"] + 10000,
+            "p_bat": 1e-2,
+        }
+        y0 = np.array(list(y0.values())[:5])  # get only state temperatures for dae
         parameters["y0"] = y0
 
         u = np.zeros((4, n_steps))
@@ -1147,18 +1076,6 @@ def plot_history(hist, only_last=True):
         u[1] = histories["m_dot_heating"][i]
         u[2] = histories["p_compressor"][i]
         u[3] = parameters["t_amb"]
-
-        design_variables = {}
-        design_variables["p_compressor"] = histories["p_compressor"][i]
-        design_variables["m_dot_heating"] = histories["m_dot_heating"][i]
-        design_variables["m_dot_cond"] = histories["m_dot_cond"][i]
-        design_variables["e_bat"] = histories["e_bat"][i]
-        design_variables["e_bat_max"] = histories["e_bat_max"][i][0]
-        design_variables["p_bat"] = histories["p_bat"][i]
-        # design_variables["p_waste"] = histories["p_waste"][i]
-        design_variables["solar_size"] = histories["solar_size"][i][0]
-        design_variables["tank_volume"] = histories["tank_volume"][i][0]
-        design_variables["p_grid_max"] = histories["p_grid_max"][i][0]
 
         dae_p = np.array(
             [
@@ -1189,23 +1106,29 @@ def plot_history(hist, only_last=True):
                 parameters["U_WALLS"],
                 parameters["U_ROOF"],
                 parameters["WINDOWS_U"],
-                design_variables["tank_volume"] * parameters["RHO_WATER"],  # tank mass [kg]
+                parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass [kg]
                 parameters["U_TANK"],
-                6 * np.pi * (design_variables["tank_volume"] / (2 * np.pi)) ** (2 / 3),  # tank area [m2]
+                6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank area [m2]
             ]
         )
 
-        y = dae_forward(y0, u, dae_p, n_steps)
+        y = dae_forward(y0, u, dae_p, h, n_steps)
         print("y[1]: ", y[:, 1])
         # print("u[1]: ", u[:, 1])
         # print("solution:", y[:, -1])
         if only_last:
-            # save_plots(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
-            plot_full(y, u, n_steps, dae_p, design_variables, parameters, save=False, show=True)
+            title = hist.replace(".hst", "")
+            title = title.replace("saves/", "")
+            save_plots(y, u, i, histories, parameters, title=title, save=False, show=True)
+            plot_full(y, u, i, histories, parameters, save=False, show=True)
+
+            # Print statistics
+            costs = get_costs(histories, y, u, parameters)
+            print(costs)
             return
         else:
             title = f"iter: {iter}/{len(indices)}"
-            plot_full(y, u, n_steps, dae_p, design_variables, parameters, title=title, show=False)
+            plot_full(y, u, i, histories, parameters, title=title, show=True)
 
     # create animation with pictures from tmp folder
     filename_gif = hist.replace(".hst", ".gif")
@@ -1220,7 +1143,7 @@ def main():
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
-    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
     parameters["p_required"] = dynamic_parameters["p_required"]
     parameters["t_amb"] = dynamic_parameters["t_amb"]
@@ -1343,33 +1266,34 @@ def main():
         ]
     )
 
-    y = dae_forward(y0, u, dae_p, n_steps)
+    y = dae_forward(y0, u, dae_p, h, n_steps)
     print("solution:", y[:, -1])
     print(y.shape)
     print("y[2]: ", y[:, 2])
     print("u[2]: ", u[:, 2])
-    plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
-    save_simulation_plots(y, u, n_steps, dae_p, parameters)
-    # plot_animation(y, u, n_steps, parameters)
+    # plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
+    # save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
-    # # FD derivatives
-    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, n_steps, parameters)
-    # print("(finite diff) dC/dy0", dCdy_0_fd)
-    # print("(finite diff) dC/dp: ", dCdp_fd)
-    # print("(finite diff) dC/du_3: ", dCdu_fd)
-    #
-    # # # Adjoint derivatives
-    # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, n_steps, parameters)
-    # print("(adjoint) dC/dy_0: ", dCdy_0_adj)
-    # print("(adjoint) dC/dp: ", dCdp_adj)
-    # print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
-    #
-    # # Discrepancies
-    # print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-9) * 100}%")
-    # print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-9) * 100}%")
-    # print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-9) * 100}%")
+    # FD derivatives
+    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, n_steps, parameters, j_compressor_cost)
+    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, n_steps, parameters, j_t_room_min)
+    print("(finite diff) dC/dy0", dCdy_0_fd)
+    print("(finite diff) dC/dp: ", dCdp_fd)
+    print("(finite diff) dC/du_3: ", dCdu_fd)
+
+    # Adjoint derivatives
+    # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, parameters, j_compressor_cost)
+    dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, parameters, j_t_room_min)
+    print("(adjoint) dC/dy_0: ", dCdy_0_adj)
+    print("(adjoint) dC/dp: ", dCdp_adj)
+    print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
+
+    # Discrepancies
+    print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-9) * 100}%")
+    print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-9) * 100}%")
+    print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-9) * 100}%")
 
 
 if __name__ == "__main__":
-    main()
-    # plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
+    # main()
+    plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)

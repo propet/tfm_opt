@@ -2,9 +2,9 @@ PARAMS = {
     "H": 1000,  # stepsize [s]
     # "T0": 150 * 24 * 3600,
     "T0": 0,
-    # "HORIZON": 100000,  # s
+    # "HORIZON": 10000,  # s
     # "HORIZON": 365 * 24 * 3600,  # s
-    "HORIZON": 10 * 24 * 3600,  # s
+    "HORIZON": 3 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 
     "MAX_BAT_CAPACITY": 13000,  # W·h
@@ -51,7 +51,8 @@ PARAMS = {
     "U_TANK": 0.245,  # (W/(m2·K)) overall coefficient for 20cm of rock wool insulation
     "T_AMB": 300,  # K (27ºC)
     "P_COMPRESSOR_MAX": 3000,  # W
-    "P_COMPRESSOR_MAX_LIMIT": 10000,  # W
+    # "P_COMPRESSOR_MAX_LIMIT": 10000,  # W
+    "P_COMPRESSOR_MAX_LIMIT": 3000,  # W
 
     "LOAD_HX_EFF": 0.8,
 

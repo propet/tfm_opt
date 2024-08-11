@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/nixos.org) (preloaded format=pdflatex 1980.1.1)  11 AUG 2024 13:04
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/nixos.org) (preloaded format=pdflatex 1980.1.1)  12 AUG 2024 00:35
 entering extended mode
  \write18 enabled.
  %&-line parsing enabled.
@@ -1068,7 +1068,7 @@ texmfdist/fonts/type1/urw/helvetic/uhvb8a.pfb></nix/store/hq5zaw5vg3jrz0gkk3xyk
 jz0jqnh3807-texlive-2023-env-texmfdist/fonts/type1/urw/helvetic/uhvr8a.pfb></ni
 x/store/hq5zaw5vg3jrz0gkk3xykjz0jqnh3807-texlive-2023-env-texmfdist/fonts/type1
 /urw/helvetic/uhvro8a.pfb>
-Output written on main.pdf (15 pages, 147688 bytes).
+Output written on main.pdf (15 pages, 147694 bytes).
 PDF statistics:
  252 PDF objects out of 1000 (max. 8388607)
  212 compressed objects within 3 object streams

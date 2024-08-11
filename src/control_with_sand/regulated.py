@@ -1570,10 +1570,10 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 500,
+        "max_iter": 400,
         # "obj_scaling_factor": 1e-1,
-        "mu_strategy": "adaptive",
-        "alpha_for_y": "safer-min-dual-infeas",
+        # "mu_strategy": "adaptive",
+        # "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)
@@ -1590,7 +1590,7 @@ def run_optimization(parameters, plot=True):
     # Check Solution
     if plot:
         pass
-        print(sol)
+        # print(sol)
 
     return sol.xStar, sol.fStar
 
