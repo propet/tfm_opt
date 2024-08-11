@@ -18,20 +18,21 @@ from utils import (
 
 
 def get_costs(histories, parameters):
+    # Design variables
     p_compressor = histories["p_compressor"][-1]
-    solar_size = histories["solar_size"][-1]
     p_bat = histories["p_bat"][-1]
-    p_grid_max = histories["p_grid_max"][-1]
-    e_bat_max = histories["e_bat_max"][-1]
-    tank_volume = histories["tank_volume"][-1]
-    p_compressor_max = histories["p_compressor_max"][-1]
-    t_room = histories["t_room"][-1]
 
-    h = np.ones(p_compressor.shape[0]) * parameters["H"]
+    # Parameters
+    solar_size = parameters["SOLAR_SIZE"]
+    p_grid_max = parameters["P_GRID_MAX"]
+    e_bat_max = parameters["E_BAT_MAX"]
+    tank_volume = parameters["TANK_VOLUME"]
+    p_compressor_max = parameters["P_COMPRESSOR_MAX"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
-    t_target = parameters["T_TARGET"]
+
+    h = np.ones(p_compressor.shape[0]) * parameters["H"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
@@ -61,12 +62,14 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     m_dot_heating = histories["m_dot_heating"][i]
     p_compressor = histories["p_compressor"][i] / 1000  # to kW
     e_bat = histories["e_bat"][i]
-    e_bat_max = histories["e_bat_max"][i]
     p_bat = histories["p_bat"][i] / 1000  # to kW
-    solar_size = histories["solar_size"][i]
-    tank_volume = histories["tank_volume"][i]
 
     # Parameters
+    solar_size = parameters["SOLAR_SIZE"]
+    e_bat_max = parameters["E_BAT_MAX"]
+    pvpc_prices = parameters["pvpc_prices"]
+    excess_prices = parameters["excess_prices"]
+    p_required = parameters["p_required"]
     h = parameters["H"]
     t_amb = parameters["t_amb"] - 273  # K to ºC
     n_steps = parameters["t_amb"].shape[0]
@@ -152,29 +155,32 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
         plt.close(fig)
 
     # Design variables
-    t_cond = histories["t_cond"][i]
-    t_tank = histories["t_tank"][i]
-    t_out_heating = histories["t_out_heating"][i]
-    t_floor = histories["t_floor"][i]
-    t_room = histories["t_room"][i]
+    t_cond = histories["t_cond"][i] - 273  # K to ºC
+    t_tank = histories["t_tank"][i] - 273  # K to ºC
+    t_out_heating = histories["t_out_heating"][i] - 273  # K to ºC
+    t_floor = histories["t_floor"][i] - 273  # K to ºC
+    t_room = histories["t_room"][i] - 273  # K to ºC
     m_dot_cond = histories["m_dot_cond"][i]
     m_dot_heating = histories["m_dot_heating"][i]
-    p_compressor = histories["p_compressor"][i]
+    p_compressor = histories["p_compressor"][i] / 1000  # to kW
     e_bat = histories["e_bat"][i]
-    p_bat = histories["p_bat"][i]
-    solar_size = histories["solar_size"][i]
-    tank_volume = histories["tank_volume"][i]
+    p_bat = histories["p_bat"][i] / 1000  # to kW
 
     # Parameters
-    h = parameters["H"]
-    t_amb = parameters["t_amb"]
-    n_steps = parameters["t_amb"].shape[0]
-    t = np.linspace(0, n_steps * h, n_steps)
-    t = t / 3600
+    solar_size = parameters["SOLAR_SIZE"]
+    e_bat_max = parameters["E_BAT_MAX"]
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
-    p_solar = parameters["w_solar_per_w_installed"] * solar_size
+    h = parameters["H"]
+    t_amb = parameters["t_amb"] - 273  # K to ºC
+    n_steps = parameters["t_amb"].shape[0]
+    t = np.linspace(0, n_steps * h, n_steps)
+    t = t / 3600
+    pvpc_prices = parameters["pvpc_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
+    excess_prices = parameters["excess_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
+    p_required = parameters["p_required"] / 1000  # to kW
+    p_solar = parameters["w_solar_per_w_installed"] * solar_size / 1000  # to kW
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
     fig, axes = plt.subplots(3, 1, figsize=(8.27, 11.69), sharex=True)
@@ -272,12 +278,6 @@ def plot_history(hist, only_last=True):
             # Print statistics
             costs = get_costs(histories, parameters)
             print(costs)
-            print("p_compressor max:", np.max(histories["p_compressor"][-1]))
-            print("p_compressor_max:", histories["p_compressor_max"][-1])
-            print("p_grid_max:", histories["p_grid_max"][-1])
-            print("e_bat_max:", histories["e_bat_max"][-1])
-            print("tank_volume:", histories["tank_volume"][-1])
-            print("solar_size:", histories["solar_size"][-1])
             return
         else:
             title = f"iter: {iter}/{len(indices)}"
@@ -289,6 +289,4 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
-    # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    plot_history(hist="saves/control_sand_regulated.hst", only_last=True)

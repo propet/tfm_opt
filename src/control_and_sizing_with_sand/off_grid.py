@@ -1589,8 +1589,9 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["p_compressor"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 2,
-        "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "initial_value": history["p_compressor"][-1] if history else 100,
+        # "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "scale": 1 / 1000,
     }
     opt.add_design_variables_info(p_compressor)
 
