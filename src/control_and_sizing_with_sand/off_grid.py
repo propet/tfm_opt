@@ -12,16 +12,30 @@ from utils import (
     get_solar_panels_depreciation_by_second,
     get_tank_depreciation_by_second,
     get_hp_depreciation_by_joule,
-    get_fixed_energy_cost_by_second,
+    get_generator_depreciation_by_joule,
     sparse_to_required_format,
 )
-from custom_types import DesignVariables, DesignVariableInfo, ConstraintInfo, Parameters
+from custom_types import DesignVariables, DesignVariableInfo, ConstraintInfo
 import scipy.sparse as sp
 from full_system.simulate_full import get_h_floor_air, get_h_tube_water
 import jax
 import jax.numpy as jnp
 
 jax.config.update("jax_enable_x64", True)
+
+
+"""
+No se puede vender a red:
+    p_grid_max_constraint: lower: 0
+
+La energia aportada de la "red" viene de un generador diesel.
+    # Fixed diesel cost for generator
+    jnp.sum(h * diesel_price * p_diesel)
+    # depreciate generator by usage
+    + jnp.sum(h * p_grid * get_generator_depreciation_by_joule(p_grid_max))
+
+Y no hay costes de termino fijo de la factura de la luz, porque no hay factura
+"""
 
 
 def obj_fun(
@@ -32,23 +46,20 @@ def obj_fun(
     p_compressor_max,
     p_grid_max,
     tank_volume,
-    t_room,
-    pvpc_prices,
-    excess_prices,
+    diesel_price,
+    generator_efficiency,
     p_required,
     w_solar_per_w_installed,
     h,
-    t_target,
-    t_amb,
 ):
     p_solar = w_solar_per_w_installed * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required
+    p_diesel = p_grid / generator_efficiency
     cost = (
-        # Variable energy cost
-        # ∘ buy at pvpc price, sell at excess price, but can't earn money at the end
-        jnp.maximum(0, jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid)))
-        # ∘ Fixed energy cost
-        + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
+        # Fixed diesel cost for generator
+        jnp.sum(h * diesel_price * p_diesel)
+        # depreciate generator by usage
+        + jnp.sum(h * p_grid * get_generator_depreciation_by_joule(p_grid_max))
         # ∘ depreciate battery by usage
         + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
         # ∘ depreciate solar panels by time
@@ -57,10 +68,6 @@ def obj_fun(
         + jnp.sum(h * jnp.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max))
         # ∘ depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
-        # ∘ penalize room temperature far from t_target
-        # + jnp.sum(1e-4 * jnp.square(t_room - t_target))
-        # + jnp.sum(1e-3 * jnp.square(t_room - t_target) * jnp.maximum(0, t_room - t_amb) / (t_room + 1e-6))
-        # + jnp.sum(1e-4 * jnp.square(jnp.maximum(t_room, t_amb) - t_target))
     )
     return cost
 
@@ -72,14 +79,12 @@ get_dobj_dsolar_size = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=3)))
 get_dobj_dp_compressor_max = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=4)))
 get_dobj_dp_grid_max = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=5)))
 get_dobj_dtank_volume = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=6)))
-get_dobj_dt_room = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=7)))
 
 
 def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Design variables
     p_compressor = design_variables["p_compressor"]
     p_bat = design_variables["p_bat"]
-    t_room = design_variables["t_room"]
     e_bat_max = design_variables["e_bat_max"][0]
     solar_size = design_variables["solar_size"][0]
     p_compressor_max = design_variables["p_compressor_max"][0]
@@ -89,12 +94,10 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Parameters
     parameters = opt.parameters
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
-    t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
-    pvpc_prices = parameters["pvpc_prices"]
-    excess_prices = parameters["excess_prices"]
-    t_amb = parameters["t_amb"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
+    diesel_price = parameters["DIESEL_PRICE"]
+    generator_efficiency = parameters["GENERATOR_EFFICIENCY"]
 
     objective = obj_fun(
         p_bat,
@@ -104,14 +107,11 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
         p_compressor_max,
         p_grid_max,
         tank_volume,
-        t_room,
-        pvpc_prices,
-        excess_prices,
+        diesel_price,
+        generator_efficiency,
         p_required,
         w_solar_per_w_installed,
         h,
-        t_target,
-        t_amb,
     )
     return np.array(objective)
 
@@ -120,7 +120,6 @@ def obj_sens(opt, design_variables: DesignVariables):
     # Design variables
     p_compressor = design_variables["p_compressor"]
     p_bat = design_variables["p_bat"]
-    t_room = design_variables["t_room"]
     e_bat_max = design_variables["e_bat_max"][0]
     solar_size = design_variables["solar_size"][0]
     p_compressor_max = design_variables["p_compressor_max"][0]
@@ -130,12 +129,10 @@ def obj_sens(opt, design_variables: DesignVariables):
     # Parameters
     parameters = opt.parameters
     h = np.ones(p_compressor.shape[0]) * parameters["H"]
-    t_target = parameters["T_TARGET"]
     p_required = parameters["p_required"]
-    pvpc_prices = parameters["pvpc_prices"]
-    excess_prices = parameters["excess_prices"]
-    t_amb = parameters["t_amb"]
     w_solar_per_w_installed = parameters["w_solar_per_w_installed"]
+    diesel_price = parameters["DIESEL_PRICE"]
+    generator_efficiency = parameters["GENERATOR_EFFICIENCY"]
 
     fun_inputs = (
         p_bat,
@@ -145,14 +142,11 @@ def obj_sens(opt, design_variables: DesignVariables):
         p_compressor_max,
         p_grid_max,
         tank_volume,
-        t_room,
-        pvpc_prices,
-        excess_prices,
+        diesel_price,
+        generator_efficiency,
         p_required,
         w_solar_per_w_installed,
         h,
-        t_target,
-        t_amb,
     )
     dobj_dp_bat = get_dobj_dp_bat(*fun_inputs)
     dobj_dp_compressor = get_dobj_dp_compressor(*fun_inputs)
@@ -161,7 +155,6 @@ def obj_sens(opt, design_variables: DesignVariables):
     dobj_dp_compressor_max = get_dobj_dp_compressor_max(*fun_inputs)
     dobj_dp_grid_max = get_dobj_dp_grid_max(*fun_inputs)
     dobj_dtank_volume = get_dobj_dtank_volume(*fun_inputs)
-    dobj_dt_room = get_dobj_dt_room(*fun_inputs)
 
     obj_jac = {
         "p_bat": dobj_dp_bat,
@@ -171,7 +164,6 @@ def obj_sens(opt, design_variables: DesignVariables):
         "p_compressor_max": dobj_dp_compressor_max,
         "p_grid_max": dobj_dp_grid_max,
         "tank_volume": dobj_dtank_volume,
-        "t_room": dobj_dt_room,
     }
     obj_wrt = [
         "p_bat",
@@ -181,7 +173,6 @@ def obj_sens(opt, design_variables: DesignVariables):
         "p_compressor_max",
         "p_grid_max",
         "tank_volume",
-        "t_room",
     ]
     return (obj_jac, obj_wrt)
 
@@ -1548,7 +1539,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
 
 
 def run_optimization(parameters, plot=True):
-    optName = "sizing_regulated"
+    optName = "sizing_off_grid"
     historyFileName = f"saves/{optName}.hst"
     opt = Opt(optName, obj, historyFileName=historyFileName)
 
@@ -1892,7 +1883,7 @@ def run_optimization(parameters, plot=True):
     p_grid_max_constraint: ConstraintInfo = {
         "name": "p_grid_max_constraint",
         "n_constraints": n_steps,
-        "lower": -1,
+        "lower": 0,
         "upper": 1,
         "function": p_grid_max_constraint_fun,
         "scale": 1,

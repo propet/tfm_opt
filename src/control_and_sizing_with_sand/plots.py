@@ -87,7 +87,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_sizing_regulated_prices.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_prices.svg")
 
     # Plot: solar
     fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
@@ -98,7 +98,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_sizing_regulated_generated_consumed.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_generated_consumed.svg")
 
     # Plot: Temperatures
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -113,7 +113,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_sizing_regulated_temperatures.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_temperatures.svg")
 
     # Plot: battery energy
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -122,7 +122,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    save_plot(fig, ax, "saves/plot_sizing_regulated_battery_soc.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_battery_soc.svg")
 
     # Plot: Controls
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
@@ -138,7 +138,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     # ax_right.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
     # ax_right.set_ylabel("Mass Flow Rates")
     # ax_right.legend(loc="upper right", fontsize=8)
-    save_plot(fig, ax, "saves/plot_sizing_regulated_controls.svg")
+    save_plot(fig, ax, f"saves/plot_{title}_controls.svg")
 
 
 fig = None
@@ -192,7 +192,7 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
     ax0 = axes[0].twinx()
     ax0.plot(t, p_required, label="p_required", **plot_styles[2])
     ax0.plot(t, -p_solar, label="p_solar", **plot_styles[3])
-    ax0.set_ylabel("K")
+    ax0.set_ylabel("W")
     ax0.legend()
     if title:
         axes[0].set_title(title)
@@ -264,7 +264,9 @@ def plot_history(hist, only_last=True):
     # loop through histories
     for iter, i in enumerate(indices):
         if only_last:
-            save_plots(i, histories, parameters, save=False, show=True)
+            title = hist.replace(".hst", "")
+            title = hist.replace("saves/", "")
+            save_plots(i, histories, parameters, title=title, save=False, show=True)
             plot_full(i, histories, parameters, save=False, show=True)
             costs = get_costs(histories, parameters)
 
@@ -287,6 +289,6 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    # plot_history(hist="saves/sizing_offgrid.hst", only_last=True)
+    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)

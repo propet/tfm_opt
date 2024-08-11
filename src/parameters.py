@@ -18,7 +18,7 @@ PARAMS = {
     "T0": 0,
     # "HORIZON": 100000,  # s
     # "HORIZON": 365 * 24 * 3600,  # s
-    "HORIZON": 4 * 24 * 3600,  # s
+    "HORIZON": 10 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 
     "MAX_BAT_CAPACITY": 13000,  # W·h

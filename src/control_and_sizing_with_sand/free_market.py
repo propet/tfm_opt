@@ -45,8 +45,8 @@ def obj_fun(
     p_grid = -p_solar + p_compressor + p_bat + p_required
     cost = (
         # Variable energy cost
-        # ∘ buy at pvpc price, sell at excess price, but can't earn money at the end
-        jnp.maximum(0, jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid)))
+        # ∘ buy at pvpc price, sell at excess price. can earn money
+        jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid))
         # ∘ Fixed energy cost
         + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
         # ∘ depreciate battery by usage
@@ -1548,7 +1548,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
 
 
 def run_optimization(parameters, plot=True):
-    optName = "sizing_regulated"
+    optName = "sizing_free_market"
     historyFileName = f"saves/{optName}.hst"
     opt = Opt(optName, obj, historyFileName=historyFileName)
 

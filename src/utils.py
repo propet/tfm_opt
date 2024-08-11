@@ -166,7 +166,7 @@ def get_solar_panels_depreciation_by_second(solar_installed_power):
 
 def get_generator_depreciation_by_joule(generator_power):
     """
-    generator_power [W]
+    AC generator_power [W]
     """
     years_lifespan = 10
     seconds_in_year = 365 * 24 * 3600
