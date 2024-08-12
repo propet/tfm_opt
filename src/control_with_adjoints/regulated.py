@@ -736,7 +736,7 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 400,
+        "max_iter": 300,
         # "obj_scaling_factor": 1e-1,
         # "mu_strategy": "adaptive",
         # "alpha_for_y": "safer-min-dual-infeas",
@@ -776,11 +776,11 @@ if __name__ == "__main__":
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
     y0 = {
-        "t_cond": 308.7801,
-        "t_tank": 307.646,
-        "t_out_heating": 304.54,
-        "t_floor": 295,
-        "t_room": 293.79,
+        "t_cond": 304.94378193,
+        "t_tank": 304.94112086,
+        "t_out_heating": 303.86680207,
+        "t_floor": 294.99232454,
+        "t_room": 293.37680573,
         "e_bat": parameters["SOC_MIN"] * parameters["E_BAT_MAX"] + 10000,
         "p_bat": 1e-2,
     }

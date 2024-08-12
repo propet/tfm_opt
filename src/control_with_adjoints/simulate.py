@@ -1297,3 +1297,4 @@ def main():
 if __name__ == "__main__":
     # main()
     plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
+    # plot_history(hist="saves/control_sand_regulated.hst", only_last=True)
