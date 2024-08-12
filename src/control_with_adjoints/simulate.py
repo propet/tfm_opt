@@ -4,15 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
-from parameters import PARAMS
+from parameters import PARAMS, Y0
 from utils import (
     get_dynamic_parameters,
     plot_styles,
     jax_to_numpy,
     plot_film,
-    load_dict_from_file,
     cop,
-    get_dcopdT,
     get_fixed_energy_cost_by_second,
     get_battery_depreciation_by_joule,
     get_solar_panels_depreciation_by_second,
@@ -1048,6 +1046,8 @@ def plot_history(hist, only_last=True):
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     n_steps = parameters["t_amb"].shape[0]
+    y0 = np.array(list(Y0.values())[:5])  # get only state temperatures for dae
+    parameters["y0"] = y0
 
     if only_last:
         indices = [-1]  # Only take the last index
@@ -1056,21 +1056,8 @@ def plot_history(hist, only_last=True):
         x = 10
         indices = list(range(0, len(histories["p_compressor"]), x))
 
-
     # loop through histories
     for iter, i in enumerate(indices):
-        y0 = {
-            "t_cond": 308.7801,
-            "t_tank": 307.646,
-            "t_out_heating": 304.54,
-            "t_floor": 295,
-            "t_room": 293.79,
-            "e_bat": parameters["SOC_MIN"] * parameters["E_BAT_MAX"] + 10000,
-            "p_bat": 1e-2,
-        }
-        y0 = np.array(list(y0.values())[:5])  # get only state temperatures for dae
-        parameters["y0"] = y0
-
         u = np.zeros((4, n_steps))
         u[0] = histories["m_dot_cond"][i]
         u[1] = histories["m_dot_heating"][i]
@@ -1114,7 +1101,7 @@ def plot_history(hist, only_last=True):
 
         y = dae_forward(y0, u, dae_p, h, n_steps)
         print("y[1]: ", y[:, 1])
-        # print("u[1]: ", u[:, 1])
+        print("u[1]: ", u[:, 1])
         # print("solution:", y[:, -1])
         if only_last:
             title = hist.replace(".hst", "")
@@ -1155,16 +1142,7 @@ def main():
     # t_out_heating = y[2]
     # t_floor       = y[3]
     # t_room        = y[4]
-    parameters["T_TANK"] = 320  # 47C
-    y0 = np.array(
-        [
-            309,
-            307,
-            305,
-            295,
-            294,
-        ]
-    )
+    y0 = np.array(list(Y0.values())[:5])  # get only state temperatures for dae
     parameters["y0"] = y0
 
     # m_dot_cond    = u[0]

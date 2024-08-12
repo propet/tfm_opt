@@ -82,7 +82,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
     # Plot: prices
-    fig, ax = plt.subplots(figsize=(8.27, 2.4))  # A4: (8.27, 11.69)
+    fig, ax = plt.subplots(figsize=(8.27, 2))  # A4: (8.27, 11.69)
     ax.plot(t, pvpc_prices, label="PVPC", **plot_styles[0])
     ax.plot(t, excess_prices, label="Diario", **plot_styles[1])
     ax.set_ylabel(r"€$/(kW \cdot h)$")
@@ -93,7 +93,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     save_plot(fig, ax, f"saves/plot_{title}_prices.svg")
 
     # Plot: solar
-    fig, ax = plt.subplots(figsize=(8.27, 2.4))  # Half of A4 height
+    fig, ax = plt.subplots(figsize=(8.27, 2))  # Half of A4 height
     ax.plot(t, p_solar, label="Solar", **plot_styles[0])
     ax.plot(t, p_required, label="Consumo", **plot_styles[1])
     ax.set_ylabel("Potencia [kW]")
@@ -104,7 +104,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     save_plot(fig, ax, f"saves/plot_{title}_generated_consumed.svg")
 
     # Plot: Temperatures
-    fig, ax = plt.subplots(figsize=(8.27, 2.4))
+    fig, ax = plt.subplots(figsize=(8.27, 2))
     ax.plot(t, t_cond, label="Salida bomba calor", **plot_styles[0])
     ax.plot(t, t_tank, label="Tanque", **plot_styles[1])
     ax.plot(t, t_out_heating, label="Salida suelo", **plot_styles[2])
@@ -119,7 +119,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     save_plot(fig, ax, f"saves/plot_{title}_temperatures.svg")
 
     # Plot: battery energy
-    fig, ax = plt.subplots(figsize=(8.27, 2.4))
+    fig, ax = plt.subplots(figsize=(8.27, 2))
     ax.plot(t, e_bat / e_bat_max, **plot_styles[0])
     ax.set_ylabel("SOC Batería")
     ax.grid(True)
@@ -128,20 +128,26 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     save_plot(fig, ax, f"saves/plot_{title}_battery_soc.svg")
 
     # Plot: Controls
-    fig, ax = plt.subplots(figsize=(8.27, 2.4))
+    fig, ax = plt.subplots(figsize=(8.27, 2))
     ax.plot(t, p_grid, label="Red", **plot_styles[0])
     ax.plot(t, p_compressor, label="Compresor", **plot_styles[1])
     ax.plot(t, p_bat, label="Batería", **plot_styles[2])
     ax.set_ylabel("Potencia [kW]")
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
-    ax.set_xlabel("Tiempo [h]")
-    # ax_right = ax.twinx()
-    # ax_right.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
-    # ax_right.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
-    # ax_right.set_ylabel("Mass Flow Rates")
-    # ax_right.legend(loc="upper right", fontsize=8)
+    ax.set_xticklabels([])  # Hide x-axis labels
+    ax.set_xlabel("")  # Remove x-axis label
     save_plot(fig, ax, f"saves/plot_{title}_controls.svg")
+
+    # Plot: flows
+    fig, ax = plt.subplots(figsize=(8.27, 2))
+    ax.plot(t, m_dot_cond, label="Bomba de calor", **plot_styles[0])
+    ax.plot(t, m_dot_heating, label="Suelo radiante", **plot_styles[1])
+    ax.set_ylabel(r"Caudal de agua $[kg \cdot s^{-1}]$")
+    ax.set_xlabel("Tiempo [h]")
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    ax.grid(True)
+    save_plot(fig, ax, f"saves/plot_{title}_flows.svg")
 
 
 fig = None

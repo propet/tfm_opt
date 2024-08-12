@@ -1,6 +1,6 @@
 import numpy as np
 from pyoptsparse import History
-from parameters import PARAMS
+from parameters import PARAMS, Y0
 from opt import Opt
 from utils import (
     get_dynamic_parameters,
@@ -180,72 +180,94 @@ def obj_sens(opt, design_variables: DesignVariables):
 ##############
 # Constraints
 ##############
-def dae1_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
+def dae1_fun(
+    t_cond,
+    t_tank,
+    m_dot_cond,
+    p_compressor,
+    cp_water,
+):
     # ∘ cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank) = 0
+    return cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank)
 
+
+get_ddae1_dt_cond = jax_to_numpy(jax.jit(jax.jacobian(dae1_fun, argnums=0)))
+get_ddae1_dt_tank = jax_to_numpy(jax.jit(jax.jacobian(dae1_fun, argnums=1)))
+get_ddae1_dm_dot_cond = jax_to_numpy(jax.jit(jax.jacobian(dae1_fun, argnums=2)))
+get_ddae1_dp_compressor = jax_to_numpy(jax.jit(jax.jacobian(dae1_fun, argnums=3)))
+
+
+def dae1_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # Parameters
     parameters = opt.parameters
     cp_water = parameters["CP_WATER"]
+    n_steps = parameters["n_steps"]
 
     # Design variables
-    p_compressor = design_variables["p_compressor"]
-    t_tank = design_variables["t_tank"]
     t_cond = design_variables["t_cond"]
+    t_tank = design_variables["t_tank"]
     m_dot_cond = design_variables["m_dot_cond"]
+    p_compressor = design_variables["p_compressor"]
 
-    dae1 = cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank)
-    return dae1
+    dae1 = []
+    for i in range(1, n_steps):
+        dae1.append(
+            dae1_fun(
+                t_cond[i],
+                t_tank[i],
+                m_dot_cond[i],
+                p_compressor[i],
+                cp_water,
+            )
+        )
+    return np.array(dae1)
 
 
 def dae1_constraint_sens(opt, design_variables: DesignVariables):
-    # ∘ cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank) = 0
-
     # Parameters
     parameters = opt.parameters
     n_steps = parameters["n_steps"]
     cp_water = parameters["CP_WATER"]
 
     # Design variables
-    p_compressor = design_variables["p_compressor"]
-    t_tank = design_variables["t_tank"]
     t_cond = design_variables["t_cond"]
+    t_tank = design_variables["t_tank"]
     m_dot_cond = design_variables["m_dot_cond"]
+    p_compressor = design_variables["p_compressor"]
 
-    ddae1_dt_tank = sp.lil_matrix((n_steps, n_steps))
-    for i in range(n_steps):
-        ddae1_dt_tank[i, i] = m_dot_cond[i] * cp_water + 1e-20
-    ddae1_dt_tank = ddae1_dt_tank.tocsr()
-    ddae1_dt_tank = sparse_to_required_format(ddae1_dt_tank)
+    ddae1_dt_cond = sp.lil_matrix((n_steps - 1, n_steps))
+    ddae1_dt_tank = sp.lil_matrix((n_steps - 1, n_steps))
+    ddae1_dm_dot_cond = sp.lil_matrix((n_steps - 1, n_steps))
+    ddae1_dp_compressor = sp.lil_matrix((n_steps - 1, n_steps))
+    for i in range(1, n_steps):
+        fun_inputs = (
+            t_cond[i],
+            t_tank[i],
+            m_dot_cond[i],
+            p_compressor[i],
+            cp_water,
+        )
+        ddae1_dt_cond[i - 1, i] = get_ddae1_dt_cond(*fun_inputs) + 1e-20
+        ddae1_dt_tank[i - 1, i] = get_ddae1_dt_tank(*fun_inputs) + 1e-20
+        ddae1_dm_dot_cond[i - 1, i] = get_ddae1_dm_dot_cond(*fun_inputs) + 1e-20
+        ddae1_dp_compressor[i - 1, i] = get_ddae1_dp_compressor(*fun_inputs) + 1e-20
 
-    ddae1_dt_cond = sp.lil_matrix((n_steps, n_steps))
-    for i in range(n_steps):
-        ddae1_dt_cond[i, i] = get_dcopdT(t_cond[i]) * p_compressor[i] - m_dot_cond[i] * cp_water + 1e-20
-    ddae1_dt_cond = ddae1_dt_cond.tocsr()
-    ddae1_dt_cond = sparse_to_required_format(ddae1_dt_cond)
-
-    ddae1_dp_compressor = sp.lil_matrix((n_steps, n_steps))
-    for i in range(n_steps):
-        ddae1_dp_compressor[i, i] = cop(t_cond[i]) + 1e-20
-    ddae1_dp_compressor = ddae1_dp_compressor.tocsr()
-    ddae1_dp_compressor = sparse_to_required_format(ddae1_dp_compressor)
-
-    ddae1_dm_dot_cond = sp.lil_matrix((n_steps, n_steps))
-    for i in range(n_steps):
-        ddae1_dm_dot_cond[i, i] = -cp_water * (t_cond[i] - t_tank[i]) + 1e-20
-    ddae1_dm_dot_cond = ddae1_dm_dot_cond.tocsr()
-    ddae1_dm_dot_cond = sparse_to_required_format(ddae1_dm_dot_cond)
+    ddae1_dt_cond = sparse_to_required_format(ddae1_dt_cond.tocsr())
+    ddae1_dt_tank = sparse_to_required_format(ddae1_dt_tank.tocsr())
+    ddae1_dm_dot_cond = sparse_to_required_format(ddae1_dm_dot_cond.tocsr())
+    ddae1_dp_compressor = sparse_to_required_format(ddae1_dp_compressor.tocsr())
 
     dae1_jac = {
-        "t_tank": ddae1_dt_tank,
         "t_cond": ddae1_dt_cond,
-        "p_compressor": ddae1_dp_compressor,
+        "t_tank": ddae1_dt_tank,
         "m_dot_cond": ddae1_dm_dot_cond,
+        "p_compressor": ddae1_dp_compressor,
     }
     dae1_wrt = [
         "t_cond",
         "t_tank",
-        "p_compressor",
         "m_dot_cond",
+        "p_compressor",
     ]
     return (dae1_jac, dae1_wrt)
 
@@ -445,6 +467,7 @@ def dae3_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # Parameters
     parameters = opt.parameters
     cp_water = parameters["CP_WATER"]
+    n_steps = parameters["n_steps"]
     A_tubes = parameters["A_TUBES"]
     tube_inner_diameter = parameters["TUBE_INNER_DIAMETER"]
     mu_water_at_320K = parameters["MU_WATER_AT_320K"]
@@ -459,21 +482,25 @@ def dae3_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     t_out_heating = design_variables["t_out_heating"]
     m_dot_heating = design_variables["m_dot_heating"]
 
-    dae3 = dae3_fun(
-        t_tank,
-        t_out_heating,
-        t_floor,
-        m_dot_heating,
-        cp_water,
-        A_tubes,
-        tube_inner_diameter,
-        mu_water_at_320K,
-        Pr_water,
-        k_water,
-        k_pex,
-        tube_thickness,
-    )
-    return dae3
+    dae3 = []
+    for i in range(1, n_steps):
+        dae3.append(
+            dae3_fun(
+                t_tank[i],
+                t_out_heating[i],
+                t_floor[i],
+                m_dot_heating[i],
+                cp_water,
+                A_tubes,
+                tube_inner_diameter,
+                mu_water_at_320K,
+                Pr_water,
+                k_water,
+                k_pex,
+                tube_thickness,
+            )
+        )
+    return np.array(dae3)
 
 
 def dae3_constraint_sens(opt, design_variables: DesignVariables):
@@ -495,11 +522,11 @@ def dae3_constraint_sens(opt, design_variables: DesignVariables):
     t_out_heating = design_variables["t_out_heating"]
     m_dot_heating = design_variables["m_dot_heating"]
 
-    ddae3_dt_tank = sp.lil_matrix((n_steps, n_steps))
-    ddae3_dt_out_heating = sp.lil_matrix((n_steps, n_steps))
-    ddae3_dt_floor = sp.lil_matrix((n_steps, n_steps))
-    ddae3_dm_dot_heating = sp.lil_matrix((n_steps, n_steps))
-    for i in range(n_steps):
+    ddae3_dt_tank = sp.lil_matrix((n_steps - 1, n_steps))
+    ddae3_dt_out_heating = sp.lil_matrix((n_steps - 1, n_steps))
+    ddae3_dt_floor = sp.lil_matrix((n_steps - 1, n_steps))
+    ddae3_dm_dot_heating = sp.lil_matrix((n_steps - 1, n_steps))
+    for i in range(1, n_steps):
         fun_inputs = (
             t_tank[i],
             t_out_heating[i],
@@ -514,10 +541,10 @@ def dae3_constraint_sens(opt, design_variables: DesignVariables):
             k_pex,
             tube_thickness,
         )
-        ddae3_dt_tank[i, i] = get_ddae3_dt_tank(*fun_inputs) + 1e-20
-        ddae3_dt_out_heating[i, i] = get_ddae3_dt_out_heating(*fun_inputs) + 1e-20
-        ddae3_dt_floor[i, i] = get_ddae3_dt_floor(*fun_inputs) + 1e-20
-        ddae3_dm_dot_heating[i, i] = get_ddae3_dm_dot_heating(*fun_inputs) + 1e-20
+        ddae3_dt_tank[i - 1, i] = get_ddae3_dt_tank(*fun_inputs) + 1e-20
+        ddae3_dt_out_heating[i - 1, i] = get_ddae3_dt_out_heating(*fun_inputs) + 1e-20
+        ddae3_dt_floor[i - 1, i] = get_ddae3_dt_floor(*fun_inputs) + 1e-20
+        ddae3_dm_dot_heating[i - 1, i] = get_ddae3_dm_dot_heating(*fun_inputs) + 1e-20
 
     ddae3_dt_tank = sparse_to_required_format(ddae3_dt_tank.tocsr())
     ddae3_dt_out_heating = sparse_to_required_format(ddae3_dt_out_heating.tocsr())
@@ -1530,7 +1557,7 @@ def sens(opt, design_variables: DesignVariables, func_values):
         "p_bat_max_constraint": p_bat_max_jac,
         "t_cond_0_constraint": t_cond_0_jac,
         "t_tank_0_constraint": t_tank_0_jac,
-        # "t_out_heating_0_constraint": t_out_heating_0_jac,
+        "t_out_heating_0_constraint": t_out_heating_0_jac,
         "t_floor_0_constraint": t_floor_0_jac,
         "t_room_0_constraint": t_room_0_jac,
         "e_bat_0_constraint": e_bat_0_jac,
@@ -1782,7 +1809,7 @@ def run_optimization(parameters, plot=True):
     # ∘ cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank) = 0
     dae1_constraint: ConstraintInfo = {
         "name": "dae1_constraint",
-        "n_constraints": n_steps,
+        "n_constraints": n_steps - 1,
         "lower": 0,
         "upper": 0,
         "function": dae1_constraint_fun,
@@ -1808,7 +1835,7 @@ def run_optimization(parameters, plot=True):
 
     dae3_constraint: ConstraintInfo = {
         "name": "dae3_constraint",
-        "n_constraints": n_steps,
+        "n_constraints": n_steps - 1,
         "lower": 0,
         "upper": 0,
         "function": dae3_constraint_fun,
@@ -1942,17 +1969,17 @@ def run_optimization(parameters, plot=True):
     }
     opt.add_constraint_info(t_tank_0_constraint)
 
-    # t_out_heating_0_constraint: ConstraintInfo = {
-    #     "name": "t_out_heating_0_constraint",
-    #     "n_constraints": 1,
-    #     "lower": parameters["y0"]["t_out_heating"],
-    #     "upper": parameters["y0"]["t_out_heating"],
-    #     "function": lambda _, design_variables: design_variables["t_out_heating"][0],
-    #     "scale": 1 / parameters["y0"]["t_out_heating"],
-    #     "wrt": t_out_heating_0_wrt,
-    #     "jac": t_out_heating_0_jac,
-    # }
-    # opt.add_constraint_info(t_out_heating_0_constraint)
+    t_out_heating_0_constraint: ConstraintInfo = {
+        "name": "t_out_heating_0_constraint",
+        "n_constraints": 1,
+        "lower": parameters["y0"]["t_out_heating"],
+        "upper": parameters["y0"]["t_out_heating"],
+        "function": lambda _, design_variables: design_variables["t_out_heating"][0],
+        "scale": 1 / parameters["y0"]["t_out_heating"],
+        "wrt": t_out_heating_0_wrt,
+        "jac": t_out_heating_0_jac,
+    }
+    opt.add_constraint_info(t_out_heating_0_constraint)
 
     t_floor_0_constraint: ConstraintInfo = {
         "name": "t_floor_0_constraint",
@@ -2007,8 +2034,8 @@ def run_optimization(parameters, plot=True):
         "print_level": 5,  # up to 12
         "max_iter": 500,
         # "obj_scaling_factor": 1e-1,
-        "mu_strategy": "adaptive",
-        "alpha_for_y": "safer-min-dual-infeas",
+        # "mu_strategy": "adaptive",
+        # "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)
@@ -2057,15 +2084,6 @@ if __name__ == "__main__":
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
-
-    y0 = {
-        "t_cond": 308.7801,
-        "t_tank": 307.646,
-        "t_out_heating": 304.54,
-        "t_floor": 295,
-        "t_room": 293.79,
-        "p_bat": 1e-2,
-    }
-    parameters["y0"] = y0
+    parameters["y0"] = Y0
 
     run_optimization(parameters, plot=True)

@@ -4,7 +4,7 @@ PARAMS = {
     "T0": 0,
     # "HORIZON": 10000,  # s
     # "HORIZON": 365 * 24 * 3600,  # s
-    "HORIZON": 3 * 24 * 3600,  # s
+    "HORIZON": 4 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 
     "MAX_BAT_CAPACITY": 13000,  # W·h
@@ -107,4 +107,15 @@ PARAMS = {
     "STEFAN_BOLTZMANN_CONSTANT": 5.67e-8,  # [W/(m2·K4)]
     "GRAVITY_ACCELERATION": 9.8,  # [m/s2]
 
+
+}
+
+Y0 = {
+    "t_cond": 308.80701965,
+    "t_tank": 307.67383555,
+    "t_out_heating": 305.99149626,
+    "t_floor": 295.03079404,
+    "t_room": 293.30625422,
+    "e_bat": PARAMS["SOC_MIN"] * PARAMS["E_BAT_MAX"] + 10000,
+    "p_bat": 1e-2,
 }

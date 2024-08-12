@@ -1,6 +1,6 @@
 import numpy as np
 from pyoptsparse import History
-from parameters import PARAMS
+from parameters import PARAMS, Y0
 from opt import Opt
 from utils import (
     get_dynamic_parameters,
@@ -775,17 +775,8 @@ if __name__ == "__main__":
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
-    y0 = {
-        "t_cond": 304.94378193,
-        "t_tank": 304.94112086,
-        "t_out_heating": 303.86680207,
-        "t_floor": 294.99232454,
-        "t_room": 293.37680573,
-        "e_bat": parameters["SOC_MIN"] * parameters["E_BAT_MAX"] + 10000,
-        "p_bat": 1e-2,
-    }
-    y0_arr = np.array(list(y0.values())[:5])  # get only state temperatures for dae
-    parameters["y0"] = y0
+    y0_arr = np.array(list(Y0.values())[:5])  # get only state temperatures for dae
+    parameters["y0"] = Y0
     parameters["y0_arr"] = y0_arr
 
     run_optimization(parameters, plot=True)
