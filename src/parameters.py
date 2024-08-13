@@ -3,8 +3,8 @@ PARAMS = {
     # "T0": 150 * 24 * 3600,
     "T0": 0,
     # "HORIZON": 10000,  # s
-    # "HORIZON": 365 * 24 * 3600,  # s
-    "HORIZON": 4 * 24 * 3600,  # s
+    "HORIZON": 365 * 24 * 3600,  # s
+    # "HORIZON": 10 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 
     "MAX_BAT_CAPACITY": 13000,  # W·h
@@ -12,12 +12,16 @@ PARAMS = {
     "SOLAR_SIZE_MAX": 20000,  # W for a roof of 100m2, since each kW takes 5.2m2
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) W·s
     "E_BAT_MAX_LIMIT": 360000000,  # W·s -> 100kWh
+    "E_BAT_MAX_LIMIT_10KWH": 36000000,  # W·s -> 10kWh
+    "E_BAT_MAX_LIMIT_1KWH": 3600000,  # W·s -> 1kWh
     "C_RATE_BAT": 0.3,  # max C-rate for battery
     "V_BAT": 48,  # [V] nominal battery voltage (The most common voltage used for solar batteries are 6V, 12V, 24V and 48 Volts)
     "SOC_MIN": 0.3,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
     "P_BAT_MAX": 5000,  # W
-    "P_BAT_MAX_LIMIT": 100000,  # W
+    "P_BAT_MAX_LIMIT": 100000,  # W for e_bat_max_limit 100kWh: e_bat_max[Ws] * (1/3600)[h/s] * c-rate
+    "P_BAT_MAX_LIMIT_10KWH": 10000,  # W for e_bat_max_limit 10kWh
+    "P_BAT_MAX_LIMIT_1KWH": 1000,  # [W] for e_bat_max_limit 1kWh
     "P_GRID_MAX": 5000,  # W
     "P_GRID_MAX_LIMIT": 100000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
@@ -116,6 +120,5 @@ Y0 = {
     "t_out_heating": 305.99149626,
     "t_floor": 295.03079404,
     "t_room": 293.30625422,
-    "e_bat": PARAMS["SOC_MIN"] * PARAMS["E_BAT_MAX"] + 10000,
     "p_bat": 1e-2,
 }

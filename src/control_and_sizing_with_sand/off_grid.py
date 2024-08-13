@@ -2032,10 +2032,10 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 500,
+        "max_iter": 100,
         # "obj_scaling_factor": 1e-1,
-        # "mu_strategy": "adaptive",
-        # "alpha_for_y": "safer-min-dual-infeas",
+        "mu_strategy": "adaptive",
+        "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)
@@ -2061,7 +2061,8 @@ def run_optimization(parameters, plot=True):
     # Check Solution
     if plot:
         print("e_bat_max: ", e_bat_max)
-        print("p_bat_max: ", (e_bat_max * parameters["C_RATE_BAT"] / 3600))
+        print("e_bat_max[kWh]: ", e_bat_max / (1000 * 3600))
+        print("p_bat_max[W]: ", (e_bat_max * parameters["C_RATE_BAT"] / 3600))
         print("solar_size: ", solar_size)
         print("p_compressor_max:", p_compressor_max)
         print("p_grid_max: ", p_grid_max)

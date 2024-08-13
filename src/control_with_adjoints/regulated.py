@@ -553,7 +553,6 @@ def sens(opt, design_variables: DesignVariables, func_values):
         "battery_energy_constraint": battery_energy_jac,
         "p_grid_constraint": p_grid_jac,
         "t_room_min_constraint": t_room_min_jac,
-        # "t_out_heating_0_constraint": t_out_heating_0_jac,
         "e_bat_0_constraint": e_bat_0_jac,
         "p_bat_0_constraint": p_bat_0_jac,
     }
@@ -724,8 +723,8 @@ def run_optimization(parameters, plot=True):
     e_bat_0_constraint: ConstraintInfo = {
         "name": "e_bat_0_constraint",
         "n_constraints": 1,
-        "lower": parameters["y0"]["e_bat"],
-        "upper": parameters["y0"]["e_bat"],
+        "lower": parameters["SOC_MIN"] * ["E_BAT_MAX"],
+        "upper": parameters["SOC_MIN"] * ["E_BAT_MAX"],
         "function": lambda _, design_variables: design_variables["e_bat"][0],
         "scale": 1 / parameters["y0"]["e_bat"],
         "wrt": e_bat_0_wrt,

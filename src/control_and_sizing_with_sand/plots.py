@@ -62,6 +62,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     p_compressor = histories["p_compressor"][i] / 1000  # to kW
     e_bat = histories["e_bat"][i]
     e_bat_max = histories["e_bat_max"][i]
+    e_bat_max_kwh = histories["e_bat_max"][i].item() / (1000 * 3600)
     p_bat = histories["p_bat"][i] / 1000  # to kW
     solar_size = histories["solar_size"][i]
     tank_volume = histories["tank_volume"][i]
@@ -117,7 +118,8 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
 
     # Plot: battery energy
     fig, ax = plt.subplots(figsize=(8.27, 2))
-    ax.plot(t, e_bat / e_bat_max, **plot_styles[0])
+    ax.plot(t, e_bat / e_bat_max, label=f"{e_bat_max_kwh:.2f}kWh", **plot_styles[0])
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.set_ylabel("SOC Batería")
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
@@ -281,9 +283,11 @@ def plot_history(hist, only_last=True):
             print("p_compressor max:", np.max(histories["p_compressor"][-1]))
             print("p_compressor_max:", histories["p_compressor_max"][-1])
             print("p_grid_max:", histories["p_grid_max"][-1])
-            print("e_bat_max:", histories["e_bat_max"][-1])
+            print("e_bat_max[Ws]:", histories["e_bat_max"][-1])
+            print("e_bat_max[kWh]:", histories["e_bat_max"][-1] / (1000 * 3600))
             print("tank_volume:", histories["tank_volume"][-1])
             print("solar_size:", histories["solar_size"][-1])
+            print("p_bat_max[w]: ", (histories["e_bat_max"][-1] * parameters["C_RATE_BAT"] / 3600))
             return
         else:
             title = f"iter: {iter}/{len(indices)}"
@@ -295,6 +299,6 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)

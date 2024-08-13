@@ -1677,7 +1677,7 @@ def run_optimization(parameters, plot=True):
         "lower": None,
         "upper": None,
         "initial_value": history["p_bat"][-1] if history else 0,
-        "scale": 1 / parameters["P_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["P_BAT_MAX_LIMIT_1KWH"],
     }
     opt.add_design_variables_info(p_bat)
 
@@ -1687,8 +1687,8 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 10,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT_1KWH"] * parameters["SOC_MIN"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
     }
     opt.add_design_variables_info(e_bat)
 
@@ -1698,9 +1698,9 @@ def run_optimization(parameters, plot=True):
         "n_params": 1,
         "type": "c",
         "lower": 0,
-        "upper": parameters["E_BAT_MAX_LIMIT"],
-        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT"] / 5,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "upper": parameters["E_BAT_MAX_LIMIT_1KWH"],
+        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT_1KWH"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
     }
     opt.add_design_variables_info(e_bat_max)
 
@@ -1876,7 +1876,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": battery_energy_constraint_fun,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
         "wrt": battery_energy_wrt,
         "jac": battery_energy_jac,
     }
@@ -1997,7 +1997,7 @@ def run_optimization(parameters, plot=True):
         "lower": parameters["y0"]["p_bat"],
         "upper": parameters["y0"]["p_bat"],
         "function": lambda _, design_variables: design_variables["p_bat"][0],
-        "scale": 1 / parameters["P_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["P_BAT_MAX_LIMIT_1KWH"],
         "wrt": p_bat_0_wrt,
         "jac": p_bat_0_jac,
     }
@@ -2009,7 +2009,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": e_bat_0_constraint_fun,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
         "wrt": e_bat_0_wrt,
         "jac": e_bat_0_jac,
     }
@@ -2018,10 +2018,10 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 500,
+        "max_iter": 200,
         # "obj_scaling_factor": 1e-1,
-        # "mu_strategy": "adaptive",
-        # "alpha_for_y": "safer-min-dual-infeas",
+        "mu_strategy": "adaptive",
+        "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)
@@ -2047,7 +2047,8 @@ def run_optimization(parameters, plot=True):
     # Check Solution
     if plot:
         print("e_bat_max: ", e_bat_max)
-        print("p_bat_max: ", (e_bat_max * parameters["C_RATE_BAT"] / 3600))
+        print("e_bat_max[kWh]: ", e_bat_max / (1000 * 3600))
+        print("p_bat_max[W]: ", (e_bat_max * parameters["C_RATE_BAT"] / 3600))
         print("solar_size: ", solar_size)
         print("p_compressor_max:", p_compressor_max)
         print("p_grid_max: ", p_grid_max)

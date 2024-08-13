@@ -67,6 +67,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     # Parameters
     solar_size = parameters["SOLAR_SIZE"]
     e_bat_max = parameters["E_BAT_MAX"]
+    e_bat_max_kwh = parameters["E_BAT_MAX"] / (1000 * 3600)
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
@@ -120,7 +121,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
 
     # Plot: battery energy
     fig, ax = plt.subplots(figsize=(8.27, 2))
-    ax.plot(t, e_bat / e_bat_max, **plot_styles[0])
+    ax.plot(t, e_bat / e_bat_max, label=f"{e_bat_max_kwh:.2f}kWh", **plot_styles[0])
     ax.set_ylabel("SOC Batería")
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels

@@ -851,7 +851,7 @@ def plot_full(y, u, i, histories, parameters, title=None, show=True, block=True,
     if title:
         axes[0].set_title(title)
 
-    # Second subplot for temperatures and e_bat
+    # Second subplot for temperatures
     axes[1].plot(t, t_tank, label="t_tank", **plot_styles[0])
     axes[1].plot(t, t_out_heating, label="t_out_heating", **plot_styles[1])
     axes[1].plot(t, t_floor, label="t_floor", **plot_styles[2])
@@ -916,6 +916,7 @@ def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True
     # Parameters
     solar_size = parameters["SOLAR_SIZE"]
     e_bat_max = parameters["E_BAT_MAX"]
+    e_bat_max_kwh = parameters["E_BAT_MAX"] / (1000 * 3600)
     pvpc_prices = parameters["pvpc_prices"]
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
@@ -969,7 +970,7 @@ def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True
 
     # Plot: battery energy
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
-    ax.plot(t, e_bat / e_bat_max, **plot_styles[0])
+    ax.plot(t, e_bat / e_bat_max, label=f"{e_bat_max_kwh:.2f}kWh", **plot_styles[0])
     ax.set_ylabel("SOC Batería")
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
