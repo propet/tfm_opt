@@ -24,7 +24,7 @@ import jax.numpy as jnp
 jax.config.update("jax_enable_x64", True)
 
 
-def dae_system(y, y_prev, p, u, h):
+def dae_system(y, y_prev, u, p, h):
     r"""
     Solve the following system of non-linear equations
 
@@ -184,8 +184,8 @@ def dae_system(y, y_prev, p, u, h):
     U_tank                          =         p[28]
     A_tank                          =         p[29]
     """
-    f_result = f(y, y_prev, p, u, h)
-    g_result = g(y, p, u, h)
+    f_result = f(y, y_prev, u, p, h)
+    g_result = g(y, u, p, h)
     return f_result + g_result
 
 
@@ -235,7 +235,7 @@ def get_h_tube_water(tube_inner_diameter, mu_water_at_320K, Pr_water, k_water, m
     return h_tube_water
 
 
-def f(y, y_prev, p, u, h):
+def f(y, y_prev, u, p, h):
     # ∘ m_tank * cp_water * ((t_tank - t_tank_prev)/h)
     #     - m_dot_cond * cp_water * t_cond
     #     - m_dot_heating * cp_water * t_out_heating
@@ -331,7 +331,7 @@ def f(y, y_prev, p, u, h):
     ]
 
 
-def g(y, p, u, h):
+def g(y, u, p, h):
     # ∘ cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank) = 0
     # ∘ m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes = 0
     #     --------------------------------------
@@ -391,23 +391,23 @@ def solve(y_0, u, dae_p, h, n_steps):
     # Time-stepping loop
     for n in range(1, n_steps):
         # Use fsolve to solve the nonlinear system
-        y_n = fsolve(dae_system, y[:, n - 1], args=(y[:, n - 1], dae_p, u[:, n], h))
+        y_n = fsolve(dae_system, y[:, n - 1], args=(y[:, n - 1], u[:, n], dae_p, h))
         y[:, n] = y_n
 
     return y
 
 
-def j_compressor_cost(y, u, h, excess_prices):
+def j_compressor_cost(y, u, p, h, excess_prices):
     p_compressor = u[2]
     return jnp.sum(h * excess_prices * p_compressor)
 
 
-def j_t_room_min(y, u, h, excess_prices):
+def j_t_room_min(y, u, p, h):
     t_room = y[4]
     return jnp.min(t_room)
 
 
-def adjoint_gradients(y, u, p, h, n_steps, parameters, j_fun):
+def adjoint_gradients(y, u, p, h, n_steps, j_fun, j_extra_args):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
@@ -468,17 +468,18 @@ def adjoint_gradients(y, u, p, h, n_steps, parameters, j_fun):
     # and convert JAX jacobian functions to NumPy functions
     get_djdy      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=0)))
     get_djdu      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=1)))
+    get_djdp      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=2)))
     get_dfdy      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=0)))
     get_dfdy_prev = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=1)))
-    get_dfdp      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=2)))
-    get_dfdu      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=3)))
+    get_dfdu      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=2)))
+    get_dfdp      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=3)))
     get_dgdy      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=0)))
-    get_dgdp      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=1)))
-    get_dgdu      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=2)))
+    get_dgdu      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=1)))
+    get_dgdp      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=2)))
 
     # Obtain shapes of jacobians
-    dfdy = get_dfdy(y[:, 1], y[:, 0], p, u[:, 0], h)
-    dgdp = get_dgdp(y[:, 1], p, u[:, 0], h)
+    dfdy = get_dfdy(y[:, 1], y[:, 0], u[:, 0], p, h)
+    dgdp = get_dgdp(y[:, 1], u[:, 0], p, h)
     n_odes = dfdy.shape[0]
     n_states = dfdy.shape[1]
     n_algs = dgdp.shape[0]
@@ -498,15 +499,15 @@ def adjoint_gradients(y, u, p, h, n_steps, parameters, j_fun):
         y_current = y[:, n]
         y_prev = y[:, n - 1]
         u_current = u[:, n]
-        dfdy_n = get_dfdy(y_current, y_prev, p, u_current, h)
-        dfdu_n = get_dfdu(y_current, y_prev, p, u_current, h)
-        dfdp_n = get_dfdp(y_current, y_prev, p, u_current, h)
-        dgdy_n = get_dgdy(y_current, p, u_current, h)
-        dgdu_n = get_dgdu(y_current, p, u_current, h)
-        dgdp_n = get_dgdp(y_current, p, u_current, h)
-        djdy_n = get_djdy(y, u, h, parameters["excess_prices"][n])[:, n]
-        djdu_n = get_djdu(y, u, h, parameters["excess_prices"][n])[:, n]
-        djdp_n = np.zeros(n_params)
+        dfdy_n = get_dfdy(y_current, y_prev, u_current, p, h)
+        dfdu_n = get_dfdu(y_current, y_prev, u_current, p, h)
+        dfdp_n = get_dfdp(y_current, y_prev, u_current, p, h)
+        dgdy_n = get_dgdy(y_current, u_current, p, h)
+        dgdu_n = get_dgdu(y_current, u_current, p, h)
+        dgdp_n = get_dgdp(y_current, u_current, p, h)
+        djdy_n = get_djdy(y, u, p, h, *j_extra_args)[:, n]
+        djdu_n = get_djdu(y, u, p, h, *j_extra_args)[:, n]
+        djdp_n = get_djdp(y, u, p, h, *j_extra_args)
 
         if n == n_steps - 1:
             # Terminal condition
@@ -523,14 +524,14 @@ def adjoint_gradients(y, u, p, h, n_steps, parameters, j_fun):
             # Initial timestep
             # ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
             # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
-            dfdy_prev = get_dfdy_prev(y[:, 1], y[:, 0], p, u[:, 1], h)
+            dfdy_prev = get_dfdy_prev(y[:, 1], y[:, 0], u[:, 1], p, h)
             dCdy_0 = djdy_n - np.dot(adj_lambda[:, 1].T, dfdy_prev)
             dCdp_0 = djdp_n + adj_mu[:, 1]
         else:
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
             #                           [μ_n]
-            dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], p, u[:, n + 1], h)
+            dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], u[:, n + 1], p, h)
             A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
             b = np.concatenate([djdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev), djdp_n + adj_mu[:, n + 1]])
             adjs = np.linalg.solve(A, b)
@@ -553,12 +554,12 @@ def dae_forward(y0, u, dae_p, h, n_steps):
     return y
 
 
-def dae_adjoints(y, u, dae_p, h, n_steps, parameters, j_fun):
-    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, h, n_steps, parameters, j_fun)
+def dae_adjoints(y, u, dae_p, h, n_steps, j_fun, j_extra_args):
+    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, h, n_steps, j_fun, j_extra_args)
     return dCdy_0_adj, dCdp_adj, dCdu_adj
 
 
-def fd_gradients(y0, u, dae_p, n_steps, parameters, j_fun):
+def fd_gradients(y0, u, dae_p, h, n_steps, j_fun, j_extra_args):
     """
     Finite difference of function j_fun
     with respect
@@ -569,8 +570,6 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters, j_fun):
     f'(x) = (f(y+h) - f(y)) / h
     """
     delta = 1e-5
-    h = parameters["H"]
-    excess_prices = parameters["excess_prices"]
 
     # Initial solution
     y = solve(y0, u, dae_p, h, n_steps)
@@ -581,21 +580,21 @@ def fd_gradients(y0, u, dae_p, n_steps, parameters, j_fun):
         y0_perturbed = y0.copy()  # Create a new copy of y0
         y0_perturbed[i] += delta
         y_perturbed = solve(y0_perturbed, u, dae_p, h, n_steps)
-        dfdy0.append((j_fun(y_perturbed, u, h, excess_prices) - j_fun(y, u, h, excess_prices)) / delta)
+        dfdy0.append((j_fun(y_perturbed, u, dae_p, h, *j_extra_args) - j_fun(y, u, dae_p, h, *j_extra_args)) / delta)
 
     dfdp = []
     for i in range(len(dae_p)):
         p_perturbed = dae_p.copy()  # Create a new copy of p
         p_perturbed[i] += delta
         y_perturbed = solve(y0, u, p_perturbed, h, n_steps)
-        dfdp.append((j_fun(y_perturbed, u, h, excess_prices) - j_fun(y, u, h, excess_prices)) / delta)
+        dfdp.append((j_fun(y_perturbed, u, dae_p, h, *j_extra_args) - j_fun(y, u, dae_p, h, *j_extra_args)) / delta)
 
     dfdu_3 = []
     for i in range(len(u[:, 0])):
         u_perturbed = u.copy()  # Create a new copy of u
         u_perturbed[i, 3] += delta
         y_perturbed = solve(y0, u_perturbed, dae_p, h, n_steps)
-        dfdu_3.append((j_fun(y_perturbed, u_perturbed, h, excess_prices) - j_fun(y, u, h, excess_prices)) / delta)
+        dfdu_3.append((j_fun(y_perturbed, u_perturbed, dae_p, h, *j_extra_args) - j_fun(y, u, dae_p, h, *j_extra_args)) / delta)
 
     return dfdy0, dfdp, dfdu_3
 
@@ -1253,16 +1252,18 @@ def main():
     # plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
     # save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
+    j_compressor_cost_extra_args = [parameters["excess_prices"]]
+    j_t_room_min_extra_args = []
     # FD derivatives
-    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, n_steps, parameters, j_compressor_cost)
-    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, n_steps, parameters, j_t_room_min)
+    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, h, n_steps, j_compressor_cost, j_compressor_cost_extra_args)
+    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, h, n_steps, j_t_room_min, j_t_room_min_extra_args)
     print("(finite diff) dC/dy0", dCdy_0_fd)
     print("(finite diff) dC/dp: ", dCdp_fd)
     print("(finite diff) dC/du_3: ", dCdu_fd)
 
     # Adjoint derivatives
-    # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, parameters, j_compressor_cost)
-    dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, parameters, j_t_room_min)
+    dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, j_compressor_cost, j_compressor_cost_extra_args)
+    # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, j_t_room_min, j_t_room_min_extra_args)
     print("(adjoint) dC/dy_0: ", dCdy_0_adj)
     print("(adjoint) dC/dp: ", dCdp_adj)
     print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])

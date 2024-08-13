@@ -1583,10 +1583,10 @@ def run_optimization(parameters, plot=True):
     e_bat_0_constraint: ConstraintInfo = {
         "name": "e_bat_0_constraint",
         "n_constraints": 1,
-        "lower": parameters["SOC_MIN"] * ["E_BAT_MAX"],
-        "upper": parameters["SOC_MIN"] * ["E_BAT_MAX"],
+        "lower": parameters["SOC_MIN"] * parameters["E_BAT_MAX"],
+        "upper": parameters["SOC_MIN"] * parameters["E_BAT_MAX"],
         "function": lambda _, design_variables: design_variables["e_bat"][0],
-        "scale": 1 / parameters["y0"]["e_bat"],
+        "scale": 1 / (parameters["SOC_MIN"] * parameters["E_BAT_MAX"]),
         "wrt": e_bat_0_wrt,
         "jac": e_bat_0_jac,
     }

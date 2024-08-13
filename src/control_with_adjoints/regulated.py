@@ -484,8 +484,8 @@ def t_room_min_constraint_sens(opt, design_variables: DesignVariables):
         dae_p,
         h,
         n_steps,
-        parameters,
         j_t_room_min,
+        j_extra_args=(),
     )
 
     for i in range(n_steps):
@@ -723,10 +723,10 @@ def run_optimization(parameters, plot=True):
     e_bat_0_constraint: ConstraintInfo = {
         "name": "e_bat_0_constraint",
         "n_constraints": 1,
-        "lower": parameters["SOC_MIN"] * ["E_BAT_MAX"],
-        "upper": parameters["SOC_MIN"] * ["E_BAT_MAX"],
+        "lower": parameters["SOC_MIN"] * parameters["E_BAT_MAX"],
+        "upper": parameters["SOC_MIN"] * parameters["E_BAT_MAX"],
         "function": lambda _, design_variables: design_variables["e_bat"][0],
-        "scale": 1 / parameters["y0"]["e_bat"],
+        "scale": 1 / (parameters["SOC_MIN"] * parameters["E_BAT_MAX"]),
         "wrt": e_bat_0_wrt,
         "jac": e_bat_0_jac,
     }
