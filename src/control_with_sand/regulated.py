@@ -1597,8 +1597,8 @@ def run_optimization(parameters, plot=True):
         "print_level": 5,  # up to 12
         "max_iter": 300,
         # "obj_scaling_factor": 1e-1,
-        # "mu_strategy": "adaptive",
-        # "alpha_for_y": "safer-min-dual-infeas",
+        "mu_strategy": "adaptive",
+        "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)

@@ -352,6 +352,7 @@ def t_room_min_fun(
     u[2, :] = p_compressor
     u[3, :] = t_amb
     y = dae_forward(y0_arr, u, dae_p, h, n_steps)
+    parameters["dae_last_forward_solution"] = y  # save solution for the backward pass
     t_room_min = jnp.min(y[4])
     return np.array(t_room_min)
 
@@ -477,7 +478,7 @@ def t_room_min_constraint_sens(opt, design_variables: DesignVariables):
     u[1, :] = m_dot_heating
     u[2, :] = p_compressor
     u[3, :] = t_amb
-    y = dae_forward(y0_arr, u, dae_p, h, n_steps)
+    y = parameters["dae_last_forward_solution"]  # get solution from last forward pass
     dj_dy0, dj_dp, dj_du = dae_adjoints(
         y,
         u,
@@ -652,6 +653,12 @@ def run_optimization(parameters, plot=True):
         "e_bat": np.ones(n_steps),
     }
 
+    # Dummy dae forward pass (required by t_room_min_constraint_sens)
+    u = np.ones((4, n_steps)) * 1e-3
+    dae_p = np.ones(30) * 1e-3
+    y = dae_forward(y0_arr, u, dae_p, h, n_steps)
+    parameters["dae_last_forward_solution"] = y  # save solution for the backward pass
+
     (battery_soc_jac, battery_soc_wrt) = battery_soc_constraint_sens(opt, dummy_design_variables)
     (battery_energy_jac, battery_energy_wrt) = battery_energy_constraint_sens(opt, dummy_design_variables)
     (p_grid_jac, p_grid_wrt) = p_grid_constraint_sens(opt, dummy_design_variables)
@@ -737,8 +744,8 @@ def run_optimization(parameters, plot=True):
         "print_level": 5,  # up to 12
         "max_iter": 300,
         # "obj_scaling_factor": 1e-1,
-        # "mu_strategy": "adaptive",
-        # "alpha_for_y": "safer-min-dual-infeas",
+        "mu_strategy": "adaptive",
+        "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
     }
     opt.add_optimizer("ipopt", ipoptOptions)
