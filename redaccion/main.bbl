@@ -131,6 +131,45 @@
       \verb https://mdobook.github.io
       \endverb
     \endentry
+    \entry{podder2019mppt}{article}{}
+      \name{author}{3}{}{%
+        {{hash=d2638da3b4d7172e1cd78cc58169df7e}{%
+           family={Podder},
+           familyi={P\bibinitperiod},
+           given={Amit\bibnamedelima Kumer},
+           giveni={A\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+        {{hash=f613145b7df97358ceb69bd1ce16d568}{%
+           family={Roy},
+           familyi={R\bibinitperiod},
+           given={Naruttam\bibnamedelima Kumar},
+           giveni={N\bibinitperiod\bibinitdelim K\bibinitperiod}}}%
+        {{hash=03084a9a24141dac5afab37c5f2815c4}{%
+           family={Pota},
+           familyi={P\bibinitperiod},
+           given={Hemanshu\bibnamedelima Roy},
+           giveni={H\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Wiley Online Library}%
+      }
+      \strng{namehash}{371a29ac11bfe3a9c517ca7c7adfcb15}
+      \strng{fullhash}{371a29ac11bfe3a9c517ca7c7adfcb15}
+      \strng{bibnamehash}{371a29ac11bfe3a9c517ca7c7adfcb15}
+      \strng{authorbibnamehash}{371a29ac11bfe3a9c517ca7c7adfcb15}
+      \strng{authornamehash}{371a29ac11bfe3a9c517ca7c7adfcb15}
+      \strng{authorfullhash}{371a29ac11bfe3a9c517ca7c7adfcb15}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IET Renewable Power Generation}
+      \field{number}{10}
+      \field{title}{MPPT methods for solar PV systems: a critical review based on tracking nature}
+      \field{volume}{13}
+      \field{year}{2019}
+      \field{pages}{1615\bibrangedash 1632}
+      \range{pages}{18}
+    \endentry
   \enddatalist
 \endrefsection
 \endinput

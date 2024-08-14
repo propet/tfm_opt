@@ -835,11 +835,11 @@ def plot_cop():
     dcop_values = get_dcopdT(t)
 
     fig, ax = plt.subplots(figsize=(10, 12))
-    ax.plot(t, cop_arr, **plot_styles[0])
+    ax.plot(t - 273, cop_arr, **plot_styles[0])
     ax.set_ylabel("COP")
-    ax.set_xlabel("temperature [K]")
+    ax.set_xlabel("T [ºC]")
     ax0 = ax.twinx()
-    ax0.plot(t, dcop_values, **plot_styles[1])
+    ax0.plot(t - 273, dcop_values, **plot_styles[1])
     ax0.set_ylabel(r"$\frac{dCOP}{dT}$")
     plt.show()
 
