@@ -1,23 +1,29 @@
-\section{Simulacion del sistema termico}
+\section{Sistema eléctrico}
+\input{capitulos/resultados_discusion/sistema_electrico.tex}
 
-\section{Ecuaciones sistema electrico}
+\section{Sistema térmico}
+\input{capitulos/resultados_discusion/sistema_termico.tex}
 
-\section{Optimizacion control con derivadas adjuntas}
+\section{Optimizacion del control}
 
-\section{Optimizacion control con SAND}
+con derivadas adjuntas y SAND, comparar
+10 dias
+
+\subsection{Derivadas adjuntas}
+\subsection{SAND}
 
 aqui vemos que SAND es superior a MDF, en caso de ser viable su uso,
 y por tanto a partir de ahora estudiamos solo el uso de SAND
 
-\section{Optimizacion SAND del control y dimensionamiento del sistema completo}
-\subsection{Autoconsumo con compensación simplificada}
-- 10 dias
-- 30 dias
-- 365 dias
 
+\section{Optimizacion del control y dimensionamiento}
+\subsection{Autoconsumo con compensación simplificada}
+- 30 dias (no tenemos bateria virtual)
+- dimensionamiento con media ponderada
+
+- 365 dias (tenemos bateria virtual, pero no merece la pena acumular en un año, suponiendo que todos los años son iguales más o menos)
 - 365 dias con C-rate de 1
 
-- dimensionamiento con media ponderada
 no es realista suponer que tenemos conocimiento perfecto de precios futuros.
 realmente tendriamos que optimizar nuestro sistema con nuestra estimacion
 de precios, como con una red neural, aunque en este trabajo no se cubre este caso.

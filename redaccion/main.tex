@@ -53,11 +53,17 @@
     \renewcommand{\footrulewidth}{0.4pt}
 }
 
-\fancypagestyle{simple}{
-    \fancyhf{} % Clear all headers and footers
+% Redefine the plain page style (start of chapters)
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[LE]{\thepage}
+    \fancyfoot[RE]{Escuela Técnica Superior de Ingenieros Industriales (UPM)}
+    \fancyfoot[LO]{Luis D. Aranda Sánchez}
+    \fancyfoot[RO]{\thepage}
     \renewcommand{\headrulewidth}{0pt}
-    \renewcommand{\footrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0.4pt}
 }
+\title{A short example}
 
 % Line spacing
 \setstretch{1.2}
@@ -67,67 +73,72 @@
 
 % Portada
 \begin{titlepage}
-    \centering
-    {\scshape\LARGE Universidad Politécnica de Madrid \par}
-    \vspace{1cm}
-    {\scshape\Large Escuela Técnica Superior de Ingenieros Industriales\par}
-    \vspace{1.5cm}
-    {\huge\bfseries Optimización energética de sistema híbrido con bomba de calor, suelo radiante, fotovoltaica y almacenamiento para vivienda \par}
-    \vspace{1.5cm}
-    {\Large\bfseries Trabajo de Fin de Máster\par}
-    \vspace{0.5cm}
-    {\large Máster Universitario en Ingeniería de la Energía \par}
-    \vspace{2cm}
-    {\Large Luis D. Aranda Sánchez\par}
-    \vfill
-    Director: Javier Rodríguez Martín
-    \vfill
-    {\large Septiembre 6, 2024\par}
+	\centering
+	{\scshape\LARGE Universidad Politécnica de Madrid \par}
+	\vspace{1cm}
+	{\scshape\Large Escuela Técnica Superior de Ingenieros Industriales\par}
+	\vspace{1.5cm}
+	{\huge\bfseries Optimización energética de sistema híbrido con bomba de calor, suelo radiante, fotovoltaica y almacenamiento para vivienda \par}
+	\vspace{1.5cm}
+	{\Large\bfseries Trabajo de Fin de Máster\par}
+	\vspace{0.5cm}
+	{\large Máster Universitario en Ingeniería de la Energía \par}
+	\vspace{2cm}
+	{\Large Luis D. Aranda Sánchez\par}
+	\vfill
+	Director: Javier Rodríguez Martín
+	\vfill
+	{\large Septiembre 6, 2024\par}
 \end{titlepage}
 
 % Resumen (máximo de 5 páginas, incluyendo al final Palabras clave)
-\clearpage
-\pagestyle{simple}
-% \newpage
+\cleardoublepage
 \chapter*{Resumen}
 \addcontentsline{toc}{chapter}{Resumen}
 \input{capitulos/resumen/main.tex}
 
 % Índice (paginado)
-\clearpage
-\pagestyle{simple}
-% \newpage
+\cleardoublepage
+\pagestyle{myfancy}
 \tableofcontents
 
-% Introducción (donde se incluya los antecedentes y justificación)
-\clearpage
-\pagestyle{myfancy}
-\newpage
+% Introducción
+\cleardoublepage
 \chapter{Introducción}
 \input{capitulos/introduccion/main.tex}
 
 % Objetivos
+\cleardoublepage
 \chapter{Objetivos}
 \input{capitulos/objetivos/main.tex}
 
 % Metodología
+\cleardoublepage
 \chapter{Metodología}
 \input{capitulos/metodologia/main.tex}
 
+% Adquisicion de datos
+\cleardoublepage
+\chapter{Adquisicion de datos}
+\input{capitulos/adquisicion_de_datos/main.tex}
+
 % Resultados y discusión (incluyendo la valoración de impactos y de aspectos de responsabilidad legal, ética y profesional relacionados con el trabajo)
+\cleardoublepage
 \chapter{Resultados y Discusión}
 \input{capitulos/resultados_discusion/main.tex}
 
 % Conclusiones
+\cleardoublepage
 \chapter{Conclusiones}
 \input{capitulos/conclusiones/main.tex}
 
 % Planificación temporal y presupuesto
+\cleardoublepage
 \chapter{Planificación Temporal y Presupuesto}
 \input{capitulos/planificacion_presupuesto/main.tex}
 
 % Bibliografía
-\newpage
+\cleardoublepage
 \addcontentsline{toc}{chapter}{Bibliografía}
 \printbibliography
 
