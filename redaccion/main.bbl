@@ -19,6 +19,36 @@
 
 \refsection{0}
   \datalist[entry]{nty/global//global/global}
+    \entry{cengel2007transferencia}{book}{}
+      \name{author}{2}{}{%
+        {{hash=7393c064ff2624f0f01cf6b2b0759040}{%
+           family={Cengel},
+           familyi={C\bibinitperiod},
+           given={Yunus\bibnamedelima A},
+           giveni={Y\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=7c9dc40bd67db0b2cca30c83c47fb896}{%
+           family={Ghajar},
+           familyi={G\bibinitperiod},
+           given={Afshin\bibnamedelima J},
+           giveni={A\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {McGraw-Hill Interamericana}%
+      }
+      \strng{namehash}{0ccd2214ba16e8bd9f0481696b818791}
+      \strng{fullhash}{0ccd2214ba16e8bd9f0481696b818791}
+      \strng{bibnamehash}{0ccd2214ba16e8bd9f0481696b818791}
+      \strng{authorbibnamehash}{0ccd2214ba16e8bd9f0481696b818791}
+      \strng{authornamehash}{0ccd2214ba16e8bd9f0481696b818791}
+      \strng{authorfullhash}{0ccd2214ba16e8bd9f0481696b818791}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Transferencia de calor y masa}
+      \field{volume}{53}
+      \field{year}{2007}
+    \endentry
     \entry{dubey2024llama}{article}{}
       \true{moreauthor}
       \true{morelabelname}
@@ -87,6 +117,84 @@
       \field{journaltitle}{arXiv preprint arXiv:2407.21783}
       \field{title}{The Llama 3 Herd of Models}
       \field{year}{2024}
+    \endentry
+    \entry{refrigerating2009ashrae}{book}{}
+      \name{author}{3}{}{%
+        {{hash=5255fe857ce50495db7cd051e951849e}{%
+           family={Heating},
+           familyi={H\bibinitperiod},
+           given={Refrigerating\bibnamedelimb American\bibnamedelima Society},
+           giveni={R\bibinitperiod\bibinitdelim A\bibinitperiod\bibinitdelim S\bibinitperiod},
+           prefix={of},
+           prefixi={o\bibinitperiod}}}%
+        {{hash=0840dce366d767a44885c32d430b7130}{%
+           family={Engineers},
+           familyi={E\bibinitperiod},
+           given={Air\bibnamedelima Conditioning},
+           giveni={A\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=9e02293b1416c361f3bbc97d14b57882}{%
+           family={Atlanta},
+           familyi={A\bibinitperiod},
+           given={GA},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {ASHRAE}%
+      }
+      \strng{namehash}{5e8008737e4f463b24e6e0f3ef74dfa6}
+      \strng{fullhash}{5e8008737e4f463b24e6e0f3ef74dfa6}
+      \strng{bibnamehash}{5e8008737e4f463b24e6e0f3ef74dfa6}
+      \strng{authorbibnamehash}{5e8008737e4f463b24e6e0f3ef74dfa6}
+      \strng{authornamehash}{5e8008737e4f463b24e6e0f3ef74dfa6}
+      \strng{authorfullhash}{5e8008737e4f463b24e6e0f3ef74dfa6}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{ASHRAE handbook: fundamentals}
+      \field{year}{2009}
+    \endentry
+    \entry{incropera1996fundamentals}{book}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{4}{}{%
+        {{hash=af629011276d698dac3cc48c1342c57b}{%
+           family={Incropera},
+           familyi={I\bibinitperiod},
+           given={Frank\bibnamedelima P},
+           giveni={F\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=346802d5c6dd71081775c557ad324cf0}{%
+           family={DeWitt},
+           familyi={D\bibinitperiod},
+           given={David\bibnamedelima P},
+           giveni={D\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+        {{hash=d8986880ce30c45fc26bf3af70ef1c37}{%
+           family={Bergman},
+           familyi={B\bibinitperiod},
+           given={Theodore\bibnamedelima L},
+           giveni={T\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
+        {{hash=b22ea78229af4420d0683e5c6d56ef10}{%
+           family={Lavine},
+           familyi={L\bibinitperiod},
+           given={Adrienne\bibnamedelima S},
+           giveni={A\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Wiley New York}%
+      }
+      \strng{namehash}{141e523274a5e700bf39e52a6cb6d13e}
+      \strng{fullhash}{05b8ea0dcedfdadfb7763f849b2d554b}
+      \strng{bibnamehash}{141e523274a5e700bf39e52a6cb6d13e}
+      \strng{authorbibnamehash}{141e523274a5e700bf39e52a6cb6d13e}
+      \strng{authornamehash}{141e523274a5e700bf39e52a6cb6d13e}
+      \strng{authorfullhash}{05b8ea0dcedfdadfb7763f849b2d554b}
+      \field{sortinit}{I}
+      \field{sortinithash}{8d291c51ee89b6cd86bf5379f0b151d8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Fundamentals of heat and mass transfer}
+      \field{volume}{6}
+      \field{year}{1996}
     \endentry
     \entry{mdobook}{book}{}
       \name{author}{2}{}{%

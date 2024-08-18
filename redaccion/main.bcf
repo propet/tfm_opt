@@ -2364,7 +2364,11 @@
     <bcf:citekey order="1" intorder="1">dubey2024llama</bcf:citekey>
     <bcf:citekey order="2" intorder="1">mdobook</bcf:citekey>
     <bcf:citekey order="3" intorder="1">mdobook</bcf:citekey>
-    <bcf:citekey order="4" intorder="1">podder2019mppt</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">incropera1996fundamentals</bcf:citekey>
+    <bcf:citekey order="5" intorder="1">refrigerating2009ashrae</bcf:citekey>
+    <bcf:citekey order="6" intorder="1">podder2019mppt</bcf:citekey>
+    <bcf:citekey order="7" intorder="1">incropera1996fundamentals</bcf:citekey>
+    <bcf:citekey order="8" intorder="1">cengel2007transferencia</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">

@@ -80,7 +80,7 @@ PARAMS = {
     "ROCK_WOOL_AREA": 175,  # m2
     "A_WALLS": 100,  # m2, square of 10m side, with height 2.5: 10 * 2.5 * 4 = 100
     "A_ROOF": 100,  # m2, same as floor area
-    "WINDOWS_U": 1.3,  # W/(m2·K)
+    "WINDOWS_U": 1.4,  # W/(m2·K)
     "WINDOWS_AREA": 25,  # m2
     "ROOM_VOLUME": 250,  # [m3], 100m2 de planta y 2.5m de alto
     "ROOM_AIR_MASS": 1.1614 * 250,  # [kg], rho_air * volume_room
@@ -97,8 +97,8 @@ PARAMS = {
     "TUBE_INNER_DIAMETER": 0.022225,  # tube inner diameter [m], for 1" pex tube
     "TUBE_OUTER_DIAMETER": 0.028575,  # tube outer dimater [m], for 1" pex tube
     "TUBE_THICKNESS": 0.00635,  # tube thickness [m], for 1" pex tube
-    "TUBES_LENGTH": 21,  # [m] with spacing of 0.5m between tubes
-    "A_TUBES": 21 * 3.1415 * 0.028575,  # tubes surface area [m2], length * pi * outer_diameter
+    "TUBES_LENGTH": 220,  # [m] with spacing of 0.5m between tubes
+    "A_TUBES": 220 * 3.1415 * 0.028575,  # tubes surface area [m2], length * pi * outer_diameter
 
     "K_AIR": 0.0263,  # air at 300K thermal conductivity [W/(m·K)]
     "PR_AIR": 0.707,  # prandtl number for air at 300K
