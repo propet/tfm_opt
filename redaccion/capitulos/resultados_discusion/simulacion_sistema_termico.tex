@@ -1,1 +1,133 @@
-asdf
+\subsection{Sistema de ecuaciones reducido}
+
+Queremos reorganizar las ecuaciones obtenidas previamente para obtener un
+sistema más reducido, con menos variables de estados y control.
+
+Para ello, primero podemos introducir \eqref{eq:q_cond_1} y \eqref{eq:q_cond_2}
+en \eqref{eq:cop_t_cond}, para tener:
+
+\begin{equation} \label{eq:sys_1}
+	\text{cop}(T_{cond}) \cdot P_{bomba} - \dot{m}_{cond} \cdot cp_{agua} \cdot \left(T_{cond} - T_{tanque}\right) = 0
+\end{equation}
+
+Por otro lado, sustituyendo \eqref{eq:m_dot_tanque} y \eqref{eq:q_perdida} en
+la ecuación del balance de energía para el depósito
+\eqref{eq:t_tanque_balance}, queda:
+
+\begin{align} \label{eq:sys_2}
+	m_{tanque} \cdot cp_{agua} \cdot \left( \frac{dT_{tanque}}{dt} \right) & - \dot{m}_{cond} \cdot cp_{agua} \cdot T_{cond} \nonumber                      \\
+	                                                                       & - \dot{m}_{cale} \cdot cp_{agua} \cdot T_{cale} \nonumber                      \\
+	                                                                       & + (\dot{m}_{cond} + \dot{m}_{cale}) \cdot cp_{agua} \cdot T_{tanque} \nonumber \\
+	                                                                       & + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque} - T_{amb}) \nonumber           \\
+	                                                                       & = 0
+\end{align}
+
+
+E insertando las expresiones para los tasas de calor por conducción, radiación
+y convección del suelo radiante \eqref{eq:q_conduccion_1},
+\eqref{eq:q_radiacion} y \eqref{eq:q_conveccion} respectivamente, en las
+fórmulas \eqref{eq:q_conduccion_2}, \eqref{eq:floor_energy_conservation}, y
+\eqref{eq:room_energy_conservation}, resultan:
+
+
+\begin{align}
+	\dot{m}_{cale} \cdot cp_{agua} \cdot \left(T_{tanque} - T_{cale}\right)  & - U_{tubos} \cdot A_{tubos} \cdot \Delta T_{tubos} \nonumber                                         \\
+	                                                                         & = 0 \label{eq:sys_3}                                                                                 \\
+	m_{suelo} \cdot cp_{suelo} \cdot \left( \frac{dT_{suelo}}{dt} \right)    & - \dot{m}_{cale} \cdot cp_{agua} \cdot (T_{tanque} - T_{cale})                             \nonumber \\
+	                                                                         & + h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})                             \nonumber \\
+	                                                                         & + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)  \nonumber \\
+	                                                                         & = 0  \label{eq:sys_4}                                                                                \\
+	m_{aire} \cdot cp_{aire} \cdot \left( \frac{dT_{habitacion}}{dt} \right) & - h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})  \nonumber                            \\
+	                                                                         & - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)  \nonumber \\
+	                                                                         & + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion} - T_{amb}) \nonumber                           \\
+	                                                                         & + U_{techo} \cdot A_{techo} \cdot (T_{habitacion} - T_{amb}) \nonumber                               \\
+	                                                                         & + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion} - T_{amb}) \nonumber                         \\
+	                                                                         & = 0  \label{eq:sys_5}
+\end{align}
+
+También podríamos haber despejado $\dot{m}_{cale}$ de \eqref{eq:sys_3} y
+reemplazado en \eqref{eq:sys_4} y \eqref{eq:sys_5}, para deshacernos de otra
+expresión, a costa de oscurecer un poco más las identidades \eqref{eq:sys_4} y
+\eqref{eq:sys_5}.
+
+
+\subsection{Resolución con euler implícito y Newton-Raphson}
+
+Finalmente, con las igualdades \eqref{eq:sys_1}, \eqref{eq:sys_2},
+\eqref{eq:sys_3}, \eqref{eq:sys_4} y \eqref{eq:sys_5}, tenemos un sistema de 5
+ecuaciones
+
+para 5 incógnitas: $T_{cond}$, $T_{tanque}$, $T_{cale}$, $T_{suelo}$ y
+$T_{habitacion}$. Teniendo 4 variables de control: $\dot{m}_{cond}$,
+$\dot{m}_{cale}$, $P_{bomba}$ y $T_{amb}$, aunque realmente la temperatura
+ambiente no sea una variable que podamos controlar.
+
+Se trata de un sistema de ecuaciones diferenciales algebraicas (DAE,
+Differential Algebraic Equation), donde \eqref{eq:sys_1} y \eqref{eq:sys_3} son
+algebraicas, siendo el resto diferenciales.
+
+De índice diferencial 1, porque podemos diferenciar una vez tanto
+\eqref{eq:sys_1} como \eqref{eq:sys_3} para obtener $\frac{dT_{cond}}{dt}$ y
+$\frac{dT_{cale}}{dt}$ respectivamente, convirtiendo el conjunto en un sistema
+de ecuaciones diferenciales ordinarias.
+
+Y no lineal, al tener presente la fórmula $\text{cop}(T_{cond})$ en
+\eqref{eq:sys_1}, que a pesar de ser lineal a tramos, es no-lineal en su
+conjunto.
+
+La estrategia seguida para la resolución ha sido discretizar con un método
+implícito, en este caso hemos optado por el método de Euler hacia atrás
+(backward Euler), y en cada paso resolvemos el sistema de ecuaciones
+no-lineales algebraicas resultantes con Newton-Raphson.
+
+Recordando que la discretización con Euler implícito de un modelo ejemplo como
+
+\begin{equation}
+	\frac{dy}{dt} = f(y, t)
+\end{equation}
+
+corresponde a
+
+\begin{equation}
+	\frac{y_k - y_{k-1}}{h} = f(y_k, t_k)
+\end{equation}
+
+donde $h$ es el paso empleado.
+
+Nuestro sistema reducido se presenta de la siguiente forma:
+
+\begin{align}
+	\text{cop}(T_{cond,k}) \cdot P_{bomba,k}                                                    & - \dot{m}_{cond,k} \cdot cp_{agua} \cdot \left(T_{cond,k} - T_{tanque,k}\right) = 0                     \\
+	m_{tanque} \cdot cp_{agua} \cdot \frac{\left(T_{tanque,k} - T_{tanque,k-1}\right)}{h}       & - \dot{m}_{cond,k} \cdot cp_{agua} \cdot T_{cond,k} \nonumber                                           \\
+	                                                                                            & - \dot{m}_{cale,k} \cdot cp_{agua} \cdot T_{cale,k} \nonumber                                           \\
+	                                                                                            & + (\dot{m}_{cond,k} + \dot{m}_{cale,k}) \cdot cp_{agua} \cdot T_{tanque,k} \nonumber                    \\
+	                                                                                            & + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque,k} - T_{amb,k}) \nonumber                                \\
+	                                                                                            & = 0                                                                                                     \\
+	\dot{m}_{cale,k} \cdot cp_{agua} \cdot \left(T_{tanque,k} - T_{cale,k}\right)               & - U_{tubos} \cdot A_{tubos} \cdot \Delta T_{tubos,k} \nonumber                                          \\
+	                                                                                            & = 0                                                                                                     \\
+	m_{suelo} \cdot cp_{suelo} \cdot \frac{\left(T_{suelo,k} - T_{suelo,k-1}\right)}{h}         & - \dot{m}_{cale,k} \cdot cp_{agua} \cdot (T_{tanque,k} - T_{cale,k}) \nonumber                          \\
+	                                                                                            & + h_{suelo} \cdot A_{suelo} \cdot (T_{suelo,k} - T_{habitacion,k}) \nonumber                            \\
+	                                                                                            & + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo,k}^4 - T_{habitacion,k}^4) \nonumber \\
+	                                                                                            & = 0                                                                                                     \\
+	m_{aire} \cdot cp_{aire} \cdot \frac{\left(T_{habitacion,k} - T_{habitacion,k-1}\right)}{h} & - h_{suelo} \cdot A_{suelo} \cdot (T_{suelo,k} - T_{habitacion,k}) \nonumber                            \\
+	                                                                                            & - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo,k}^4 - T_{habitacion,k}^4) \nonumber \\
+	                                                                                            & + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion,k} - T_{amb,k}) \nonumber                          \\
+	                                                                                            & + U_{techo} \cdot A_{techo} \cdot (T_{habitacion,k} - T_{amb,k}) \nonumber                              \\
+	                                                                                            & + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion,k} - T_{amb,k}) \nonumber                        \\
+	                                                                                            & = 0
+\end{align}
+
+
+\subsection{Simulación}
+
+
+
+\begin{minted}{python}
+def fibonacci(n):
+    if n <= 0:
+        return 0
+    elif n == 1:
+        return 1
+    else:
+        return fibonacci(n-1) + fibonacci(n-2)
+\end{minted}

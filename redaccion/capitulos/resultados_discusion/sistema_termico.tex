@@ -5,6 +5,17 @@
 	\label{fig:thermal_diagram}
 \end{figure}
 
+Una bomba de calor produce agua caliente sanitaria que se vuelca en un depósito acumulador.
+De este se extraen dos flujos, uno de vuelta al intercambiador de calor del condensador
+de la bomba de calor ($\dot{m}_{cond}$), y otro que se dirige al suelo radiante ($\dot{m}_{cale}$).
+
+Estos dos caudales se controlan a través de dos bombas de circulación y
+posiblemente también con el uso de válvulas de estrangulación, si las bombas no
+fueran de velocidad variable (VFD, Variable Frequency Drive).
+
+La temperatura del tanque de agua es $T_{tanque}$, a la salida de la calefacción
+del suelo radiante $T_{cale}$, y a continuación del condensador $T_{cond}$.
+
 \subsection{Bomba de calor}
 
 En lugar de modelar detalladamente la bomba de calor con sus componentes
@@ -24,9 +35,9 @@ La función por tramos que describe el COP es:
 \begin{equation}
 	\text{\text{cop}}(T) =
 	\begin{cases}
-		4.8,              & \text{si } T < 35^\circ C          \\[10pt]
-		26.36 + -0.069 T, & \text{si } T_1 \leq T < 55^\circ C \\[10pt]
-		0,                & \text{si } T \geq 103.5^\circ C
+		4.8              & \text{si } T < 35^\circ C                    \\[10pt]
+		26.36 + -0.069 T & \text{si } 35^\circ C \leq T < 103.5^\circ C \\[10pt]
+		0                & \text{si } T \geq 103.5^\circ C
 	\end{cases}
 \end{equation}
 
@@ -36,8 +47,8 @@ que se muestra en la figura \ref{fig:heat_pump_cop}
 	\centering
 	\includegraphics[width=1\textwidth]{./capitulos/resultados_discusion/images/heat_pump_cop.png}
 	\caption{COP de la bomba de calor según la temperatura de salida del agua.
-	Eje de ordenadas derecho muestra la derivada del COP respecto de la
-	temperatura.}
+		Eje de ordenadas derecho muestra la derivada del COP respecto de la
+		temperatura.}
 	\label{fig:heat_pump_cop}
 \end{figure}
 
@@ -52,7 +63,7 @@ La ecuación de conservación de la energía para el tanque con pérdidas de cal
 por conducción con el ambiente (suponemos que se encuentra en el exterior de la
 vivienda) es
 
-\begin{align}
+\begin{align} \label{eq:t_tanque_balance}
 	m_{tanque} \cdot cp_{agua} \cdot \left( \frac{dT_{tanque}}{dt} \right) & = \dot{m}_{cond} \cdot cp_{agua} \cdot T_{cond} \nonumber     \\
 	                                                                       & + \dot{m}_{cale} \cdot cp_{agua} \cdot T_{cale} \nonumber     \\
 	                                                                       & - \dot{m}_{tanque} \cdot cp_{agua} \cdot T_{tanque} \nonumber \\
@@ -62,11 +73,11 @@ vivienda) es
 con las ecuaciones
 
 \begin{align}
-	\text{COP}        & = \text{cop}(T_{cond})                                         \\
-	\dot{Q}_{cond}    & = \text{COP} \cdot P_{bomba}                                   \\
-	\dot{Q}_{cond}    & = \dot{m}_{cond} \cdot cp_{agua} \cdot (T_{cond} - T_{tanque}) \\
-	\dot{m}_{tanque}  & = \dot{m}_{cond} + \dot{m}_{cale}                              \\
-	\dot{Q}_{perdida} & = U_{tanque} \cdot A_{tanque} \cdot (T_{tanque} - T_{amb})
+	\text{COP}        & = \text{cop}(T_{cond})         \label{eq:cop_t_cond}                               \\
+	\dot{Q}_{cond}    & = \text{COP} \cdot P_{bomba}   \label{eq:q_cond_1}                                 \\
+	\dot{Q}_{cond}    & = \dot{m}_{cond} \cdot cp_{agua} \cdot (T_{cond} - T_{tanque}) \label{eq:q_cond_2} \\
+	\dot{m}_{tanque}  & = \dot{m}_{cond} + \dot{m}_{cale}      \label{eq:m_dot_tanque}                     \\
+	\dot{Q}_{perdida} & = U_{tanque} \cdot A_{tanque} \cdot (T_{tanque} - T_{amb})  \label{eq:q_perdida}
 \end{align}
 
 donde
@@ -83,7 +94,7 @@ donde
 	\item $T_{cond}$: Temperatura a la salida el condensador.
 	\item $T_{cale}$: Temperatura calefacción, a la salida del suelo radiante.
 	\item $T_{amb}$: Temperatura ambiente.
-	\item $\dot{Q}_{perdida}$: Pérdidas de calor por conducción.
+	\item $\dot{Q}_{perdida}$: Pérdidas de calor del depósito por conducción.
 	\item $\dot{Q}_{cond}$: Tasa de transferencia de calor en el condensador.
 	\item $P_{bomba}$: Potencia del compresor.
 	\item $U_{tanque}$: Coeficiente global de transferencia de calor del tanque.
@@ -108,9 +119,9 @@ hormigón con ningún azulejo, porcelánico o madera.
 	\label{fig:radiant_heating_floor}
 \end{figure}
 
-El suelo calienta principalmente por radiación la habitación, y en menor
-medida por convección natural, despreciándose la transferencia de calor por
-conducción.
+El suelo calienta la habitación (el aire de la habitación) principalmente por
+radiación y en menor medida por convección natural, despreciándose la
+transferencia de calor por conducción.
 
 De forma que el aire de la casa también tiene una inercia térmica, y pierde
 calor por las paredes, tejado y ventanas.
@@ -121,7 +132,7 @@ están acopladas y son:
 \begin{align} \label{eq:floor_energy_conservation}
 	m_{suelo} \cdot cp_{suelo} \cdot \left( \frac{dT_{suelo}}{dt} \right) & = \dot{Q}_{conduccion-suelo} \nonumber \\
 	                                                                      & - \dot{Q}_{conveccion-suelo} \nonumber \\
-	                                                                      & - \dot{Q}_{radiacion-suelo}  \nonumber \\
+	                                                                      & - \dot{Q}_{radiacion-suelo}
 \end{align}
 
 \begin{align} \label{eq:room_energy_conservation}
@@ -129,16 +140,16 @@ están acopladas y son:
 	                                                                         & + \dot{Q}_{radiacion-suelo} \nonumber                                        \\
 	                                                                         & - U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion} - T_{amb}) \nonumber   \\
 	                                                                         & - U_{techo} \cdot A_{techo} \cdot (T_{habitacion} - T_{amb}) \nonumber       \\
-	                                                                         & - U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion} - T_{amb}) \nonumber \\
+	                                                                         & - U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion} - T_{amb})
 \end{align}
 
 donde la transferencia de calor por conducción desde el agua caliente que
 circula por los tubos hasta el suelo de hormigón viene dada por:
 
-\begin{align}
+\begin{align} \label{eq:q_conduccion_1}
 	\dot{Q}_{conduccion-suelo} & = \dot{m}_{cale} \cdot cp_{agua} \cdot (T_{tanque} - T_{cale})
 \end{align}
-\begin{align}
+\begin{align} \label{eq:q_conduccion_2}
 	\dot{Q}_{conduccion-suelo} & = U_{tubos} \cdot A_{tubos} \cdot \Delta T_{tubos}
 \end{align}
 
@@ -166,14 +177,6 @@ diferencia de temperaturas media como la representativa
 	\caption{Evolución de temperaturas para el suelo radiante.}
 	\label{fig:floor_temperatures}
 \end{figure}
-
-el área de los tubos viene dada por la longitud total de estos ($H$, obtenido previamente), y el perímetro
-exterior del tubo.
-
-\begin{equation}
-	A_{tubos} = 2 \pi \cdot R_{ext} \cdot H = 2 \pi \cdot 0.0142875 \cdot 220 = 19.7[m^2]
-\end{equation}
-
 
 y $U_{tubos}$ es la transmitancia térmica, que se considera constante para todo
 el tramo del interambiador de calor, y es igual a:
@@ -219,11 +222,11 @@ Y las transferencias de calor por radiación y convección natural de las
 ecuaciones \eqref{eq:floor_energy_conservation} y
 \eqref{eq:room_energy_conservation}, son:
 
-\begin{align}
+\begin{align} \label{eq:q_radiacion}
 	\dot{Q}_{radiacion-suelo} & =  \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)
 \end{align}
 
-\begin{align}
+\begin{align} \label{eq:q_conveccion}
 	\dot{Q}_{conveccion-suelo} & = h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})
 \end{align}
 
@@ -261,7 +264,7 @@ donde
 	\item $k_{aire}$: conductividad térmica del aire a 300 Kelvin, $0.0263\left[ \frac{W}{m \cdot K} \right]$.
 	\item $g$: aceleración de la gravedad, $9.8\left[\frac{m}{s^2}\right]$
 	\item $\beta$: coeficiente de expansión volumétrica para el aire, que
-	      tratamos como un gas ideal a 300, y por tanto calculamos como $\beta =
+	      tratamos como un gas ideal a $300[K]$, y por tanto calculamos como $\beta =
 		      \frac{1}{T} = \frac{1}{300} \left[K^{-1}\right]$.
 	\item $\nu_{aire}$: viscosidad cinemática del aire a 300 Kelvin: $15.89 \cdot 10^{-6} \left[\frac{m^2}{s}\right]$.
 \end{itemize}

@@ -69,7 +69,7 @@ def dae_system(y, y_prev, u, p, h):
     11) ∘ q_conduction_floor - m_dot_heating * cp_water * (t_tank - t_out_heating) = 0
     12) ∘ q_conduction_floor - U_tubes * A_tubes * DeltaT_tubes = 0
         --------------------------------------
-        ∘ DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (np.log((t_tank - t_floor) / (t_out_heating - t_floor)))
+        ∘ DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / 2
         ∘ U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
         ∘ Nu_tube_water = (h_tube_water * tube_inner_diameter) / k_water
         ∘ Nu_tube_water = 0.023 * Re_tube_water**0.8 * Pr_water**(1/3)
@@ -184,9 +184,99 @@ def dae_system(y, y_prev, u, p, h):
     U_tank                          =         p[28]
     A_tank                          =         p[29]
     """
-    f_result = f(y, y_prev, u, p, h)
-    g_result = g(y, u, p, h)
-    return f_result + g_result
+    t_cond = y[0]
+    t_tank = y[1]
+    t_tank_prev = y_prev[1]
+    t_out_heating = y[2]
+    t_floor = y[3]
+    t_floor_prev = y_prev[3]
+    t_room = y[4]
+    t_room_prev = y_prev[4]
+
+    m_dot_cond = u[0]
+    m_dot_heating = u[1]
+    p_compressor = u[2]
+    t_amb = u[3]
+
+    floor_mass = p[0]
+    cp_concrete = p[1]
+    gravity_acceleration = p[2]
+    air_volumetric_expansion_coeff = p[3]
+    floor_width = p[4]
+    nu_air = p[5]
+    Pr_air = p[6]
+    k_air = p[7]
+    tube_inner_diameter = p[8]
+    floor_area = p[9]
+    stefan_boltzmann_constant = p[10]
+    epsilon_concrete = p[11]
+    cp_water = p[12]
+    mu_water_at_320K = p[13]
+    Pr_water = p[14]
+    k_water = p[15]
+    k_pex = p[16]
+    tube_thickness = p[17]
+    A_tubes = p[18]
+    room_air_mass = p[19]
+    cp_air = p[20]
+    A_walls = p[21]
+    A_roof = p[22]
+    A_windows = p[23]
+    U_walls = p[24]
+    U_roof = p[25]
+    U_windows = p[26]
+    m_tank = p[27]
+    U_tank = p[28]
+    A_tank = p[29]
+
+    h_floor_air = get_h_floor_air(
+        t_floor,
+        t_room,
+        gravity_acceleration,
+        air_volumetric_expansion_coeff,
+        floor_width,
+        nu_air,
+        Pr_air,
+        k_air,
+        A_roof,
+    )
+
+    h_tube_water = get_h_tube_water(
+        tube_inner_diameter,
+        mu_water_at_320K,
+        Pr_water,
+        k_water,
+        m_dot_heating,
+    )
+    U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
+
+    # Mean deltaT
+    DeltaT_tubes = (t_tank + t_out_heating - 2 * t_floor) / 2
+
+    return [
+        # 1
+        cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank),
+        # 2
+        m_tank * cp_water * ((t_tank - t_tank_prev) / h)
+        - m_dot_cond * cp_water * t_cond
+        - m_dot_heating * cp_water * t_out_heating
+        + (m_dot_cond + m_dot_heating) * cp_water * t_tank
+        + U_tank * A_tank * (t_tank - t_amb),
+        # 3
+        m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes,
+        # 4
+        floor_mass * cp_concrete * ((t_floor - t_floor_prev) / h)
+        - m_dot_heating * cp_water * (t_tank - t_out_heating)
+        + h_floor_air * floor_area * (t_floor - t_room)
+        + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4),
+        # 5
+        room_air_mass * cp_air * ((t_room - t_room_prev) / h)
+        - h_floor_air * floor_area * (t_floor - t_room)
+        - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
+        + U_walls * A_walls * (t_room - t_amb)
+        + U_roof * A_roof * (t_room - t_amb)
+        + U_windows * A_windows * (t_room - t_amb),
+    ]
 
 
 def get_h_floor_air(
@@ -235,152 +325,6 @@ def get_h_tube_water(tube_inner_diameter, mu_water_at_320K, Pr_water, k_water, m
     return h_tube_water
 
 
-def f(y, y_prev, u, p, h):
-    # ∘ m_tank * cp_water * ((t_tank - t_tank_prev)/h)
-    #     - m_dot_cond * cp_water * t_cond
-    #     - m_dot_heating * cp_water * t_out_heating
-    #     + (m_dot_cond + m_dot_heating) * cp_water * t_tank
-    #     + U_tank * A_tank * (t_tank - t_amb)
-    #     = 0
-    #
-    # ∘ floor_mass * cp_concrete * ((t_floor - t_floor_prev)/h)
-    #     - m_dot_heating * cp_water * (t_tank - t_out_heating)
-    #     + h_floor_air * floor_area * (t_floor - t_room)
-    #     + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
-    #     = 0
-    #
-    # ∘ room_air_mass * cp_air * ((t_room - t_room_prev)/h)
-    #     - h_floor_air * floor_area * (t_floor - t_room)
-    #     - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
-    #     + U_walls * A_walls * (t_room - t_amb)
-    #     + U_roof * A_roof * (t_room - t_amb)
-    #     + U_windows * A_windows * (t_room - t_amb)
-    #     = 0
-    #
-    #     --------------------------------------
-    #     ∘ Nu_floor_air = (h_floor_air * floor_width) / k_air
-    #     ∘ Nu_floor_air = 0.15 * Ra_floor_air**(1/3)
-    #     ∘ Ra_floor_air = Gr_air * Pr_air
-    #     ∘ Gr_floor_air = (gravity_acceleration * air_volumetric_expansion_coeff * jnp.abs(t_floor - t_room) * L**3) / nu_air**2
-
-    t_cond = y[0]
-    t_tank = y[1]
-    t_tank_prev = y_prev[1]
-    t_out_heating = y[2]
-    t_floor = y[3]
-    t_floor_prev = y_prev[3]
-    t_room = y[4]
-    t_room_prev = y_prev[4]
-
-    m_dot_cond = u[0]
-    m_dot_heating = u[1]
-    t_amb = u[3]
-
-    floor_mass = p[0]
-    cp_concrete = p[1]
-    gravity_acceleration = p[2]
-    air_volumetric_expansion_coeff = p[3]
-    floor_width = p[4]
-    nu_air = p[5]
-    Pr_air = p[6]
-    k_air = p[7]
-    floor_area = p[9]
-    stefan_boltzmann_constant = p[10]
-    epsilon_concrete = p[11]
-    cp_water = p[12]
-    room_air_mass = p[19]
-    cp_air = p[20]
-    A_walls = p[21]
-    A_roof = p[22]
-    A_windows = p[23]
-    U_walls = p[24]
-    U_roof = p[25]
-    U_windows = p[26]
-    m_tank = p[27]
-    U_tank = p[28]
-    A_tank = p[29]
-
-    h_floor_air = get_h_floor_air(
-        t_floor,
-        t_room,
-        gravity_acceleration,
-        air_volumetric_expansion_coeff,
-        floor_width,
-        nu_air,
-        Pr_air,
-        k_air,
-        A_roof,
-    )
-
-    return [
-        m_tank * cp_water * ((t_tank - t_tank_prev) / h)
-        - m_dot_cond * cp_water * t_cond
-        - m_dot_heating * cp_water * t_out_heating
-        + (m_dot_cond + m_dot_heating) * cp_water * t_tank
-        + U_tank * A_tank * (t_tank - t_amb),
-        floor_mass * cp_concrete * ((t_floor - t_floor_prev) / h)
-        - m_dot_heating * cp_water * (t_tank - t_out_heating)
-        + h_floor_air * floor_area * (t_floor - t_room)
-        + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4),
-        room_air_mass * cp_air * ((t_room - t_room_prev) / h)
-        - h_floor_air * floor_area * (t_floor - t_room)
-        - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
-        + U_walls * A_walls * (t_room - t_amb)
-        + U_roof * A_roof * (t_room - t_amb)
-        + U_windows * A_windows * (t_room - t_amb),
-    ]
-
-
-def g(y, u, p, h):
-    # ∘ cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank) = 0
-    # ∘ m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes = 0
-    #     --------------------------------------
-    #     ∘ DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (jnp.log((t_tank - t_floor) / (t_out_heating - t_floor)))
-    #     ∘ U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
-    #     ∘ Nu_tube_water = (h_tube_water * tube_inner_diameter) / k_water
-    #     ∘ Nu_tube_water = 0.023 * Re_tube_water**0.8 * Pr_water**0.3
-    #     ∘ Re_tube_water = (tube_inner_diameter * v * rho_water) / mu_water_at_320K = (4 * m_dot_heating) / (pi * mu_water_at_320K * tube_inner_diameter)
-
-    t_cond = y[0]
-    t_tank = y[1]
-    t_out_heating = y[2]
-    t_floor = y[3]
-
-    m_dot_cond = u[0]
-    m_dot_heating = u[1]
-    p_compressor = u[2]
-
-    tube_inner_diameter = p[8]
-    cp_water = p[12]
-    mu_water_at_320K = p[13]
-    Pr_water = p[14]
-    k_water = p[15]
-    k_pex = p[16]
-    tube_thickness = p[17]
-    A_tubes = p[18]
-
-    h_tube_water = get_h_tube_water(
-        tube_inner_diameter,
-        mu_water_at_320K,
-        Pr_water,
-        k_water,
-        m_dot_heating,
-    )
-    U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
-
-    # LMTD with absolute differences
-    # DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / (
-    #     jnp.log(jnp.abs((t_tank - t_floor) / (t_out_heating - t_floor + 1e-6)) + 1e-6) + 1e-6
-    # )
-    # Mean deltaT with absolute differences
-    DeltaT_tubes = ((t_tank - t_floor) + jnp.abs(t_out_heating - t_floor)) / 2
-
-    return [
-        cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank),
-        m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes,
-    ]
-
-
 def solve(y_0, u, dae_p, h, n_steps):
     # Initialize parameters
     y = np.zeros((len(y_0), n_steps))
@@ -407,7 +351,7 @@ def j_t_room_min(y, u, p, h):
     return jnp.min(t_room)
 
 
-def adjoint_gradients(y, u, p, h, n_steps, j_fun, j_extra_args):
+def adjoint_gradients(y, u, p, h, n_steps, f, j_fun, j_extra_args):
     r"""
     Adjoint gradients of the cost function with respect to parameters
 
@@ -427,35 +371,34 @@ def adjoint_gradients(y, u, p, h, n_steps, j_fun, j_extra_args):
 
     min_{p_n} C = j(y, u, p)
         f(y_n, y_(n-1), p_n, u_n) = 0
-        g(y_n, p_n, u_n) = 0
         (p_n - p_(n-1)) / h = 0
 
     Lagrangian:
     L = j(y, u, p)
         - Σ λ_n f(y_n, y_(n-1), p_n, u_n)
-        - Σ ν_n g(y_n, p_n, u_n)
         - Σ μ_n (p_n - p_(n-1))
 
     ∂L/∂y_n = 0 = ∂j(y, u, p)/∂y_n
-                  - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂y_n
-                  - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_(n+1))/∂y_n
-                  - ν_n ∂g(y_n, p_n, u_n)/∂y_n
+        - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂y_n
+        - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_(n+1))/∂y_n
     ∂L/∂p_n = 0 = ∂j(y, u, p)/∂p_n
-                  - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂p_n
-                  - ν_n ∂g(y_n, p_n, u_n)/∂p_n
-                  - μ_n + μ_(n+1)
+        - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂p_n
+        - μ_n + μ_(n+1)
     ∂L/∂u_n = ∂C/∂u_n = ∂j(y, u, p)/∂u_n
-                        - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
-                        - ν_n ∂g(y_n, p_n, u_n)/∂u_n
+        - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
 
     Solve for λ_n and μ_n at each step:
-    [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂j/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1}, u_{n+1})/∂y_n)^T]
-    [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂j/∂p_n + μ_{n+1})^T                               ]
-                              [μ_n]
+    λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂y_n = ∂j(y, u, p)/∂y_n
+        - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_(n+1))/∂y_n
+
+    μ_n = ∂j(y, u, p)/∂p_n
+        - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂p_n
+        + μ_(n+1)
+
     Terminal conditions:
-    [∂f/∂y_N^T  ∂g/∂y_N^T  0] [λ_N]   [(∂j/∂y_N)^T]
-    [∂f/∂p_N^T  ∂g/∂p_N^T  I] [ν_N] = [(∂j/∂p_N)^T]
-                              [μ_N]
+    λ_N ∂f(y_N, y_(N-1), p_N, u_N)/∂y_N = ∂j(y, u, p)/∂y_N
+    μ_N = ∂j(y, u, p)/∂p_N - λ_N ∂f(y_N, y_(N-1), p_N, u_N)/∂p_N
+
     Solve for initial timestep:
     ∂L/∂y_0 = ∂C/∂y_0 = (∂j/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
     ∂L/∂p_0 = ∂C/∂p_0 = (∂j/∂p_0 + μ_1)^T
@@ -466,29 +409,24 @@ def adjoint_gradients(y, u, p, h, n_steps, j_fun, j_extra_args):
     # use jax.jacrev or jax.jacfwd
     # based on the number of inputs and outputs
     # and convert JAX jacobian functions to NumPy functions
-    get_djdy      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=0)))
-    get_djdu      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=1)))
-    get_djdp      = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=2)))
-    get_dfdy      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=0)))
+    get_djdy = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=0)))
+    get_djdu = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=1)))
+    get_djdp = jax_to_numpy(jax.jit(jax.jacobian(j_fun, argnums=2)))
+    get_dfdy = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=0)))
     get_dfdy_prev = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=1)))
-    get_dfdu      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=2)))
-    get_dfdp      = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=3)))
-    get_dgdy      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=0)))
-    get_dgdu      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=1)))
-    get_dgdp      = jax_to_numpy(jax.jit(jax.jacobian(g, argnums=2)))
+    get_dfdu = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=2)))
+    get_dfdp = jax_to_numpy(jax.jit(jax.jacobian(f, argnums=3)))
 
     # Obtain shapes of jacobians
     dfdy = get_dfdy(y[:, 1], y[:, 0], u[:, 0], p, h)
-    dgdp = get_dgdp(y[:, 1], u[:, 0], p, h)
-    n_odes = dfdy.shape[0]
+    dfdp = get_dfdp(y[:, 1], y[:, 0], u[:, 0], p, h)
+    n_eqs = dfdy.shape[0]
     n_states = dfdy.shape[1]
-    n_algs = dgdp.shape[0]
-    n_params = dgdp.shape[1]
+    n_params = dfdp.shape[1]
 
     # Initialize adjoint variables
-    adj_lambda = np.zeros((n_odes, n_steps + 1))
+    adj_lambda = np.zeros((n_eqs, n_steps + 1))
     adj_mu = np.zeros((n_params, n_steps + 1))
-    adj_nu = np.zeros((n_algs, n_steps + 1))
     dCdy_0 = np.zeros(n_states)
     dCdp_0 = np.zeros(n_params)
     dCdu = np.zeros(u.shape)
@@ -502,49 +440,36 @@ def adjoint_gradients(y, u, p, h, n_steps, j_fun, j_extra_args):
         dfdy_n = get_dfdy(y_current, y_prev, u_current, p, h)
         dfdu_n = get_dfdu(y_current, y_prev, u_current, p, h)
         dfdp_n = get_dfdp(y_current, y_prev, u_current, p, h)
-        dgdy_n = get_dgdy(y_current, u_current, p, h)
-        dgdu_n = get_dgdu(y_current, u_current, p, h)
-        dgdp_n = get_dgdp(y_current, u_current, p, h)
         djdy_n = get_djdy(y, u, p, h, *j_extra_args)[:, n]
         djdu_n = get_djdu(y, u, p, h, *j_extra_args)[:, n]
         djdp_n = get_djdp(y, u, p, h, *j_extra_args)
 
         if n == n_steps - 1:
             # Terminal condition
-            # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n)^T]
-            # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n)^T]
-            #                           [μ_n]
-            A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
-            b = np.concatenate([djdy_n, djdp_n])
-            adjs = np.linalg.solve(A, b)
-            adj_lambda[:, n] = adjs[:n_odes]
-            adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
-            adj_mu[:, n] = adjs[(n_odes + n_algs) :]
+            # λ_N ∂f(y_N, y_(N-1), p_N, u_N)/∂y_N = ∂j(y, u, p)/∂y_N
+            # μ_N = ∂j(y, u, p)/∂p_N - λ_N ∂f(y_N, y_(N-1), p_N, u_N)/∂p_N
+            adj_lambda[:, n] = np.linalg.solve(dfdy_n.T, djdy_n)
+            adj_mu[:, n] = djdp_n - np.dot(adj_lambda[:, n].T, dfdp_n)
         elif n == 0:
             # Initial timestep
-            # ∂L/∂y_0 = ∂C/∂y_0 = (∂r/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
-            # ∂L/∂p_0 = ∂C/∂p_0 = (∂r/∂p_0 + μ_1)^T
+            # ∂L/∂y_0 = ∂C/∂y_0 = (∂j/∂y_0 - λ_1 ∂f(y_1, y_0, p_1, u_1)/∂y_0)^T
+            # ∂L/∂p_0 = ∂C/∂p_0 = (∂j/∂p_0 + μ_1)^T
             dfdy_prev = get_dfdy_prev(y[:, 1], y[:, 0], u[:, 1], p, h)
             dCdy_0 = djdy_n - np.dot(adj_lambda[:, 1].T, dfdy_prev)
             dCdp_0 = djdp_n + adj_mu[:, 1]
         else:
-            # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
-            # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
-            #                           [μ_n]
+            # λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂y_n = ∂j(y, u, p)/∂y_n
+            #     - λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_(n+1))/∂y_n
+            #
+            # μ_n = ∂j(y, u, p)/∂p_n
+            #     - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂p_n
+            #     + μ_(n+1)
             dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], u[:, n + 1], p, h)
-            A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
-            b = np.concatenate([djdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev), djdp_n + adj_mu[:, n + 1]])
-            adjs = np.linalg.solve(A, b)
-            adj_lambda[:, n] = adjs[:n_odes]
-            adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
-            adj_mu[:, n] = adjs[(n_odes + n_algs) :]
+            adj_lambda[:, n] = np.linalg.solve(dfdy_n.T, (djdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev)))
+            adj_mu[:, n] = djdp_n - np.dot(adj_lambda[:, n].T, dfdp_n) + adj_mu[:, n + 1]
 
-        # ∂L/∂u_n = ∂C/∂u_n = ∂r(y_n, p_n, u_n)/∂u_n
-        #                     - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
-        #                     - ν_n ∂g(y_n, p_n, u_n)/∂u_n
-        dCdu[:, n] = djdu_n - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
-        # toc = time.time()
-        # print(toc - tic)
+        # ∂L/∂u_n = ∂C/∂u_n = ∂r(y_n, p_n, u_n)/∂u_n - λ_n ∂f(y_n, y_(n-1), p_n, u_n)/∂u_n
+        dCdu[:, n] = djdu_n - adj_lambda[:, n].T @ dfdu_n
 
     return dCdy_0, dCdp_0, dCdu
 
@@ -554,8 +479,8 @@ def dae_forward(y0, u, dae_p, h, n_steps):
     return y
 
 
-def dae_adjoints(y, u, dae_p, h, n_steps, j_fun, j_extra_args):
-    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, h, n_steps, j_fun, j_extra_args)
+def dae_adjoints(y, u, dae_p, h, n_steps, f, j_fun, j_extra_args):
+    dCdy_0_adj, dCdp_adj, dCdu_adj = adjoint_gradients(y, u, dae_p, h, n_steps, f, j_fun, j_extra_args)
     return dCdy_0_adj, dCdp_adj, dCdu_adj
 
 
@@ -594,7 +519,9 @@ def fd_gradients(y0, u, dae_p, h, n_steps, j_fun, j_extra_args):
         u_perturbed = u.copy()  # Create a new copy of u
         u_perturbed[i, 3] += delta
         y_perturbed = solve(y0, u_perturbed, dae_p, h, n_steps)
-        dfdu_3.append((j_fun(y_perturbed, u_perturbed, dae_p, h, *j_extra_args) - j_fun(y, u, dae_p, h, *j_extra_args)) / delta)
+        dfdu_3.append(
+            (j_fun(y_perturbed, u_perturbed, dae_p, h, *j_extra_args) - j_fun(y, u, dae_p, h, *j_extra_args)) / delta
+        )
 
     return dfdy0, dfdp, dfdu_3
 
@@ -1106,8 +1033,11 @@ def plot_history(hist, only_last=True):
         if only_last:
             title = hist.replace(".hst", "")
             title = title.replace("saves/", "")
-            save_plots(y, u, i, histories, parameters, title=title, save=False, show=True)
-            plot_full(y, u, i, histories, parameters, save=False, show=True)
+            # save_plots(y, u, i, histories, parameters, title=title, save=False, show=True)
+            # plot_full(y, u, i, histories, parameters, save=False, show=True)
+            plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
+            # save_simulation_plots(y, u, n_steps, dae_p, parameters)
+
 
             # Print statistics
             costs = get_costs(histories, y, u, parameters)
@@ -1155,12 +1085,12 @@ def main():
     m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
     # m_dot_cond = np.ones((n_steps)) * 1  # kg/s
     # m_dot_cond[-int(n_steps / 4) :] = 1e-3
-    m_dot_cond[-int(n_steps / 4) :] = 0.05
+    m_dot_cond[-int(n_steps / 4) :] = 0.1
     m_dot_cond[-int(n_steps / 6) :] = 0.3
 
     # m_dot_heating
     # m_dot_heating = np.ones((n_steps)) * 1e-4  # kg/s
-    m_dot_heating = np.ones((n_steps)) * 0.05  # kg/s
+    m_dot_heating = np.ones((n_steps)) * 0.1  # kg/s
     m_dot_heating[: -int(n_steps / 2)] = 0.2
     m_dot_heating[-int(n_steps / 5) :] = 0.2
 
@@ -1249,32 +1179,38 @@ def main():
     print(y.shape)
     print("y[2]: ", y[:, 2])
     print("u[2]: ", u[:, 2])
-    # plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
+    plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
     # save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
-    j_compressor_cost_extra_args = [parameters["excess_prices"]]
-    j_t_room_min_extra_args = []
-    # FD derivatives
-    dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, h, n_steps, j_compressor_cost, j_compressor_cost_extra_args)
-    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, h, n_steps, j_t_room_min, j_t_room_min_extra_args)
-    print("(finite diff) dC/dy0", dCdy_0_fd)
-    print("(finite diff) dC/dp: ", dCdp_fd)
-    print("(finite diff) dC/du_3: ", dCdu_fd)
-
-    # Adjoint derivatives
-    dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, j_compressor_cost, j_compressor_cost_extra_args)
-    # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(y, u, dae_p, h, n_steps, j_t_room_min, j_t_room_min_extra_args)
-    print("(adjoint) dC/dy_0: ", dCdy_0_adj)
-    print("(adjoint) dC/dp: ", dCdp_adj)
-    print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
-
-    # Discrepancies
-    print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-9) * 100}%")
-    print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-9) * 100}%")
-    print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-9) * 100}%")
+    # j_compressor_cost_extra_args = [parameters["excess_prices"]]
+    # j_t_room_min_extra_args = []
+    # # FD derivatives
+    # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(
+    #     y0, u, dae_p, h, n_steps, j_compressor_cost, j_compressor_cost_extra_args
+    # )
+    # # dCdy_0_fd, dCdp_fd, dCdu_fd = fd_gradients(y0, u, dae_p, h, n_steps, j_t_room_min, j_t_room_min_extra_args)
+    # print("(finite diff) dC/dy0", dCdy_0_fd)
+    # print("(finite diff) dC/dp: ", dCdp_fd)
+    # print("(finite diff) dC/du_3: ", dCdu_fd)
+    #
+    # # Adjoint derivatives
+    # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(
+    #     y, u, dae_p, h, n_steps, dae_system, j_compressor_cost, j_compressor_cost_extra_args
+    # )
+    # # dCdy_0_adj, dCdp_adj, dCdu_adj = dae_adjoints(
+    # #     y, u, dae_p, h, n_steps, dae_system, j_t_room_min, j_t_room_min_extra_args
+    # # )
+    # print("(adjoint) dC/dy_0: ", dCdy_0_adj)
+    # print("(adjoint) dC/dp: ", dCdp_adj)
+    # print("(adjoint) dC/du_3: ", dCdu_adj[:, 3])
+    #
+    # # Discrepancies
+    # print(f"Discrepancy dC/dy_0: {np.abs(dCdy_0_adj - dCdy_0_fd) / (np.abs(dCdy_0_fd) + 1e-9) * 100}%")
+    # print(f"Discrepancy dC/dp: {np.abs(dCdp_adj - dCdp_fd) / (np.abs(dCdp_fd) + 1e-9) * 100}%")
+    # print(f"Discrepancy dC/du: {np.abs(dCdu_adj[:, 3] - dCdu_fd) / (np.abs(dCdu_fd) + 1e-9) * 100}%")
 
 
 if __name__ == "__main__":
-    # main()
-    plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
+    main()
+    # plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
     # plot_history(hist="saves/control_sand_regulated.hst", only_last=True)

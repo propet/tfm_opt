@@ -436,8 +436,9 @@ def dae3_fun(
     )
     U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
 
-    # Mean deltaT with absolute differences
-    DeltaT_tubes = ((t_tank - t_floor) + jnp.abs(t_out_heating - t_floor)) / 2
+    # Mean deltaT
+    # DeltaT_tubes = ((t_tank - t_floor) + (t_out_heating - t_floor)) / 2 = (t_tank + t_out_heating - 2 * t_floor) / 2
+    DeltaT_tubes = (t_tank + t_out_heating - 2 * t_floor) / 2
 
     dae3 = m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes
     return dae3

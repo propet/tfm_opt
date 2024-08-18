@@ -9,10 +9,10 @@ Tenemos un sistema con paneles fotovoltaicos conectados a un controlador de
 carga MPPT (Maximum Power Point Tracking) que con un controlador de electrónica
 de potencia regula la tensión de salida de los paneles para obtener el máximo
 de potencia en la curva P-V (figura \ref{fig:solar_P-V_I-V}) a través de algún
-algoritmo como el 'Perturb and Observe' (P\&O), donde se actualiza el valor de
+algoritmo como el 'Perturb and Observe' (P\&O) \eqref{eq:p_and_o}, donde se actualiza el valor de
 la tensión de referencia con el gradiente de la potencia respecto a la tensión.
 
-\begin{equation}
+\begin{equation} \label{eq:p_and_o}
 	V_{k} \leftarrow V_k + \alpha \frac{P_k - P_{k-1}}{V_{k}-V_{k-1}}
 \end{equation}
 
@@ -71,7 +71,9 @@ batería y $\mu_{bat}$ la eficiencia de conversión desde alterna a energía
 almacenada.
 
 Y a esta le aplicamos las restricciones para los niveles de carga máximo y
-mínimo, SOC (State Of Charge)
+mínimo, SOC (State Of Charge), que consideramos son $\text{SOC}_{max} = 0.9$ y
+$\text{SOC}_{min} = 0.3$, respectivamente.
+
 
 \begin{equation}
 	\text{SOC} = \frac{e}{e_{max}}
@@ -82,6 +84,7 @@ mínimo, SOC (State Of Charge)
 \end{equation}
 
 donde $e_{max}$ es la capacidad, o energía máxima que puede acumular la batería.
+
 
 Aplicamos como condición inicial que está en su punto mínimo de carga,
 está 'vacía'
@@ -98,14 +101,14 @@ Podemos relacionar la capacidad y potencia máxima, primero sabiendo que
 el C-rate se define como la relación entre la corriente máxima y la capacidad en amperios-hora:
 
 \begin{equation}
-	i_{max}[A] = \text{C}[Ah] \cdot \text{C-rate}
+	i_{max}[A] = \text{C}[Ah] \cdot \text{C-rate}[h^{-1}]
 \end{equation}
 
 multiplicando ambos miembros por la tensión nominal, obtenemos:
 
 \begin{align}
-	i_{max}[A] \cdot v[V] & = v[V] \cdot \text{C}[Ah] \cdot \text{C-rate} \\
-	P_{bat_{max}}         & = e[Wh] \cdot \text{C-rate}
+	i_{max}[A] \cdot v[V] & = v[V] \cdot \text{C}[Ah] \cdot \text{C-rate}[h^{-1}] \\
+	P_{bat_{max}}         & = e[Wh] \cdot \text{C-rate}[h^{-1}]
 \end{align}
 
 Cuando tratemos de sacar las dimensiones óptimas de baterías, bomba de calor y

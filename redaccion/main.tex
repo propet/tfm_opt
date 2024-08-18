@@ -22,6 +22,19 @@
     pdfkeywords={palabra1, palabra2, código1, etc.} % list of keywords
 }
 
+% Code colorscheme
+\usepackage{minted}
+\setminted{
+    frame=lines,
+    linenos,
+    fontsize=\small,
+    numbersep=5pt,
+    tabsize=4,
+    breaklines,
+    breakanywhere,
+    style=friendly  % Cambia este valor por el esquema de colores que prefieras
+}
+
 % Font change to Arial
 \usepackage{helvet}
 \renewcommand{\familydefault}{\sfdefault}
@@ -122,9 +135,9 @@
 \chapter{Metodología}
 \input{capitulos/metodologia/main.tex}
 
-% Adquisicion de datos
+% Adquisición de datos
 \cleardoublepage
-\chapter{Adquisicion de datos}
+\chapter{Adquisición de datos}
 \input{capitulos/adquisicion_de_datos/main.tex}
 
 % Resultados y discusión (incluyendo la valoración de impactos y de aspectos de responsabilidad legal, ética y profesional relacionados con el trabajo)

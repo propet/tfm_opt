@@ -17,7 +17,7 @@ from utils import (
 )
 from custom_types import DesignVariables, DesignVariableInfo, ConstraintInfo, Parameters
 import scipy.sparse as sp
-from control_with_adjoints.simulate import dae_forward, dae_adjoints, j_t_room_min
+from control_with_adjoints.simulate import dae_system, dae_forward, dae_adjoints, j_t_room_min
 import jax
 import jax.numpy as jnp
 
@@ -485,6 +485,7 @@ def t_room_min_constraint_sens(opt, design_variables: DesignVariables):
         dae_p,
         h,
         n_steps,
+        dae_system,
         j_t_room_min,
         j_extra_args=(),
     )
