@@ -330,7 +330,20 @@ def get_h_tube_water(tube_inner_diameter, mu_water_at_320K, Pr_water, k_water, m
 
 
 def solve(y_0, u, dae_p, h, n_steps):
-    # Initialize parameters
+    """
+    Solve the differential-algebraic equation (DAE) system using implicit time-stepping.
+
+    Parameters:
+    y_0: Initial conditions of the states.
+    u: Control inputs over time.
+    dae_p: Parameters for the DAE system.
+    h: Time step size.
+    n_steps: Number of time steps to perform.
+
+    Returns:
+    State evolution over time.
+    """
+    # Initialize solution
     y = np.zeros((len(y_0), n_steps))
 
     # Initial conditions
@@ -720,7 +733,7 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    ax.legend()
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     save_plot(fig, ax, f"saves/plot_simulation_temperatures.svg")
 
     # Plot heats
@@ -733,7 +746,7 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    ax.legend()
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     save_plot(fig, ax, f"saves/plot_simulation_heat.svg")
 
     # Plot valve controls
@@ -744,7 +757,7 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
     ax.set_xlabel("")  # Remove x-axis label
-    ax.legend()
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     save_plot(fig, ax, f"saves/plot_simulation_m_dot.svg")
 
     # Plot compressor control
@@ -1219,7 +1232,7 @@ def main():
     print("y[2]: ", y[:, 2])
     print("u[2]: ", u[:, 2])
     plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
-    # save_simulation_plots(y, u, n_steps, dae_p, parameters)
+    save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
     # j_compressor_cost_extra_args = [parameters["excess_prices"]]
     # j_t_room_min_extra_args = []
@@ -1250,6 +1263,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
+    main()
+    # plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
     # plot_history(hist="saves/control_sand_regulated.hst", only_last=True)

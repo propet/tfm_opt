@@ -1,12 +1,12 @@
 \subsection{Sistema de ecuaciones reducido}
 
 Queremos reorganizar las ecuaciones obtenidas previamente para obtener un
-sistema más reducido, con menos variables de estados y control.
+sistema más reducido, con menos variables de estado y control.
 
 Para ello, primero podemos introducir \eqref{eq:q_cond_1} y \eqref{eq:q_cond_2}
 en \eqref{eq:cop_t_cond}, para tener:
 
-\begin{equation} \label{eq:sys_1}
+\begin{equation}
 	\text{cop}(T_{cond}) \cdot P_{bomba} - \dot{m}_{cond} \cdot cp_{agua} \cdot \left(T_{cond} - T_{tanque}\right) = 0
 \end{equation}
 
@@ -14,7 +14,7 @@ Por otro lado, sustituyendo \eqref{eq:m_dot_tanque} y \eqref{eq:q_perdida} en
 la ecuación del balance de energía para el depósito
 \eqref{eq:t_tanque_balance}, queda:
 
-\begin{align} \label{eq:sys_2}
+\begin{align}
 	m_{tanque} \cdot cp_{agua} \cdot \left( \frac{dT_{tanque}}{dt} \right) & - \dot{m}_{cond} \cdot cp_{agua} \cdot T_{cond} \nonumber                      \\
 	                                                                       & - \dot{m}_{cale} \cdot cp_{agua} \cdot T_{cale} \nonumber                      \\
 	                                                                       & + (\dot{m}_{cond} + \dot{m}_{cale}) \cdot cp_{agua} \cdot T_{tanque} \nonumber \\
@@ -23,7 +23,7 @@ la ecuación del balance de energía para el depósito
 \end{align}
 
 
-E insertando las expresiones para los tasas de calor por conducción, radiación
+E insertando las expresiones para las tasas de calor por conducción, radiación
 y convección del suelo radiante \eqref{eq:q_conduccion_1},
 \eqref{eq:q_radiacion} y \eqref{eq:q_conveccion} respectivamente, en las
 fórmulas \eqref{eq:q_conduccion_2}, \eqref{eq:floor_energy_conservation}, y
@@ -32,37 +32,66 @@ fórmulas \eqref{eq:q_conduccion_2}, \eqref{eq:floor_energy_conservation}, y
 
 \begin{align}
 	\dot{m}_{cale} \cdot cp_{agua} \cdot \left(T_{tanque} - T_{cale}\right)  & - U_{tubos} \cdot A_{tubos} \cdot \Delta T_{tubos} \nonumber                                         \\
-	                                                                         & = 0 \label{eq:sys_3}                                                                                 \\
+	                                                                         & = 0 \label{eq:m_cale_delta_t}                                                                        \\
 	m_{suelo} \cdot cp_{suelo} \cdot \left( \frac{dT_{suelo}}{dt} \right)    & - \dot{m}_{cale} \cdot cp_{agua} \cdot (T_{tanque} - T_{cale})                             \nonumber \\
 	                                                                         & + h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})                             \nonumber \\
 	                                                                         & + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)  \nonumber \\
-	                                                                         & = 0  \label{eq:sys_4}                                                                                \\
+	                                                                         & = 0                                                                                                  \\
 	m_{aire} \cdot cp_{aire} \cdot \left( \frac{dT_{habitacion}}{dt} \right) & - h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})  \nonumber                            \\
 	                                                                         & - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)  \nonumber \\
 	                                                                         & + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion} - T_{amb}) \nonumber                           \\
 	                                                                         & + U_{techo} \cdot A_{techo} \cdot (T_{habitacion} - T_{amb}) \nonumber                               \\
 	                                                                         & + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion} - T_{amb}) \nonumber                         \\
-	                                                                         & = 0  \label{eq:sys_5}
+	                                                                         & = 0
 \end{align}
+
+También, de \eqref{eq:m_cale_delta_t} y \eqref{eq:mean_delta_T}, podemos despejar $T_{cale}$.
+
+\begin{equation} \label{eq:t_cale}
+	T_{cale} = \frac{2 \cdot A_{tubos} \cdot U_{tubos} \cdot T_{suelo} - A_{tubos} \cdot U_{tubos} \cdot T_{tanque} + 2 \cdot \dot{m}_{cale} \cdot cp_{agua} \cdot T_{tanque}}{A_{tubos} \cdot U_{tubos} + 2 \cdot \dot{m}_{cale} \cdot cp_{agua}}
+\end{equation}
+
+De forma que nuestro sistema finalmente consiste de:
+
+\begin{align}
+	\text{cop}(T_{cond}) \cdot P_{bomba}                                     & - \dot{m}_{cond} \cdot cp_{agua} \cdot \left(T_{cond} - T_{tanque}\right) \nonumber                  \\
+	                                                                         & = 0 \label{eq:sys_1}                                                                                 \\
+	m_{tanque} \cdot cp_{agua} \cdot \left( \frac{dT_{tanque}}{dt} \right)   & - \dot{m}_{cond} \cdot cp_{agua} \cdot T_{cond} \nonumber                                            \\
+	                                                                         & - \dot{m}_{cale} \cdot cp_{agua} \cdot T_{cale} \nonumber                                            \\
+	                                                                         & + (\dot{m}_{cond} + \dot{m}_{cale}) \cdot cp_{agua} \cdot T_{tanque} \nonumber                       \\
+	                                                                         & + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque} - T_{amb}) \nonumber                                 \\
+	                                                                         & = 0 \label{eq:sys_2}                                                                                 \\
+	m_{suelo} \cdot cp_{suelo} \cdot \left( \frac{dT_{suelo}}{dt} \right)    & - \dot{m}_{cale} \cdot cp_{agua} \cdot (T_{tanque} - T_{cale})                             \nonumber \\
+	                                                                         & + h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})                             \nonumber \\
+	                                                                         & + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)  \nonumber \\
+	                                                                         & = 0  \label{eq:sys_3}                                                                                \\
+	m_{aire} \cdot cp_{aire} \cdot \left( \frac{dT_{habitacion}}{dt} \right) & - h_{suelo} \cdot A_{suelo} \cdot (T_{suelo} - T_{habitacion})  \nonumber                            \\
+	                                                                         & - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo}^4 - T_{habitacion}^4)  \nonumber \\
+	                                                                         & + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion} - T_{amb}) \nonumber                           \\
+	                                                                         & + U_{techo} \cdot A_{techo} \cdot (T_{habitacion} - T_{amb}) \nonumber                               \\
+	                                                                         & + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion} - T_{amb}) \nonumber                         \\
+	                                                                         & = 0  \label{eq:sys_4}
+\end{align}
+
+donde $T_{cale}$ sale de \eqref{eq:t_cale}, y $h_{suelo}$ de \eqref{eq:h_suelo}.
 
 
 \subsection{Resolución con euler implícito y Newton-Raphson}
 
-Finalmente, con las igualdades \eqref{eq:sys_1}, \eqref{eq:sys_2},
-\eqref{eq:sys_3}, \eqref{eq:sys_4} y \eqref{eq:sys_5}, tenemos un sistema de 5
-ecuaciones para 5 incógnitas: $T_{cond}$, $T_{tanque}$, $T_{cale}$, $T_{suelo}$
+Con las igualdades \eqref{eq:sys_1}, \eqref{eq:sys_2},
+\eqref{eq:sys_3}, y \eqref{eq:sys_4}, tenemos un sistema de 4
+ecuaciones para 4 incógnitas: $T_{cond}$, $T_{tanque}$, $T_{suelo}$
 y $T_{habitacion}$. Teniendo 4 variables de control: $\dot{m}_{cond}$,
 $\dot{m}_{cale}$, $P_{bomba}$ y $T_{amb}$, aunque realmente la temperatura
 ambiente no sea una variable que podamos controlar.
 
-Se trata de un sistema de ecuaciones diferenciales algebraicas (DAE,
-Differential Algebraic Equation), donde \eqref{eq:sys_1} y \eqref{eq:sys_3} son
-algebraicas, siendo el resto diferenciales.
+Se trata de ecuaciones diferenciales algebraicas (DAE,
+Differential Algebraic Equation), donde solo \eqref{eq:sys_1} es algebraica,
+siendo el resto diferenciales.
 
-De índice diferencial 1, porque podemos diferenciar una vez tanto
-\eqref{eq:sys_1} como \eqref{eq:sys_3} para obtener $\frac{dT_{cond}}{dt}$ y
-$\frac{dT_{cale}}{dt}$ respectivamente, convirtiendo el conjunto en un sistema
-de ecuaciones diferenciales ordinarias.
+De índice diferencial 1, porque podemos diferenciar una vez \eqref{eq:sys_1}
+para obtener $\frac{dT_{cond}}{dt}$, convirtiéndose en un conjunto de
+ecuaciones diferenciales ordinarias.
 
 Y no lineal, al tener presente la fórmula $\text{cop}(T_{cond})$ en
 \eqref{eq:sys_1}, que a pesar de ser lineal a tramos, es no-lineal en su
@@ -92,13 +121,11 @@ Nuestro sistema reducido se presenta de la siguiente forma:
 \begin{align}
 	\text{cop}(T_{cond,k}) \cdot P_{bomba,k}                                                    & - \dot{m}_{cond,k} \cdot cp_{agua} \cdot \left(T_{cond,k} - T_{tanque,k}\right) = 0                     \\
 	m_{tanque} \cdot cp_{agua} \cdot \frac{\left(T_{tanque,k} - T_{tanque,k-1}\right)}{h}       & - \dot{m}_{cond,k} \cdot cp_{agua} \cdot T_{cond,k} \nonumber                                           \\
-	                                                                                            & - \dot{m}_{cale,k} \cdot cp_{agua} \cdot T_{cale,k} \nonumber                                           \\
+	                                                                                            & - \dot{m}_{cale,k} \cdot cp_{agua} \cdot T_{cale} \nonumber                                             \\
 	                                                                                            & + (\dot{m}_{cond,k} + \dot{m}_{cale,k}) \cdot cp_{agua} \cdot T_{tanque,k} \nonumber                    \\
 	                                                                                            & + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque,k} - T_{amb,k}) \nonumber                                \\
 	                                                                                            & = 0                                                                                                     \\
-	\dot{m}_{cale,k} \cdot cp_{agua} \cdot \left(T_{tanque,k} - T_{cale,k}\right)               & - U_{tubos} \cdot A_{tubos} \cdot \Delta T_{tubos,k} \nonumber                                          \\
-	                                                                                            & = 0                                                                                                     \\
-	m_{suelo} \cdot cp_{suelo} \cdot \frac{\left(T_{suelo,k} - T_{suelo,k-1}\right)}{h}         & - \dot{m}_{cale,k} \cdot cp_{agua} \cdot (T_{tanque,k} - T_{cale,k}) \nonumber                          \\
+	m_{suelo} \cdot cp_{suelo} \cdot \frac{\left(T_{suelo,k} - T_{suelo,k-1}\right)}{h}         & - \dot{m}_{cale,k} \cdot cp_{agua} \cdot (T_{tanque,k} - T_{cale}) \nonumber                            \\
 	                                                                                            & + h_{suelo} \cdot A_{suelo} \cdot (T_{suelo,k} - T_{habitacion,k}) \nonumber                            \\
 	                                                                                            & + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo,k}^4 - T_{habitacion,k}^4) \nonumber \\
 	                                                                                            & = 0                                                                                                     \\
@@ -114,13 +141,213 @@ Nuestro sistema reducido se presenta de la siguiente forma:
 \subsection{Simulación}
 
 
+En python, empleamos la rutina `fsolve` del paquete `scipy.optimize` para
+resolver el sistema discretizado a cada paso con Newton-Raphson.
 
 \begin{minted}{python}
-def fibonacci(n):
-    if n <= 0:
-        return 0
-    elif n == 1:
-        return 1
-    else:
-        return fibonacci(n-1) + fibonacci(n-2)
+def solve(y_0, u, dae_p, h, n_steps):
+    """
+    Solve the differential-algebraic equation (DAE) system using implicit time-stepping.
+
+    Parameters:
+    y_0: Initial conditions of the states.
+    u: Control inputs over time.
+    dae_p: Parameters for the DAE system.
+    h: Time step size.
+    n_steps: Number of time steps to perform.
+
+    Returns:
+    y:  State evolution over time.
+    """
+    # Initialize solution
+    y = np.zeros((len(y_0), n_steps))
+
+    # Initial conditions
+    y[:, 0] = y_0
+
+    # Time-stepping loop
+    for n in range(1, n_steps):
+        # Use fsolve to solve the nonlinear system
+        y_n = fsolve(dae_system, y[:, n - 1], args=(y[:, n - 1], u[:, n], dae_p, h))
+        y[:, n] = y_n
+
+    return y
 \end{minted}
+
+y la función \textit{dae\_system} a su vez recibe el estado actual, previo,
+variables de control actuales, parámetros y paso, y devuelve el valor de las
+ecuaciones, con todos los términos en un mismo miembro.
+
+
+\begin{minted}{python}
+def dae_system(y, y_prev, u, p, h):
+		# Here we name all variables from y, y_prev, u and p:
+		# ...
+
+    h_floor_air = get_h_floor_air(
+        t_floor,
+        t_room,
+        gravity_acceleration,
+        air_volumetric_expansion_coeff,
+        floor_width,
+        nu_air,
+        Pr_air,
+        k_air,
+        A_roof,
+    )
+
+    h_tube_water = get_h_tube_water(
+        tube_inner_diameter,
+        mu_water_at_320K,
+        Pr_water,
+        k_water,
+        m_dot_heating,
+    )
+
+    U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
+
+    t_out_heating = (
+        2 * A_tubes * U_tubes * t_floor - A_tubes * U_tubes * t_tank + 2 * cp_water * m_dot_heating * t_tank
+    ) / (A_tubes * U_tubes + 2 * cp_water * m_dot_heating)
+
+    return [
+        # 1
+        cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank),
+        # 2
+        m_tank * cp_water * ((t_tank - t_tank_prev) / h)
+        - m_dot_cond * cp_water * t_cond
+        - m_dot_heating * cp_water * t_out_heating
+        + (m_dot_cond + m_dot_heating) * cp_water * t_tank
+        + U_tank * A_tank * (t_tank - t_amb),
+        # 3
+        floor_mass * cp_concrete * ((t_floor - t_floor_prev) / h)
+        - m_dot_heating * cp_water * (t_tank - t_out_heating)
+        + h_floor_air * floor_area * (t_floor - t_room)
+        + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4),
+        # 4
+        room_air_mass * cp_air * ((t_room - t_room_prev) / h)
+        - h_floor_air * floor_area * (t_floor - t_room)
+        - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
+        + U_walls * A_walls * (t_room - t_amb)
+        + U_roof * A_roof * (t_room - t_amb)
+        + U_windows * A_windows * (t_room - t_amb),
+    ]
+\end{minted}
+
+Probamos a simular este modelo aplicando un paso de $100[s]$, condiciones iniciales:
+
+\begin{align}
+	T_{cond_0} = 296.56[K]       \\
+	T_{tanque_0} = 296.05[K]     \\
+	T_{suelo_0} = 295.27[K]      \\
+	T_{habitacion_0} = 293.47[K] \\
+\end{align}
+
+y los siguientes controles:
+
+\begin{equation}
+	\dot{m}_{cond}(t)[kg \cdot s^{-1}] =
+	\begin{cases}
+		0.3 & \text{si } 0 \leq t < \frac{3T}{4},            \\
+		0.1 & \text{si } \frac{3T}{4} \leq t < \frac{5T}{6}, \\
+		0.3 & \text{si } \frac{5T}{6} \leq t \leq T.
+	\end{cases}
+\end{equation}
+
+\begin{equation}
+	\dot{m}_{cale}(t)[kg \cdot s^{-1}] =
+	\begin{cases}
+		0.2 & \text{si } 0 \leq t < \frac{T}{2},            \\
+		0.1 & \text{si } \frac{T}{2} \leq t < \frac{4T}{5}, \\
+		0.2 & \text{si } \frac{4T}{5} \leq t \leq T.
+	\end{cases}
+\end{equation}
+
+\begin{equation}
+	P_{bomba}(t)[W] =
+	\begin{cases}
+		300                                                      \\
+		1 \cdot 10^{-6} & \text{si } \frac{2T}{3} \leq t \leq T.
+	\end{cases}
+\end{equation}
+
+$T$ siendo el periodo de simulación de 7 días, y $T_{amb}$ la temperatura
+ambiente para estos.
+
+El resultado se aprecia en la figura \ref{fig:simulacion_1}.
+Donde el primer gráfico muestra la evolución de las temperaturas,
+mantiéndose siempre
+
+\begin{equation*}
+	T_{cond} > T_{tanque} > T_{suelo} > T_{habitacion}
+\end{equation*}
+
+En la segunda ilustración vemos las tasas de calor por transferencia de calor
+por conducción (de los tubos a la losa de suelo), y por radiación y convección
+natural, del suelo al aire de la habitación.
+
+El suelo principalmente calienta por radiación, y la aportación por
+convección es alrededor de un tercio de esta.
+
+Cuando la losa de hormigón recibe más calor del agua de la calefacción
+(conducción) que evacúa en la habitación, observamos su temperatura aumentar.
+Para más claridad se ha representado la suma de los términos convectivo y
+radiativo.
+
+En las dos últimas gráficas aparecen las variables de control empleadas: los
+caudales dirigidos a la calefacción del suelo radiante, y de la bomba de calor
+al tanque de agua, y la potencia destinada a la bomba de calor (o compresor de
+esta).
+
+Para ambos, es visible que hemos aplicados funciones escalón para estimular al
+sistema.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/simulacion_1}
+	\caption{Simulación del sistema térmico con paso $h=100[s]$.}
+	\label{fig:simulacion_1}
+\end{figure}
+
+
+El paso $h$ empleado en las simulaciones debe ser lo suficientemente pequeño
+como para poder representar las dinámicas más rápidas del sistema. Estas
+dinámicas las observamos al aplicar una función escalón en los controles del
+modelo. Y reducimos progresivamente el tamaño del paso hasta que la solución
+converja.
+
+En este caso tenemos una respuesta lenta, debido a las inercias térmicas de
+tanto depósito, como suelo radiante y habitación. De modo que hemos empleado en
+lo siguiente un paso de 1000 segundos, al no apreciar diferencia en los
+resultados que se arrojan (figura \ref{fig:simulacion_2_h:1000}), y así no tenemos la necesidad de considerar tantas
+variables de diseño en nuestros estudios de control óptimo, donde a cada paso
+elegimos qué caudales y potencia destinar a la bomba de calor.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/simulacion_2_h:1000s}
+	\caption{Temperaturas del sistema térmico con paso $h=1000[s]$.}
+	\label{fig:simulacion_2_h:1000}
+\end{figure}
+
+Tampoco usamos un paso mayor que este porque el sistema eléctrico con el que
+vamos a optimizar conjuntamente el sistema, tiene una dinámica horaria
+(precios, potencias solares dadas por los paneles y demanda eléctrica del
+domicilio se dan horariamente), y es recomendable usar un paso alrededor de un order
+de magnitud menor que la dinámica más rápida.
+
+En el extremo donde se dan respuestas muy rápidas y también muy lentas, se
+habla de un sistema rígido, en referencia de un péndulo con un periodo
+asociado, pero que además tiene otra oscilación mucho más rápida en su cuerpo,
+que puede modelarse como un resorte rígido (figura \ref{fig:stiff_system}). El
+problema que existe en estas circunstancias es que para simular el
+comportamiento del péndulo, debemos de usar un paso muy pequeño, del orden de
+la velocidad del resorte rígido, lo que puede llevar a costes computacionales
+muy grandes en la simulación.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.3\textwidth]{./capitulos/resultados_discusion/images/stiff_system}
+	\caption{Sistema rígido.}
+	\label{fig:stiff_system}
+\end{figure}

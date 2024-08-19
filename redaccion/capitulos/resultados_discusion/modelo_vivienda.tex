@@ -13,6 +13,15 @@ cuadrada con $100[m^2]$ de área. Techo plano.
 Las paredes son de $2.5[m]$ de alto, por lo tanto con una extesión total de
 $100[m^2]$. De los cuales 25 son ventanas y los otros 75 son pared.
 
+El volumen es de $100[m^2] \cdot 2.5[m] = 250[m^3]$, con
+tan solo aire en su interior, que tiene una densidad de
+$1.1614[kg \cdot m^{-3}]$, y pesará:
+
+\begin{equation}
+	m_{aire} = 1.1614 \cdot 250 = 290.35[kg]
+\end{equation}
+
+
 
 \subsection{Transmitancias térmicas de la vivienda}
 
@@ -21,7 +30,7 @@ modelo
 \footnote{\url{https://www.veka.es/wp-content/uploads/2020/03/softline-70-doble-junta-linea-recta-por-paginas.pdf}},
 que muestra (figura \ref{fig:window_tranmittance}) sus medidas de transmitancia
 para el marco (frame), vidrio (glass) y global (window). Escogiendo el vidrio
-de de baja emisividad (BE) y relleno de argón, tenemos un valor de
+de baja emisividad (BE) y relleno de argón, tenemos un valor de
 $1.4\left[\frac{W}{m^2 \cdot K}\right]$, que asumimos engloba las perdidas por
 conducción, convección y radiación.
 
@@ -95,8 +104,8 @@ e invierno:
 Por simplicidad, consideramos un único circuito con tubo de polietileno reticulado (PEX) de 1
 pulgada que lleva unas dimensiones asociadas mostradas en la figura
 \ref{fig:1_inch_pex}.
-Aunque en la práctica es más común la instalación de varios circuitos (para
-cada habitación), cada uno con diámetros de tubo menores.
+Aunque en la práctica es más común la instalación de varios circuitos (e.g.
+uno para cada habitación), cada uno con diámetros de tubo menores.
 
 \begin{figure}[h] \centering
 	\centering
@@ -128,7 +137,7 @@ perímetro exterior del tubo.
 	\label{fig:esquema_tubos_suelo}
 \end{figure}
 
-De nuevo hemos optado por una configuración simple para facilitar los cálculos,
+De nuevo hemos optado por un arreglo simple para facilitar los cálculos,
 pero también es común el patrón de espiral, mostrado en la figura \ref{fig:spiral_pattern_floor},
 que distribuye el calor de forma más uniforme por el suelo, aunque con una buena
 conductividad del material de la losa que integra los tubos (hormigón), las diferencias de
@@ -140,6 +149,16 @@ temperaturas en distintas partes de la habitación deberían de ser poco percept
 	\caption{Tubos para suelo radiante en configuración espiral. Fuente: \url{https://www.achrnews.com/articles/141245-hydronics-offer-unique-options-for-residential-heating}.}
 	\label{fig:spiral_pattern_floor}
 \end{figure}
+
+La losa de hormigón que da una inercia térmica considerable al suelo, se ha
+tomado de 5cm. Y tampoco hemos considerado que se haya recubierto la losa de
+hormigón con ningún azulejo, porcelánico o madera.
+
+Con una densidad del hormigón de $2300[kg\cdot m^{-3}]$, la masa de esta losa es:
+
+\begin{equation}
+	m_{suelo} = 100[m^2] \cdot 0.05[m] \cdot 2300[kg\cdot m^{-3}] = 11500[kg]
+\end{equation}
 
 
 \subsection{Paneles solares}
