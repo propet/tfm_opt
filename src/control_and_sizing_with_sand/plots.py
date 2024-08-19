@@ -54,7 +54,6 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     # Design variables
     t_cond = histories["t_cond"][i] - 273  # K to ºC
     t_tank = histories["t_tank"][i] - 273  # K to ºC
-    t_out_heating = histories["t_out_heating"][i] - 273  # K to ºC
     t_floor = histories["t_floor"][i] - 273  # K to ºC
     t_room = histories["t_room"][i] - 273  # K to ºC
     m_dot_cond = histories["m_dot_cond"][i]
@@ -105,10 +104,9 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     fig, ax = plt.subplots(figsize=(8.27, 2))
     ax.plot(t, t_cond, label="Salida bomba calor", **plot_styles[0])
     ax.plot(t, t_tank, label="Tanque", **plot_styles[1])
-    ax.plot(t, t_out_heating, label="Salida suelo", **plot_styles[2])
-    ax.plot(t, t_floor, label="Suelo", **plot_styles[3])
-    ax.plot(t, t_room, label="Habitación", **plot_styles[4])
-    ax.plot(t, t_amb, label="Ambiente", **plot_styles[5])
+    ax.plot(t, t_floor, label="Suelo", **plot_styles[2])
+    ax.plot(t, t_room, label="Habitación", **plot_styles[3])
+    ax.plot(t, t_amb, label="Ambiente", **plot_styles[4])
     ax.set_ylabel("Temperatura [ºC]")
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
@@ -162,7 +160,6 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
     # Design variables
     t_cond = histories["t_cond"][i]
     t_tank = histories["t_tank"][i]
-    t_out_heating = histories["t_out_heating"][i]
     t_floor = histories["t_floor"][i]
     t_room = histories["t_room"][i]
     m_dot_cond = histories["m_dot_cond"][i]
@@ -207,15 +204,14 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
 
     # Second subplot for temperatures and e_bat
     axes[1].plot(t, t_tank, label="t_tank", **plot_styles[0])
-    axes[1].plot(t, t_out_heating, label="t_out_heating", **plot_styles[1])
-    axes[1].plot(t, t_floor, label="t_floor", **plot_styles[2])
-    axes[1].plot(t, t_room, label="t_room", **plot_styles[3])
-    axes[1].plot(t, t_amb, label="t_amb", **plot_styles[4])
+    axes[1].plot(t, t_floor, label="t_floor", **plot_styles[1])
+    axes[1].plot(t, t_room, label="t_room", **plot_styles[2])
+    axes[1].plot(t, t_amb, label="t_amb", **plot_styles[3])
     axes[1].set_ylabel("Temperature (K)")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
     ax1 = axes[1].twinx()
-    ax1.plot(t, e_bat, label="E_bat", **plot_styles[5])
+    ax1.plot(t, e_bat, label="E_bat", **plot_styles[4])
     ax1.set_ylabel("Ws")
     ax1.legend(loc="upper right")
 
@@ -228,8 +224,8 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
     axes[2].grid(True)
     axes[2].set_xlabel("Time [h]")
     ax2 = axes[2].twinx()
-    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
-    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
+    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[3])
+    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[4])
     ax2.set_ylabel("Mass flow rates")
     ax2.legend(loc="upper right")
 
@@ -299,6 +295,6 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)

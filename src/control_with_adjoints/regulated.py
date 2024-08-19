@@ -4,8 +4,6 @@ from parameters import PARAMS, Y0
 from opt import Opt
 from utils import (
     get_dynamic_parameters,
-    cop,
-    get_dcopdT,
     get_solar_panels_depreciation_by_second,
     jax_to_numpy,
     get_battery_depreciation_by_joule,
@@ -353,7 +351,7 @@ def t_room_min_fun(
     u[3, :] = t_amb
     y = dae_forward(y0_arr, u, dae_p, h, n_steps)
     parameters["dae_last_forward_solution"] = y  # save solution for the backward pass
-    t_room_min = jnp.min(y[4])
+    t_room_min = jnp.min(y[3])
     return np.array(t_room_min)
 
 
@@ -782,7 +780,7 @@ if __name__ == "__main__":
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
 
-    y0_arr = np.array(list(Y0.values())[:5])  # get only state temperatures for dae
+    y0_arr = np.array(list(Y0.values())[:4])  # get only state temperatures for dae
     parameters["y0"] = Y0
     parameters["y0_arr"] = y0_arr
 

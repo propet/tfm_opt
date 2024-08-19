@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from scipy.optimize import fsolve
-from parameters import PARAMS, Y0
+from parameters import PARAMS, Y0_5eqs
 from utils import (
     get_dynamic_parameters,
     plot_styles,
@@ -69,7 +69,7 @@ def dae_system(y, y_prev, u, p, h):
     11) ∘ q_conduction_floor - m_dot_heating * cp_water * (t_tank - t_out_heating) = 0
     12) ∘ q_conduction_floor - U_tubes * A_tubes * DeltaT_tubes = 0
         --------------------------------------
-        ∘ DeltaT_tubes = ((t_tank - t_floor) + (t_out_heating - t_floor)) / 2
+        ∘ DeltaT_tubes = ((t_tank - t_floor) - (t_out_heating - t_floor)) / 2
         ∘ U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
         ∘ Nu_tube_water = (h_tube_water * tube_inner_diameter) / k_water
         ∘ Nu_tube_water = 0.023 * Re_tube_water**0.8 * Pr_water**(1/3)
@@ -110,15 +110,7 @@ def dae_system(y, y_prev, u, p, h):
         + U_windows * A_windows * (t_room - t_amb)
         = 0
 
-    We can also get T_out_heating from 15)
-    ∘ m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes = 0
-    and
-    ∘ DeltaT_tubes = ((t_tank - t_floor) + (t_out_heating - t_floor)) / 2 = (t_tank + t_out_heating - 2 * t_floor) / 2
-
-    giving:
-    18) t_out_heating = ((2 * A_tubes * U_tubes * t_floor - A_tubes * U_tubes * t_tank + 2 * cp_water * m_dot_heating * t_tank) / (A_tubes * U_tubes + 2 * cp_water * m_dot_heating))
-
-    Final system consist of equations 13), 19), 20), 17):
+    Final system consist of equations 13), 14), 15), 16), 17):
 
     ∘ cop(t_cond) * p_compressor - m_dot_cond * cp_water * (t_cond - t_tank) = 0
 
@@ -128,6 +120,8 @@ def dae_system(y, y_prev, u, p, h):
         + (m_dot_cond + m_dot_heating) * cp_water * t_tank
         + U_tank * A_tank * (t_tank - t_amb)
         = 0
+
+    ∘ m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes = 0
 
     ∘ floor_mass * cp_concrete * ((t_floor - t_floor_prev)/h)
         - m_dot_heating * cp_water * (t_tank - t_out_heating)
@@ -144,14 +138,15 @@ def dae_system(y, y_prev, u, p, h):
         = 0
 
 
-    4 equations for 4 unknowns:
-    t_cond, t_tank, t_floor, t_room
+    5 equations for 5 unknowns:
+    t_cond, t_tank, t_out_heating, t_floor, t_room
 
     Making:
     t_cond        = y[0]
     t_tank        = y[1]
-    t_floor       = y[2]
-    t_room        = y[3]
+    t_out_heating = y[2]
+    t_floor       = y[3]
+    t_room        = y[4]
 
     m_dot_cond    = u[0]
     m_dot_heating = u[1]
@@ -192,10 +187,11 @@ def dae_system(y, y_prev, u, p, h):
     t_cond = y[0]
     t_tank = y[1]
     t_tank_prev = y_prev[1]
-    t_floor = y[2]
-    t_floor_prev = y_prev[2]
-    t_room = y[3]
-    t_room_prev = y_prev[3]
+    t_out_heating = y[2]
+    t_floor = y[3]
+    t_floor_prev = y_prev[3]
+    t_room = y[4]
+    t_room_prev = y_prev[4]
 
     m_dot_cond = u[0]
     m_dot_heating = u[1]
@@ -252,12 +248,10 @@ def dae_system(y, y_prev, u, p, h):
         k_water,
         m_dot_heating,
     )
-
     U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
 
-    t_out_heating = (
-        2 * A_tubes * U_tubes * t_floor - A_tubes * U_tubes * t_tank + 2 * cp_water * m_dot_heating * t_tank
-    ) / (A_tubes * U_tubes + 2 * cp_water * m_dot_heating)
+    # Mean deltaT
+    DeltaT_tubes = (t_tank + t_out_heating - 2 * t_floor) / 2
 
     return [
         # 1
@@ -269,11 +263,13 @@ def dae_system(y, y_prev, u, p, h):
         + (m_dot_cond + m_dot_heating) * cp_water * t_tank
         + U_tank * A_tank * (t_tank - t_amb),
         # 3
+        m_dot_heating * cp_water * (t_tank - t_out_heating) - U_tubes * A_tubes * DeltaT_tubes,
+        # 4
         floor_mass * cp_concrete * ((t_floor - t_floor_prev) / h)
         - m_dot_heating * cp_water * (t_tank - t_out_heating)
         + h_floor_air * floor_area * (t_floor - t_room)
         + stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4),
-        # 4
+        # 5
         room_air_mass * cp_air * ((t_room - t_room_prev) / h)
         - h_floor_air * floor_area * (t_floor - t_room)
         - stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
@@ -351,7 +347,7 @@ def j_compressor_cost(y, u, p, h, excess_prices):
 
 
 def j_t_room_min(y, u, p, h):
-    t_room = y[3]
+    t_room = y[4]
     return jnp.min(t_room)
 
 
@@ -544,30 +540,23 @@ def plot_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, block
 
     t_cond = y[0]
     t_tank = y[1]
-    t_floor = y[2]
-    t_room = y[3]
+    t_out_heating = y[2]
+    t_floor = y[3]
+    t_room = y[4]
     m_dot_cond = u[0]
     m_dot_heating = u[1]
     p_compressor = u[2]
     t_amb = u[3]
-
     gravity_acceleration = dae_p[2]
     air_volumetric_expansion_coeff = dae_p[3]
     floor_width = dae_p[4]
     nu_air = dae_p[5]
     Pr_air = dae_p[6]
     k_air = dae_p[7]
-    tube_inner_diameter = dae_p[8]
     floor_area = dae_p[9]
     stefan_boltzmann_constant = dae_p[10]
     epsilon_concrete = dae_p[11]
     cp_water = dae_p[12]
-    mu_water_at_320K = dae_p[13]
-    Pr_water = dae_p[14]
-    k_water = dae_p[15]
-    k_pex = dae_p[16]
-    tube_thickness = dae_p[17]
-    A_tubes = dae_p[18]
     A_roof = dae_p[22]
 
     h_floor_air = get_h_floor_air(
@@ -582,19 +571,6 @@ def plot_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, block
         A_roof,
     )
 
-    h_tube_water = get_h_tube_water(
-        tube_inner_diameter,
-        mu_water_at_320K,
-        Pr_water,
-        k_water,
-        m_dot_heating,
-    )
-
-    U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
-    t_out_heating = (
-        2 * A_tubes * U_tubes * t_floor - A_tubes * U_tubes * t_tank + 2 * cp_water * m_dot_heating * t_tank
-    ) / (A_tubes * U_tubes + 2 * cp_water * m_dot_heating)
-
     q_conduction_floor = m_dot_heating * cp_water * (t_tank - t_out_heating)
     q_convection_floor = h_floor_air * floor_area * (t_floor - t_room)
     q_radiation_floor = stefan_boltzmann_constant * epsilon_concrete * floor_area * (t_floor**4 - t_room**4)
@@ -605,11 +581,12 @@ def plot_thermals(y, u, n_steps, dae_p, parameters, title=None, show=True, block
 
     axes[0].plot(t, t_cond, label="t_cond", **plot_styles[0])
     axes[0].plot(t, t_tank, label="t_tank", **plot_styles[1])
-    axes[0].plot(t, t_floor, label="t_floor", **plot_styles[2])
-    axes[0].plot(t, t_room, label="t_room", **plot_styles[3])
+    axes[0].plot(t, t_out_heating, label="t_out_heating", **plot_styles[2])
+    axes[0].plot(t, t_floor, label="t_floor", **plot_styles[3])
+    axes[0].plot(t, t_room, label="t_room", **plot_styles[4])
     axes[0].legend(loc="upper left")
     ax0 = axes[0].twinx()
-    ax0.plot(t, t_amb, label="t_amb", **plot_styles[4])
+    ax0.plot(t, t_amb, label="t_amb", **plot_styles[5])
     ax0.legend(loc="upper right")
 
     axes[1].plot(t, q_conduction_floor, label="q_conduction_floor", **plot_styles[0])
@@ -643,8 +620,9 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     # States
     t_cond = y[0]
     t_tank = y[1]
-    t_floor = y[2]
-    t_room = y[3]
+    t_out_heating = y[2]
+    t_floor = y[3]
+    t_room = y[4]
 
     # Controls
     m_dot_cond = u[0]
@@ -659,17 +637,10 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     nu_air = dae_p[5]
     Pr_air = dae_p[6]
     k_air = dae_p[7]
-    tube_inner_diameter = dae_p[8]
     floor_area = dae_p[9]
     stefan_boltzmann_constant = dae_p[10]
     epsilon_concrete = dae_p[11]
     cp_water = dae_p[12]
-    mu_water_at_320K = dae_p[13]
-    Pr_water = dae_p[14]
-    k_water = dae_p[15]
-    k_pex = dae_p[16]
-    tube_thickness = dae_p[17]
-    A_tubes = dae_p[18]
     A_roof = dae_p[22]
 
     h_floor_air = get_h_floor_air(
@@ -683,19 +654,6 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
         k_air,
         A_roof,
     )
-
-    h_tube_water = get_h_tube_water(
-        tube_inner_diameter,
-        mu_water_at_320K,
-        Pr_water,
-        k_water,
-        m_dot_heating,
-    )
-
-    U_tubes = 1 / ((1 / h_tube_water) + (1 / (k_pex / tube_thickness)))
-    t_out_heating = (
-        2 * A_tubes * U_tubes * t_floor - A_tubes * U_tubes * t_tank + 2 * cp_water * m_dot_heating * t_tank
-    ) / (A_tubes * U_tubes + 2 * cp_water * m_dot_heating)
 
     q_conduction_floor = m_dot_heating * cp_water * (t_tank - t_out_heating)
     q_convection_floor = h_floor_air * floor_area * (t_floor - t_room)
@@ -713,9 +671,10 @@ def save_simulation_plots(y, u, n_steps, dae_p, parameters):
     fig, ax = plt.subplots(figsize=(8.27, 2.4))  # A4: (8.27, 11.69)
     ax.plot(t, t_cond, label="Salida bomba calor", **plot_styles[0])
     ax.plot(t, t_tank, label="Tanque", **plot_styles[1])
-    ax.plot(t, t_floor, label="Suelo", **plot_styles[2])
-    ax.plot(t, t_room, label="Habitación", **plot_styles[3])
-    ax.plot(t, t_amb, label="Ambiente", **plot_styles[4])
+    ax.plot(t, t_out_heating, label="Salida suelo", **plot_styles[2])
+    ax.plot(t, t_floor, label="Suelo", **plot_styles[3])
+    ax.plot(t, t_room, label="Habitación", **plot_styles[4])
+    ax.plot(t, t_amb, label="Ambiente", **plot_styles[5])
     ax.set_ylabel("Temperatura [ºC]")
     ax.grid(True)
     ax.set_xticklabels([])  # Hide x-axis labels
@@ -963,7 +922,7 @@ def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True
 
 def get_costs(histories, y, u, parameters):
     # States
-    t_room = y[3]
+    t_room = y[4]
 
     # Design variables
     p_compressor = histories["p_compressor"][-1]
@@ -1014,7 +973,7 @@ def plot_history(hist, only_last=True):
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     n_steps = parameters["t_amb"].shape[0]
-    y0 = np.array(list(Y0.values())[:4])  # get only state temperatures for dae
+    y0 = np.array(list(Y0_5eqs.values())[:5])  # get only state temperatures for dae
     parameters["y0"] = y0
 
     if only_last:
@@ -1079,6 +1038,7 @@ def plot_history(hist, only_last=True):
             plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
             # save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
+
             # Print statistics
             costs = get_costs(histories, y, u, parameters)
             print(costs)
@@ -1109,9 +1069,10 @@ def main():
 
     # t_cond        = y[0]
     # t_tank        = y[1]
-    # t_floor       = y[2]
-    # t_room        = y[3]
-    y0 = np.array(list(Y0.values())[:4])  # get only state temperatures for dae
+    # t_out_heating = y[2]
+    # t_floor       = y[3]
+    # t_room        = y[4]
+    y0 = np.array(list(Y0_5eqs.values())[:5])  # get only state temperatures for dae
     parameters["y0"] = y0
 
     # m_dot_cond    = u[0]
@@ -1250,6 +1211,6 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
+    main()
+    # plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
     # plot_history(hist="saves/control_sand_regulated.hst", only_last=True)

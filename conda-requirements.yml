@@ -21,3 +21,4 @@ dependencies:
   - jax
   - imageio
   - pygments
+  - sympy

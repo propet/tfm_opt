@@ -45,20 +45,13 @@ fórmulas \eqref{eq:q_conduccion_2}, \eqref{eq:floor_energy_conservation}, y
 	                                                                         & = 0  \label{eq:sys_5}
 \end{align}
 
-También podríamos haber despejado $\dot{m}_{cale}$ de \eqref{eq:sys_3} y
-reemplazado en \eqref{eq:sys_4} y \eqref{eq:sys_5}, para deshacernos de otra
-expresión, a costa de oscurecer un poco más las identidades \eqref{eq:sys_4} y
-\eqref{eq:sys_5}.
-
 
 \subsection{Resolución con euler implícito y Newton-Raphson}
 
 Finalmente, con las igualdades \eqref{eq:sys_1}, \eqref{eq:sys_2},
 \eqref{eq:sys_3}, \eqref{eq:sys_4} y \eqref{eq:sys_5}, tenemos un sistema de 5
-ecuaciones
-
-para 5 incógnitas: $T_{cond}$, $T_{tanque}$, $T_{cale}$, $T_{suelo}$ y
-$T_{habitacion}$. Teniendo 4 variables de control: $\dot{m}_{cond}$,
+ecuaciones para 5 incógnitas: $T_{cond}$, $T_{tanque}$, $T_{cale}$, $T_{suelo}$
+y $T_{habitacion}$. Teniendo 4 variables de control: $\dot{m}_{cond}$,
 $\dot{m}_{cale}$, $P_{bomba}$ y $T_{amb}$, aunque realmente la temperatura
 ambiente no sea una variable que podamos controlar.
 
