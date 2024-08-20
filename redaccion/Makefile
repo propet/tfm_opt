@@ -5,7 +5,7 @@ MAIN = main
 
 # Compiling command
 LATEX = pdflatex -shell-escape
-BIBER = biber  # Uncomment if you use BibLaTeX
+BIBER = biber
 
 # List of included files
 DEPS = main.tex \
@@ -13,9 +13,9 @@ DEPS = main.tex \
        capitulos/introduccion/main.tex \
        capitulos/objetivos/main.tex \
        capitulos/metodologia/main.tex \
+       capitulos/adquisicion_de_datos/main.tex \
        capitulos/resultados_discusion/main.tex \
        capitulos/conclusiones/main.tex \
-       capitulos/bibliografia/main.tex \
        capitulos/planificacion_presupuesto/main.tex \
 
 # Main build target

@@ -2369,6 +2369,8 @@
     <bcf:citekey order="6" intorder="1">podder2019mppt</bcf:citekey>
     <bcf:citekey order="7" intorder="1">incropera1996fundamentals</bcf:citekey>
     <bcf:citekey order="8" intorder="1">cengel2007transferencia</bcf:citekey>
+    <bcf:citekey order="9" intorder="1">Wu2020</bcf:citekey>
+    <bcf:citekey order="10" intorder="1">wachter2006implementation</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">
