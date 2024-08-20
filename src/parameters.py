@@ -2,7 +2,7 @@ PARAMS = {
     "H": 1000,  # stepsize [s]
     # "H": 100,  # stepsize [s]
     # "H": 10,  # stepsize [s]
-    # "T0": 150 * 24 * 3600,
+    # "T0": 200 * 24 * 3600,
     "T0": 0,
     # "HORIZON": 10000,  # s
     # "HORIZON": 365 * 24 * 3600,  # s

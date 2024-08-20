@@ -52,7 +52,7 @@ def obj_fun(
         # ∘ depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
         # ∘ depreciate heat pump by usage
-        + jnp.sum(h * jnp.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max))
+        + jnp.sum(h * p_compressor * get_hp_depreciation_by_joule(p_compressor_max))
         # ∘ depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
         # t_target difference penalization

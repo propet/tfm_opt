@@ -96,7 +96,7 @@ def get_hp_depreciation_by_joule(hp_power):
     """
     hp_power [W]: maximum power for compressor, not heat capacity
     """
-    years_lifespan = 20
+    years_lifespan = 10
     seconds_in_year = 365 * 24 * 3600
     seconds_in_lifespan = seconds_in_year * years_lifespan
     cost0 = 871.9339209961945  # from linear regression
@@ -128,8 +128,8 @@ def get_battery_depreciation_by_joule(e_bat_max):
     cost = cost0 + slope * e_bat_max
 
     # https://cdn.autosolar.es/pdf/fichas-tecnicas/Bat-LFP-12,8-25,6V-Smart-ES.pdf
-    # n_cycles = 3000
-    n_cycles = 6000
+    n_cycles = 3000
+    # n_cycles = 6000
     dod = 0.7
 
     # Depreciate by how much energy has been transferred

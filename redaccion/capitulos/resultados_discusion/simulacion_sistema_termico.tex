@@ -271,11 +271,11 @@ y los siguientes controles:
 	\end{cases}
 \end{equation}
 
-$T$ siendo el periodo de simulación de 7 días, y $T_{amb}$ la temperatura
-ambiente para estos.
+sisendo $T$ el periodo de simulación, los 7 primeros días del año 2022, y
+$T_{amb}$ la temperatura ambiente para estos.
 
-El resultado se aprecia en la figura \ref{fig:simulacion_1}.
-Donde el primer gráfico muestra la evolución de las temperaturas,
+El resultado se aprecia en la figura \ref{fig:simulacion_1_h:100s},
+donde el primer gráfico muestra la evolución de las temperaturas,
 mantiéndose siempre
 
 \begin{equation*}
@@ -283,16 +283,16 @@ mantiéndose siempre
 \end{equation*}
 
 En la segunda ilustración vemos las tasas de calor por transferencia de calor
-por conducción (de los tubos a la losa de suelo), y por radiación y convección
+por conducción (de los tubos a la losa de suelo), por radiación y convección
 natural, del suelo al aire de la habitación.
 
 El suelo principalmente calienta por radiación, y la aportación por
 convección es alrededor de un tercio de esta.
 
 Cuando la losa de hormigón recibe más calor del agua de la calefacción
-(conducción) que evacúa en la habitación, observamos su temperatura aumentar.
-Para más claridad se ha representado la suma de los términos convectivo y
-radiativo.
+(conducción) que evacúa en la habitación, observamos su temperatura aumentar, y
+viceversa. Para más claridad se ha representado la suma de los términos
+convectivo y radiativo.
 
 En las dos últimas gráficas aparecen las variables de control empleadas: los
 caudales dirigidos a la calefacción del suelo radiante, y de la bomba de calor
@@ -304,9 +304,9 @@ sistema.
 
 \begin{figure}[h] \centering
 	\centering
-	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/simulacion_1}
+	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/simulacion_1_h:100s}
 	\caption{Simulación del sistema térmico con paso $h=100[s]$.}
-	\label{fig:simulacion_1}
+	\label{fig:simulacion_1_h:100s}
 \end{figure}
 
 
@@ -317,31 +317,32 @@ modelo. Y reducimos progresivamente el tamaño del paso hasta que la solución
 converja.
 
 En este caso tenemos una respuesta lenta, debido a las inercias térmicas de
-tanto depósito, como suelo radiante y habitación. De modo que hemos empleado en
+tanto depósito, como suelo radiante y habitación, de modo que hemos empleado en
 lo siguiente un paso de 1000 segundos, al no apreciar diferencia en los
-resultados que se arrojan (figura \ref{fig:simulacion_2_h:1000}), y así no tenemos la necesidad de considerar tantas
-variables de diseño en nuestros estudios de control óptimo, donde a cada paso
-elegimos qué caudales y potencia destinar a la bomba de calor.
+resultados que se arrojan (figura \ref{fig:simulacion_2_h:1000s}), y así no
+tenemos la necesidad de considerar tantas variables de diseño en nuestros
+estudios de control óptimo, donde a cada paso elegimos qué caudales y potencia
+destinar a la bomba de calor.
 
 \begin{figure}[h] \centering
 	\centering
 	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/simulacion_2_h:1000s}
 	\caption{Temperaturas del sistema térmico con paso $h=1000[s]$.}
-	\label{fig:simulacion_2_h:1000}
+	\label{fig:simulacion_2_h:1000s}
 \end{figure}
 
 Tampoco usamos un paso mayor que este porque el sistema eléctrico con el que
 vamos a optimizar conjuntamente el sistema, tiene una dinámica horaria
 (precios, potencias solares dadas por los paneles y demanda eléctrica del
-domicilio se dan horariamente), y es recomendable usar un paso alrededor de un order
+domicilio se dan horariamente), y es recomendable usar un paso alrededor de un orden
 de magnitud menor que la dinámica más rápida.
 
 En el extremo donde se dan respuestas muy rápidas y también muy lentas, se
-habla de un sistema rígido, en referencia de un péndulo con un periodo
-asociado, pero que además tiene otra oscilación mucho más rápida en su cuerpo,
+habla de un sistema rígido, en referencia a un péndulo con un periodo
+asociado, que además tiene otra oscilación mucho más rápida en su cuerpo,
 que puede modelarse como un resorte rígido (figura \ref{fig:stiff_system}). El
 problema que existe en estas circunstancias es que para simular el
-comportamiento del péndulo, debemos de usar un paso muy pequeño, del orden de
+comportamiento del péndulo debemos de usar un paso muy pequeño, del orden de
 la velocidad del resorte rígido, lo que puede llevar a costes computacionales
 muy grandes en la simulación.
 
