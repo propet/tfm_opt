@@ -779,9 +779,8 @@ def plot_full(y, u, i, histories, parameters, title=None, show=True, block=True,
     # States
     t_cond = y[0]
     t_tank = y[1]
-    t_out_heating = y[2]
-    t_floor = y[3]
-    t_room = y[4]
+    t_floor = y[2]
+    t_room = y[3]
 
     # Controls
     m_dot_cond = u[0]
@@ -833,15 +832,14 @@ def plot_full(y, u, i, histories, parameters, title=None, show=True, block=True,
 
     # Second subplot for temperatures
     axes[1].plot(t, t_tank, label="t_tank", **plot_styles[0])
-    axes[1].plot(t, t_out_heating, label="t_out_heating", **plot_styles[1])
-    axes[1].plot(t, t_floor, label="t_floor", **plot_styles[2])
-    axes[1].plot(t, t_room, label="t_room", **plot_styles[3])
-    axes[1].plot(t, t_amb, label="t_amb", **plot_styles[4])
+    axes[1].plot(t, t_floor, label="t_floor", **plot_styles[1])
+    axes[1].plot(t, t_room, label="t_room", **plot_styles[2])
+    axes[1].plot(t, t_amb, label="t_amb", **plot_styles[3])
     axes[1].set_ylabel("Temperature (K)")
     axes[1].legend(loc="upper left")
     axes[1].grid(True)
     ax1 = axes[1].twinx()
-    ax1.plot(t, e_bat, label="E_bat", **plot_styles[5])
+    ax1.plot(t, e_bat, label="E_bat", **plot_styles[4])
     ax1.set_ylabel("Ws")
     ax1.legend(loc="upper right")
 
@@ -879,9 +877,8 @@ def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True
     # States
     t_cond = y[0] - 273  # K to ºC
     t_tank = y[1] - 273  # K to ºC
-    t_out_heating = y[2] - 273  # K to ºC
-    t_floor = y[3] - 273  # K to ºC
-    t_room = y[4] - 273  # K to ºC
+    t_floor = y[2] - 273  # K to ºC
+    t_room = y[3] - 273  # K to ºC
 
     # Controls
     m_dot_cond = u[0]
@@ -937,10 +934,9 @@ def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True
     fig, ax = plt.subplots(figsize=(8.27, 2.4))
     ax.plot(t, t_cond, label="Salida bomba calor", **plot_styles[0])
     ax.plot(t, t_tank, label="Tanque", **plot_styles[1])
-    ax.plot(t, t_out_heating, label="Salida suelo", **plot_styles[2])
-    ax.plot(t, t_floor, label="Suelo", **plot_styles[3])
-    ax.plot(t, t_room, label="Habitación", **plot_styles[4])
-    ax.plot(t, t_amb, label="Ambiente", **plot_styles[5])
+    ax.plot(t, t_floor, label="Suelo", **plot_styles[2])
+    ax.plot(t, t_room, label="Habitación", **plot_styles[3])
+    ax.plot(t, t_amb, label="Ambiente", **plot_styles[4])
     ax.set_ylabel("Temperatura [ºC]")
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
@@ -1087,9 +1083,9 @@ def plot_history(hist, only_last=True):
         if only_last:
             title = hist.replace(".hst", "")
             title = title.replace("saves/", "")
-            # save_plots(y, u, i, histories, parameters, title=title, save=False, show=True)
+            save_plots(y, u, i, histories, parameters, title=title, save=False, show=True)
             # plot_full(y, u, i, histories, parameters, save=False, show=True)
-            plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
+            # plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
             # save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
             # Print statistics
@@ -1263,6 +1259,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-    # plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
+    # main()
+    plot_history(hist="saves/control_adjoints_regulated.hst", only_last=True)
     # plot_history(hist="saves/control_sand_regulated.hst", only_last=True)

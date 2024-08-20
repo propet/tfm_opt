@@ -1,19 +1,158 @@
 Aquí integramos los grupos eléctrico y térmico para minimizar el coste de
 operación de la instalación bajo una tarifa regulada de compensación de
-excedentes con energía solar.
-
-Tenemos como variables de diseño las señales de control: potencia a baterías,
-potencia a bomba de calor, caudales de agua por el suelo radiante y bomba de
-calor.
+excedentes con energía solar, con función objetivo \eqref{eq:cost_regulated}.
 
 Y planteamos el problema de dos formas diferentes. Primero obteniendo los
 gradientes del sistema térmico con el método de gradientes adjuntos discretos,
 y después con un método 'all-at-once', donde introducimos las ecuaciones
 térmicas como restricciones al problema de optimización.
 
+Hemos empleado el framework de optimización pyOptSparse \cite{Wu2020}, que
+permite el uso de matrices dispersas y es mayormente agnóstico frente al uso de
+un optimizador u otro, aunque se ha empleado principalmente el optimizador
+Ipopt \cite{wachter2006implementation}, algoritmo open-source de punto
+interior adecuado para problemas no-lineales de gran escala.
 
 \subsection{Derivadas adjuntas}
 
+El problema de optimización a resolver es:
+
+\begin{align}
+	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                        \\
+	\text{sujeto a} \quad   &                                                                                                                                        \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                     & \forall k \\
+	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                   & \forall k \\
+	                        & min(T_{habitacion}) \geq T_{objetivo}                                               \label{eq:min_t_habitacion_constraint}             \\
+	\text{condiciones iniciales} \quad                                                                                                                               \\
+	                        & P_{bat_0} = 0                                                                                                                          \\
+	                        & e_0 = \text{SOC}_{min} \cdot e_{max}                                                                                                   \\
+	\text{límites} \quad    &                                                                                                                                        \\
+	                        & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                                                              & \forall k \\
+	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad                                         & \forall k \\
+	                        & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                                                     & \forall k \\
+	                        & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                                                     & \forall k \\
+	                        & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                                                    & \forall k \\
+	                        & 0 \leq \dot{m}_{suelo_k} \leq \dot{m}_{suelo_{max}} \quad                                                                  & \forall k \\
+\end{align}
+
+
+donde $\mathbf{x}$ es el vector de variables de diseño: $P_{bomba}$, $P_{bat}$,
+$\dot{m}_{cond}$ y $\dot{m}_{suelo}$. Cada una de ellas con tantos elementos
+como pasos en la simulación, siendo k el índice, o número de paso.
+
+Las dos primeras restricciones representan el balance de potencias y dinámica
+de la batería a cada paso, respectivamente, mientras que la tercera
+\eqref{eq:min_t_habitacion_constraint} es una condición sobre el sistema
+térmico.
+
+Para obtener la temperatura mínima de la habitación a lo largo de la evolución
+de este sistema, tenemos que resolver implícitamente el sistema de ecuaciones
+algebraicas diferenciales de la sección \ref{subsec:reduced_system}.
+
+$min(T_{habitacion})$ es realmente un valor que disponemos a través de la
+solución del sistema térmico, y una función que agrega los estados y controles
+en un único resultado, en este caso es el valor mínimo de todos los
+$T_{habitacion_k}$.
+
+\begin{minted}{python}
+def j_t_room_min(y, u, p, h):
+    """
+    y: State variables (t_cond, t_tank, t_floor, t_room)
+    u: Control variables (m_dot_cond, m_dot_heating, p_compressor, t_amb)
+    p: Parameters
+    h: Step size
+
+    Returns:
+    float: The minimum room temperature.
+    """
+    t_room = y[3]
+    return jnp.min(t_room)
+
+
+y = solve(y0, u, dae_p, h, n_steps)  # solve DAE system
+t_room_min = j_t_room_min(y, u, p, h)  # aggregation function
+\end{minted}
+
+
+y ya que la función 'j\_t\_room\_min' que nos devuelve el valor de la
+$min(T_{habitacion})$ dependiendo de las variables de diseño $P_{bomba}$,
+$\dot{m}_{cond}$ y $\dot{m}_{suelo}$, es clave que podamos calcular los
+gradientes de este valor respecto de las variables de diseño. Necesitamos las
+derivadas:
+
+\begin{equation*}
+  \frac{d \min(T_{habitacion})}{d P_{bomba_k}}, \quad \frac{d \min(T_{habitacion})}{d \dot{m}_{cond_k}}, \quad \frac{d \min(T_{habitacion})}{d \dot{m}_{suelo_k}}
+\end{equation*}
+
+y convenientemente podemos averiguarlas usando el método de los gradientes
+adjuntos discretos, explicado en la sección \ref{sec:adjoints}.
+
+Tenemos una primera evaluación de esta función en la que aprovechamos a guardar
+los estados $y$ solución
+
+\begin{minted}{python}
+def t_room_min_fun(
+    y0_arr,
+    m_dot_cond,
+    m_dot_heating,
+    p_compressor,
+    t_amb,
+    dae_p,
+    h,
+    n_steps,
+):
+    # t_target < t_room_min
+    # where t_room_min is result of solving the thermal system DAE
+    u = np.zeros((4, n_steps))
+    u[0, :] = m_dot_cond
+    u[1, :] = m_dot_heating
+    u[2, :] = p_compressor
+    u[3, :] = t_amb
+    y = dae_forward(y0_arr, u, dae_p, h, n_steps)
+    parameters["dae_last_forward_solution"] = y  # save solution for the backward pass
+    t_room_min = jnp.min(y[3])
+    return np.array(t_room_min)
+\end{minted}
+
+y a la hora de calcular las derivadas, rescatamos este vector $y$ y lo
+proporcionamos para de forma análoga a la diferenciación automática en modo
+inverso, propagar los gradientes desde la salida hasta el inicio.
+
+\begin{minted}{python}
+y = parameters["dae_last_forward_solution"]  # get solution from last forward pass
+dj_dy0, dj_dp, dj_du = dae_adjoints(
+    y,
+    u,
+    dae_p,
+    h,
+    n_steps,
+    dae_system,
+    j_t_room_min,
+    j_extra_args=(),
+)
+\end{minted}
+
+De forma general obtenemos los gradientes respecto de todas la variables de
+control $u$, los parametros $p$, y las condiciones iniciales $y0$, aunque aquí
+solo estamos interesados en 'dj\_du', los gradientes de la función agregación
+que nos devuelve la temperatura mínima de la habitación a lo largo de la
+trayectoria respecto de las variables de control, que se corresponden con
+nuestras variables de diseño.
+
+
+En la figura \ref{fig:control_adjoints_7_days} vemos la optimización realizada
+para un periodo de 7 días
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/control_adjoints_7_days}
+	\caption{Sistema rígido.}
+	\label{fig:control_adjoints_7_days}
+\end{figure}
+
+
+
+\clearpage
 \subsection{SAND}
 
 aqui vemos que SAND es superior a MDF, en caso de ser viable su uso,

@@ -231,7 +231,7 @@ semejante a la bomba de calor, con una longevidad del equipo de 10 años.
 
 \begin{equation} \label{eq:cost_regulated}
 	\begin{split}
-		\text{Coste\_Autoconsumo\_Total} = & \max \left(0, \sum_{t=1}^{T} h \cdot \max(\text{precio}_\text{pvpc}(t) \cdot P_{red}(t), \text{precio}_\text{diario}(t) \cdot P_{red}(t)) \right) \\
+		\text{Coste\_Autoconsumo} = & \max \left(0, \sum_{t=1}^{T} h \cdot \max(\text{precio}_\text{pvpc}(t) \cdot P_{red}(t), \text{precio}_\text{diario}(t) \cdot P_{red}(t)) \right) \\
 		                                   & + \sum_{t=1}^{T} h \cdot C_\text{fijo}(P_\text{red,max})                                                                                          \\
 		                                   & + \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot D_\text{bat}(e_\text{bat,max})                                                                   \\
 		                                   & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                                                                                        \\

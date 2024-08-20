@@ -278,6 +278,91 @@
       \field{pages}{1615\bibrangedash 1632}
       \range{pages}{18}
     \endentry
+    \entry{wachter2006implementation}{article}{}
+      \name{author}{2}{}{%
+        {{hash=dc724f071bd0fcc1e9eabf5f96209481}{%
+           family={Wächter},
+           familyi={W\bibinitperiod},
+           given={Andreas},
+           giveni={A\bibinitperiod}}}%
+        {{hash=b4cf951e494c45f4de462df04ec3b5df}{%
+           family={Biegler},
+           familyi={B\bibinitperiod},
+           given={Lorenz\bibnamedelima T},
+           giveni={L\bibinitperiod\bibinitdelim T\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{842d46b1a24346d113a0e8274fa09dd0}
+      \strng{fullhash}{842d46b1a24346d113a0e8274fa09dd0}
+      \strng{bibnamehash}{842d46b1a24346d113a0e8274fa09dd0}
+      \strng{authorbibnamehash}{842d46b1a24346d113a0e8274fa09dd0}
+      \strng{authornamehash}{842d46b1a24346d113a0e8274fa09dd0}
+      \strng{authorfullhash}{842d46b1a24346d113a0e8274fa09dd0}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Mathematical programming}
+      \field{title}{On the implementation of an interior-point filter line-search algorithm for large-scale nonlinear programming}
+      \field{volume}{106}
+      \field{year}{2006}
+      \field{pages}{25\bibrangedash 57}
+      \range{pages}{33}
+    \endentry
+    \entry{Wu2020}{article}{}
+      \name{author}{5}{}{%
+        {{hash=b697f47c993b4608f1af17011e23a99d}{%
+           family={Wu},
+           familyi={W\bibinitperiod},
+           given={Ella},
+           giveni={E\bibinitperiod}}}%
+        {{hash=06c3eaedf5139413492e8bbb7beb73ce}{%
+           family={Kenway},
+           familyi={K\bibinitperiod},
+           given={Gaetan},
+           giveni={G\bibinitperiod}}}%
+        {{hash=8097870924fb461cfa6887351b0ee538}{%
+           family={Mader},
+           familyi={M\bibinitperiod},
+           given={Charles\bibnamedelima A.},
+           giveni={C\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=a8243f5caa9406aa3d7e3e69c10ad85f}{%
+           family={Jasa},
+           familyi={J\bibinitperiod},
+           given={John},
+           giveni={J\bibinitperiod}}}%
+        {{hash=f78019558101a841974c5f3b5a885657}{%
+           family={Martins},
+           familyi={M\bibinitperiod},
+           given={Joaquim\bibnamedelimb R.\bibnamedelimi R.\bibnamedelimi A.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod\bibinitdelim R\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {The Open Journal}%
+      }
+      \strng{namehash}{72fbbe8622a137c0904b90b0d5df300e}
+      \strng{fullhash}{f7a033829229662694c6d392f93586cd}
+      \strng{bibnamehash}{72fbbe8622a137c0904b90b0d5df300e}
+      \strng{authorbibnamehash}{72fbbe8622a137c0904b90b0d5df300e}
+      \strng{authornamehash}{72fbbe8622a137c0904b90b0d5df300e}
+      \strng{authorfullhash}{f7a033829229662694c6d392f93586cd}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Open Source Software}
+      \field{number}{54}
+      \field{title}{pyOptSparse: A Python framework for large-scale constrained nonlinear optimization of sparse systems}
+      \field{volume}{5}
+      \field{year}{2020}
+      \field{pages}{2564}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.21105/joss.02564
+      \endverb
+    \endentry
   \enddatalist
 \endrefsection
 \endinput
