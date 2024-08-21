@@ -961,13 +961,19 @@ def save_plots(y, u, i, histories, parameters, title=None, show=True, block=True
     ax.set_ylabel("Potencia [kW]")
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
-    ax.set_xlabel("Tiempo [h]")
-    # ax_right = ax.twinx()
-    # ax_right.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
-    # ax_right.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
-    # ax_right.set_ylabel("Mass Flow Rates")
-    # ax_right.legend(loc="upper right", fontsize=8)
+    ax.set_xticklabels([])  # Hide x-axis labels
+    ax.set_xlabel("")  # Remove x-axis label
     save_plot(fig, ax, f"saves/plot_{title}_controls.svg")
+
+    # Plot: flows
+    fig, ax = plt.subplots(figsize=(8.27, 2))
+    ax.plot(t, m_dot_cond, label="Bomba de calor", **plot_styles[0])
+    ax.plot(t, m_dot_heating, label="Suelo radiante", **plot_styles[1])
+    ax.set_ylabel(r"Caudal de agua $[kg \cdot s^{-1}]$")
+    ax.set_xlabel("Tiempo [h]")
+    ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    ax.grid(True)
+    save_plot(fig, ax, f"saves/plot_{title}_flows.svg")
 
 
 def get_costs(histories, y, u, parameters):

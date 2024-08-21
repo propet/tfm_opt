@@ -1244,7 +1244,7 @@ def run_optimization(parameters, plot=True):
         "name": "t_floor",
         "n_params": n_steps,
         "type": "c",
-        "lower": 253,
+        "lower": 273,
         "upper": 500,
         "initial_value": history["t_floor"][-1] if history else 300,
         "scale": 1 / 300,

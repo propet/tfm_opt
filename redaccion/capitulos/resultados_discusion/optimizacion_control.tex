@@ -18,21 +18,21 @@ interior adecuado para problemas no-lineales de gran escala.
 El problema de optimización a resolver es:
 
 \begin{align}
-	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                        \\
-	\text{sujeto a} \quad   &                                                                                                                                        \\
-	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                     & \forall k \\
-	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                   & \forall k \\
-	                        & min(T_{habitacion}) \geq T_{objetivo}                                               \label{eq:min_t_habitacion_constraint}             \\
-	\text{condiciones iniciales} \quad                                                                                                                               \\
-	                        & P_{bat_0} = 0                                                                                                                          \\
-	                        & e_0 = \text{SOC}_{min} \cdot e_{max}                                                                                                   \\
-	\text{límites} \quad    &                                                                                                                                        \\
-	                        & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                                                              & \forall k \\
-	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad                                         & \forall k \\
-	                        & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                                                     & \forall k \\
-	                        & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                                                     & \forall k \\
-	                        & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                                                    & \forall k \\
-	                        & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                                                                    & \forall k \\
+	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                            \\
+	\text{sujeto a} \quad   &                                                                                                                                            \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                     & \forall k     \\
+	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                   & \forall k > 0 \\
+	                        & min(T_{habitacion}) \geq T_{objetivo}                                               \label{eq:min_t_habitacion_constraint}                 \\
+	\text{condiciones iniciales} \quad                                                                                                                                   \\
+	                        & P_{bat_0} = 0                                                                                                                              \\
+	                        & e_0 = \text{SOC}_{min} \cdot e_{max}                                                                                                       \\
+	\text{límites} \quad    &                                                                                                                                            \\
+	                        & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                                                              & \forall k     \\
+	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad                                         & \forall k     \\
+	                        & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                                                     & \forall k     \\
+	                        & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                                                     & \forall k     \\
+	                        & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                                                    & \forall k     \\
+	                        & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                                                                    & \forall k
 \end{align}
 
 
@@ -155,5 +155,51 @@ para un periodo de 7 días
 \clearpage
 \subsection{SAND}
 
-aqui vemos que SAND es superior a MDF, en caso de ser viable su uso,
-y por tanto a partir de ahora estudiamos solo el uso de SAND
+El problema de optimización a resolver es:
+
+\begin{align}
+	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                                \\
+	\text{sujeto a} \quad   &                                                                                                                                                \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                         & \forall k     \\
+	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                       & \forall k > 0 \\
+	                        & \text{cop}(T_{cond_k}) \cdot P_{bomba_k} \nonumber                                                                                             \\
+	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot (T_{cond_k} - T_{tanque_k}) = 0 \label{eq:sys_1_sand}                           & \forall k > 0 \\
+	                        & m_{tanque} \cdot cp_{agua} \cdot ( T_{tanque_k} - T_{tanque_{k-1}}) / h  \nonumber                                                             \\
+	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot T_{cond_k} \nonumber                                                                            \\
+	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot T_{cale_k} \nonumber                                                                            \\
+	                        & \quad + (\dot{m}_{cond_k} + \dot{m}_{cale_k}) \cdot cp_{agua} \cdot T_{tanque_k} \nonumber                                                     \\
+	                        & \quad + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque_k} - T_{amb_k}) = 0 \label{eq:sys_2_sand}                                 & \forall k > 0 \\
+	                        & m_{suelo} \cdot cp_{suelo} \cdot ( T_{suelo_k} - T_{suelo_{k-1}}) / h \nonumber                                                                \\
+	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot (T_{tanque_k} - T_{cale_k})                             \nonumber                               \\
+	                        & \quad + h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})                             \nonumber                               \\
+	                        & \quad + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4) = 0  \label{eq:sys_3_sand} & \forall k > 0 \\
+	                        & m_{aire} \cdot cp_{aire} \cdot ( T_{habitacion_k} - T_{habitacion_{k-1}}) / h  \nonumber                                                       \\
+	                        & \quad - h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})  \nonumber                                                          \\
+	                        & \quad - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4)  \nonumber                                 \\
+	                        & \quad + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                                           \\
+	                        & \quad + U_{techo} \cdot A_{techo} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                                               \\
+	                        & \quad + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion_k} - T_{amb_k}) = 0  \label{eq:sys_4_sand}                        & \forall k > 0
+\end{align}
+
+con los límites:
+
+\begin{align}
+	 & T_{objetivo} \leq T_{habitacion_k} \leq 500[K]  \label{eq:min_t_habitacion_constraint_sand} & \forall k \\
+	 & 273[K] \leq T_{cond_k}, T_{tanque_k}, T_{suelo_k} \leq 500[K]                               & \forall k \\
+	 & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                               & \forall k \\
+	 & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad          & \forall k \\
+	 & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                      & \forall k \\
+	 & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                      & \forall k \\
+	 & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                     & \forall k \\
+	 & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                                     & \forall k
+\end{align}
+
+y teniendo como condiciones iniciales para las variables de estado:
+
+\begin{align}
+	 & e_0 = \text{SOC}_{min} \cdot e_{max} \\
+	 & T_{cond_0} = 296.56 [K]              \\
+	 & T_{tanque_0} = 296.05[K]             \\
+	 & T_{suelo_0} = 295.27[K]              \\
+	 & T_{habitacion_0} = 293.47[K]         \\
+\end{align}
