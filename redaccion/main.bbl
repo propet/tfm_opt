@@ -278,6 +278,32 @@
       \field{pages}{1615\bibrangedash 1632}
       \range{pages}{18}
     \endentry
+    \entry{shewchuk1994introduction}{article}{}
+      \true{moreauthor}
+      \true{morelabelname}
+      \name{author}{1}{}{%
+        {{hash=19892fe98fc08cb8c38ec8b806632cd9}{%
+           family={Shewchuk},
+           familyi={S\bibinitperiod},
+           given={Jonathan\bibnamedelima Richard},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Carnegie-Mellon University. Department of Computer Science Pittsburgh}%
+      }
+      \strng{namehash}{21b43fdbea26e551af2fd914c707e82e}
+      \strng{fullhash}{21b43fdbea26e551af2fd914c707e82e}
+      \strng{bibnamehash}{21b43fdbea26e551af2fd914c707e82e}
+      \strng{authorbibnamehash}{21b43fdbea26e551af2fd914c707e82e}
+      \strng{authornamehash}{21b43fdbea26e551af2fd914c707e82e}
+      \strng{authorfullhash}{21b43fdbea26e551af2fd914c707e82e}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{An introduction to the conjugate gradient method without the agonizing pain}
+      \field{year}{1994}
+    \endentry
     \entry{wachter2006implementation}{article}{}
       \name{author}{2}{}{%
         {{hash=dc724f071bd0fcc1e9eabf5f96209481}{%

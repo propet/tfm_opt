@@ -9,9 +9,40 @@ térmicas como restricciones al problema de optimización.
 
 Hemos empleado el framework de optimización pyOptSparse \cite{Wu2020}, que
 permite el uso de matrices dispersas y es mayormente agnóstico frente al uso de
-un optimizador u otro, aunque se ha empleado principalmente el optimizador
-Ipopt \cite{wachter2006implementation}, algoritmo open-source de punto
-interior adecuado para problemas no-lineales de gran escala.
+un optimizador u otro, aunque se ha empleado principalmente Ipopt
+\cite{wachter2006implementation}, algoritmo open-source de punto interior
+adecuado para problemas no-lineales de gran escala.
+
+De momento optimizamos únicamente el control, los valores para las dimensiones
+de los equipos por tanto son fijos, y en la tabla \ref{tab:control_data}
+mostramos algunos datos de interés común para todas las ejecuciones de esta
+sección, donde la capacidad, eficiencia y potencia máxima nominal de la batería
+se ha copiado de un modelo de tesla powerwall
+\footnote{\url{https://www.tesla.com/sites/default/files/pdfs/powerwall/Powerwall\%202\_AC\_Datasheet\_en\_northamerica.pdf}}
+.
+
+\begin{table}[ht]
+	\centering
+	\label{tab:control_data}
+	\caption{Parámetros para problemas de control}
+	\begin{tabular}{@{}lll@{}}
+		\toprule
+		\textbf{Parámetro}     & \textbf{Valor}         & \textbf{Descripción}                       \\
+		\midrule
+		$h$                    & $1000[s]$              & Tamaño de paso                             \\
+		$T_{objetivo}$         & $20 ^\circ C$          & Temperatura objetivo para la habitación    \\
+		$e_{max}$              & $13[kWh]$              & Capacidad de la batería                    \\
+		$P_{bat_{max}}$        & $5[kW]$                & Máxima potencia nominal de la batería      \\
+		$\text{SOC}_{min}$     & $0.3$                  & min State Of Charge                        \\
+		$\text{SOC}_{max}$     & $0.9$                  & max State Of Charge                        \\
+		$P_{red_{max}}$        & $5[kW]$                & Potencia máxima contratada                 \\
+		$\eta_{bat}$           & $0.95$                 & Eficiencia de carga/descarga de la batería \\
+		$\dot{m}_{cond_{max}}$ & $0.5[kg \cdot s^{-1}]$ & Máximo caudal a bomba de calor             \\
+		$\dot{m}_{cale_{max}}$ & $0.5[kg \cdot s^{-1}]$ & Máximo caudal a suelo radiante             \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
 
 \subsection{Derivadas adjuntas}
 
@@ -24,11 +55,10 @@ El problema de optimización a resolver es:
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                   & \forall k > 0 \\
 	                        & min(T_{habitacion}) \geq T_{objetivo}                                               \label{eq:min_t_habitacion_constraint}                 \\
 	\text{condiciones iniciales} \quad \nonumber                                                                                                                         \\
-	                        & P_{bat_0} = 0                                                                                                                              \\
 	                        & e_0 = \text{SOC}_{min} \cdot e_{max}                                                                                                       \\
 	\text{límites} \quad    & \nonumber                                                                                                                                  \\
 	                        & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                                                              & \forall k     \\
-	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad                                         & \forall k     \\
+	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad                                          & \forall k     \\
 	                        & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                                                     & \forall k     \\
 	                        & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                                                     & \forall k     \\
 	                        & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                                                    & \forall k     \\
@@ -42,17 +72,26 @@ como pasos en la simulación, siendo k el índice, o número de paso.
 
 Las dos primeras restricciones representan el balance de potencias y dinámica
 de la batería a cada paso, respectivamente, mientras que la tercera
-\eqref{eq:min_t_habitacion_constraint} es una condición sobre el sistema
-térmico.
+\eqref{eq:min_t_habitacion_constraint} es una condición agregada sobre el
+sistema térmico. Agregada porque podríamos haber creado una restricción para
+cada $T_{habitacion_k}$, pero como por cada condición debemos de calcular sus
+gradientes, y esto implica resolver el sistema de ecuaciones algebraicas
+diferenciales de la sección \ref{subsec:reduced_system}, preferimos englobar
+nuestro requisito
 
-Para obtener la temperatura mínima de la habitación a lo largo de la evolución
-de este sistema, tenemos que resolver implícitamente el sistema de ecuaciones
-algebraicas diferenciales de la sección \ref{subsec:reduced_system}.
+\begin{equation*}
+	T_{habitacion_k} > T_{objetivo}  \quad \forall k
+\end{equation*}
 
-$min(T_{habitacion})$ es realmente un valor que disponemos a través de la
-solución del sistema térmico, y una función que agrega los estados y controles
-en un único resultado, en este caso es el valor mínimo de todos los
-$T_{habitacion_k}$.
+en una sola inigualdad
+
+\begin{equation*}
+	min(T_{habitacion}) > T_{objetivo}
+\end{equation*}
+
+
+$min(T_{habitacion})$ es un escalar que disponemos a través de la siguiente
+función de agregación
 
 \begin{minted}{python}
 def j_t_room_min(y, u, p, h):
@@ -74,11 +113,10 @@ t_room_min = j_t_room_min(y, u, p, h)  # aggregation function
 \end{minted}
 
 
-y ya que la función 'j\_t\_room\_min' que nos devuelve el valor de la
-$min(T_{habitacion})$ dependiendo de las variables de diseño $P_{bomba}$,
-$\dot{m}_{cond}$ y $\dot{m}_{cale}$, es clave que podamos calcular los
-gradientes de este valor respecto de las variables de diseño. Necesitamos las
-derivadas:
+y ya que 'j\_t\_room\_min' nos devuelve el valor de la $min(T_{habitacion})$
+dependiendo de las variables de diseño $P_{bomba}$, $\dot{m}_{cond}$ y
+$\dot{m}_{cale}$, es clave que podamos calcular los gradientes de este valor
+respecto de las variables de diseño. Necesitamos las derivadas:
 
 \begin{equation*}
 	\frac{d \min(T_{habitacion})}{d P_{bomba_k}}, \quad \frac{d \min(T_{habitacion})}{d \dot{m}_{cond_k}}, \quad \frac{d \min(T_{habitacion})}{d \dot{m}_{cale_k}}
@@ -88,7 +126,7 @@ y de forma eficiente podemos averiguarlas usando el método de los gradientes
 adjuntos discretos, explicado en la sección \ref{sec:adjoints}.
 
 Tenemos una primera evaluación de esta función en la que aprovechamos a guardar
-los estados $y$ solución
+los estados solución $y$
 
 \begin{minted}{python}
 def t_room_min_fun(
@@ -133,22 +171,119 @@ dj_dy0, dj_dp, dj_du = dae_adjoints(
 \end{minted}
 
 De forma general obtenemos los gradientes respecto de todas la variables de
-control $u$, los parametros $p$, y las condiciones iniciales $y0$, aunque aquí
+control $u$, los parámetros $p$, y las condiciones iniciales $y0$, aunque aquí
 solo estamos interesados en 'dj\_du', los gradientes de la función agregación
 que nos devuelve la temperatura mínima de la habitación a lo largo de la
 trayectoria respecto de las variables de control, que se corresponden con
 nuestras variables de diseño.
 
 
+Por otra parte, también notamos que las restricciones se aplican solo para
+$k > 0$, mientras que tenemos variables de diseño $\forall k$. Esto es debido
+a que al discretizar con euler implícito, las variables de control en el
+punto inicial no afectan las dinámicas, quedan sueltas.
+
+Véase en un problema de valor inicial con euler-implícito, que $u_0$ no aparece
+en ese sistema:
+
+\begin{align*}
+	y_0 & = 0                                 \\
+	y_k & = y_{k-1} + h f(t_k, u_k, y_k, p_k)
+\end{align*}
+
+pero en nuestra formulación sí tenemos presente $u_0$, que serían las variables
+de diseño o controles en el paso $k=0$.
+
+Lo que hacemos es obviar la restricciones para el paso inicial, y eliminar la
+aportación de los controles en la función objetivo.
+
+Otra posibilidad sería reducir el tamaño de los vectores con las variables de
+control en un elemento $u_{1 \ldots N}$ en vez de $u_{0 \ldots N}$. Pero ello
+complicaría la formulación mezclando índices distintos para variables de estado
+y variables de control en las ecuaciones.
+
+
+\subsubsection{Soluciones}
+
 En la figura \ref{fig:control_adjoints_7_days} vemos la optimización realizada
-para un periodo de 7 días
+para un periodo de 7 días, y en el cuadro \ref{tab:control_adjoints_7_days}
+datos de la ejecución.
 
 \begin{figure}[h] \centering
 	\centering
 	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/control_adjoints_7_days}
-	\caption{Control óptimo para los 7 primeros días del año 2022, usando gradientes adjuntos.}
+	\caption{Control óptimo para los 7 primeros días del año 2022, gradientes adjuntos.}
 	\label{fig:control_adjoints_7_days}
 \end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:control_adjoints_7_days}}
+	\label{tab:control_adjoints_7_days}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                                 & Valor \\
+		\midrule
+		Número de iteraciones realizadas                          & 300   \\
+		Tiempo total (segundos)                                   & 424   \\
+		Número de pasos                                           & 605   \\
+		Número de variables de diseño                             & 3025  \\
+		Número de elementos en matrices dispersas (Igualdades)    & 1813  \\
+		Número de elementos en matrices dispersas (Desigualdades) & 3628  \\
+		\midrule
+		Valor de la función objetivo                              & 17.67 \\
+		\midrule
+		Coste fijo de energía                                     & 3.75  \\
+		Coste variable de energía                                 & 7.52  \\
+		Coste de depreciación de batería                          & 0.94  \\
+		Coste de depreciación de paneles solares                  & 3.34  \\
+		Coste de depreciación de bomba de calor                   & 1.02  \\
+		Coste de depreciación de depósito de agua                 & 1.13  \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Y usando un periodo de 30 días en la figura \ref{fig:control_adjoints_30_days}
+vemos una ejecución no exitosa, que no ha conseguido satisfacer las
+resticciones con 300 iteraciones, más visiblemente la de temperatura mínima
+para la vivienda. La información para esta operación se muestra en el cuadro
+\ref{tab:control_adjoints_30_days}.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/control_adjoints_30_days}
+	\caption{Intento de control óptimo para 30 días con gradientes adjuntos.}
+	\label{fig:control_adjoints_30_days}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:control_adjoints_30_days}}
+	\label{tab:control_adjoints_30_days}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                                 & Valor \\
+		\midrule
+		Número de iteraciones realizadas                          & 300   \\
+		Tiempo total (segundos)                                   & 1684  \\
+		Número de pasos                                           & 2592  \\
+		Número de variables de diseño                             & 12960 \\
+		Número de elementos en matrices dispersas (Igualdades)    & 7774  \\
+		Número de elementos en matrices dispersas (Desigualdades) & 15550 \\
+		\midrule
+		Valor de la función objetivo                              & 90.72 \\
+		\midrule
+		Coste fijo de energía                                     & 16.06 \\
+		Coste variable de energía                                 & 45.24 \\
+		Coste de depreciación de batería                          & 5.76  \\
+		Coste de depreciación de paneles solares                  & 14.31 \\
+		Coste de depreciación de bomba de calor                   & 4.56  \\
+		Coste de depreciación de depósito de agua                 & 4.87  \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
 
 
 
@@ -187,7 +322,7 @@ con los límites:
 	 & T_{objetivo} \leq T_{habitacion_k} \leq 500[K]  \label{eq:min_t_habitacion_constraint_sand} & \forall k \\
 	 & 273[K] \leq T_{cond_k}, T_{tanque_k}, T_{suelo_k} \leq 500[K]                               & \forall k \\
 	 & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                               & \forall k \\
-	 & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad          & \forall k \\
+	 & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad           & \forall k \\
 	 & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                      & \forall k \\
 	 & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                      & \forall k \\
 	 & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                     & \forall k \\
@@ -205,13 +340,199 @@ y teniendo como condiciones iniciales para las variables de estado:
 \end{align}
 
 
+Mientras que en la formulación anterior con gradientes adjuntos resolvíamos el
+sistema térmico de forma implícita cada vez que evaluábamos la temperatura
+mínima de la habitación $min(T_{habitacion})$ como función de todas las
+variables de control tomandas, aquí resolvemos el conjunto de ecuaciones de
+forma explícita a la vez que optimizamos. De ahí el nombre SAND: Simultaneous
+ANalysis and Design.
 
-En la figura \ref{fig:control_sand_7_days} vemos la optimización realizada
-para un periodo de 7 días
+Ahora las variables de estado $T_{cond}$, $T_{tanque}$, $T_{suelo}$ y
+$T_{habitacion}$, son más variables de diseño que el optimizador ha de
+manipular para satisfacer las igualdades del sistema (hora restricciones).
+
+Por tanto lleva la desventaja de que ahora la solución para el modelo térmico
+puede no ser válido si el diseño aún no ha llegado a un punto de convergencia.
+
+Adicionalmente nos encontramos con un número notablemente superior de variables
+de diseño y restricciones, que añaden complejidad, pero a pesar de ello la
+optimización resulta ser de alrededor un orden de magnitud más rápida, y
+aplicar condiciones sobre las variables de estado es trivial, por lo que ahora
+nos permitimos aplicar los límites
+
+\begin{equation*}
+	T_{objetivo} < T_{habitacion_k} \quad \forall k
+\end{equation*}
+
+que podría argumentarse proporciona unos gradientes más suaves que la función
+mínimo en $min(T_{habitacion})$, y por ende el problema resulta más sencillo de
+resolver.
+
+Sin embargo, con este tipo de formulación se hace especialmente crítico el uso
+de matrices dispersas.
+
+Si de forma ingenua fuéramos a almacenar una
+matriz jacobiana para las derivadas de una igualdad que se repite a cada paso
+$h$ respecto de una variable de diseño como $P_{bomba}$.
+
+\begin{equation} \label{eq:jacobian_matrix_sand}
+	\begin{bmatrix}
+		\frac{\partial h_1}{\partial P_{bomba_1}} & \ldots & \frac{\partial h_1}{\partial P_{bomba_k}} & \ldots & \frac{\partial h_1}{\partial P_{bomba_N}} \\
+		\vdots                                    & \ddots & \vdots                                    & \ddots & \vdots                                    \\
+		\frac{\partial h_k}{\partial P_{bomba_1}} & \ldots & \frac{\partial h_k}{\partial P_{bomba_k}} & \ldots & \frac{\partial h_k}{\partial P_{bomba_N}} \\
+		\vdots                                    & \ddots & \vdots                                    & \ddots & \vdots                                    \\
+		\frac{\partial h_N}{\partial P_{bomba_1}} & \ldots & \frac{\partial h_N}{\partial P_{bomba_k}} & \ldots & \frac{\partial h_N}{\partial P_{bomba_N}} \\
+	\end{bmatrix}
+\end{equation}
+
+si tuviéramos 1000 pasos ($N=1000$), la matrix \eqref{eq:jacobian_matrix_sand}
+tendría 1 millón de elementos, con 10000, 100 millones. El coste de memoria
+crece de forma cuadrática con el número de pasos, y el coste computacional
+también, ya que la complejidad temporal de un algoritmo de resolución de
+sistemas lineales como el método del gradiente conjugado es de $O(m\sqrt{k})$
+donde $m$ es el número de elementos no nulos de la matriz, y $k$ su número de
+condición (Shewchuk, capítulo 10 \cite{shewchuk1994introduction}).
+
+Pero en realidad la mayoría de las entradas serían nulas, porque en la
+discretización de la dinámica de un sistema, a cada paso la igualdad solo
+depende de unos cuantos estados vecinos. Por ejemplo, usando euler implícito
+solo aparecen términos del estado actual y anterior.
+
+\begin{equation} \label{eq:implicit_euler_equality}
+	h_k: \quad y_k - y_{k-1} - h f(t_k, u_k, y_k, p_k) = 0
+\end{equation}
+
+siendo la jacobiana de $h$ respecto de $u$, una matriz diagonal:
+
+\begin{equation} \label{eq:diagonal_jacobian}
+	J_h = \frac{\partial h}{\partial u} =
+	\begin{bmatrix}
+		-h \frac{\partial f(t_1, u_1, y_1, p_1)}{\partial u_1} & 0                                                      & \cdots & 0                                                      \\
+		0                                                      & -h \frac{\partial f(t_2, u_2, y_2, p_2)}{\partial u_2} & \cdots & 0                                                      \\
+		\vdots                                                 & \vdots                                                 & \ddots & \vdots                                                 \\
+		0                                                      & 0                                                      & \cdots & -h \frac{\partial f(t_N, u_N, y_N, p_N)}{\partial u_N}
+	\end{bmatrix}
+\end{equation}
+
+Igualmente, en nuestro problema de optimización en el que tenemos dinámicas
+como restricciones, sus jacobianas serán dispersas, y ganaremos mucha eficiencia
+si optamos por el uso de un framework que nos permita usar matrices dispersas y
+posteriormente se las proporcione a un optimizador que sea compatible con ellas,
+como lo es Ipopt.
+
+Así se explica que anteriormente hayamos elegido las energías de la batería como variables
+de diseño.
+
+Habría sido posible limitar el SOC usando meramente las potencias destinadas a
+la batería, como:
+
+\begin{equation}
+	\text{SOC}_{min} \cdot e_{max} \leq e_0 + \sum P_{bat} \cdot h \leq \text{SOC}_{max} \cdot e_{max}, \quad \forall k
+\end{equation}
+
+pero entonces la jacobiana de la inigualdad respecto de la potencia a batería,
+habría sido tringular inferior, densa:
+
+\begin{equation}
+	\mathbf{J} =
+	\begin{pmatrix}
+		h      & 0      & 0      & \cdots & 0      \\
+		h      & h      & 0      & \cdots & 0      \\
+		h      & h      & h      & \cdots & 0      \\
+		\vdots & \vdots & \vdots & \ddots & \vdots \\
+		h      & h      & h      & \cdots & h      \\
+	\end{pmatrix}
+\end{equation}
+
+introduciendo la energía almacenada como una nueva variable de diseño, incorporamos
+además una nueva dinámica:
+
+\begin{equation}
+	e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad \forall k > 0
+\end{equation}
+
+pero tanto la jacobiana de esta, como de la nueva limitación para el SOC
+
+\begin{equation}
+	\text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad \forall k
+\end{equation}
+
+son ahora diagonales, y por tanto el problema resultante tiene un menor coste
+computacional.
+
+\subsubsection{Soluciones}
+
+En la figura \ref{fig:control_sand_7_days} vemos la optimización realizada para
+un periodo de 7 días, y en el cuadro \ref{tab:control_sand_7_days} los
+datos de la ejecución.
 
 \begin{figure}[h] \centering
 	\centering
 	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/control_sand_7_days}
-	\caption{Control óptimo para los 7 primeros días del año 2022, usando método 'all-at-once'.}
+	\caption{Control óptimo para los 7 primeros días del año 2022, método 'all-at-once'.}
 	\label{fig:control_sand_7_days}
 \end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:control_sand_7_days}}
+	\label{tab:control_sand_7_days}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                                 & Valor \\
+		\midrule
+		Número de iteraciones realizadas                          & 300   \\
+		Tiempo total (segundos)                                   & 90    \\
+		Número de pasos                                           & 605   \\
+		Número de variables de diseño                             & 5445  \\
+		Número de elementos en matrices dispersas (Igualdades)    & 12689 \\
+		Número de elementos en matrices dispersas (Desigualdades) & 1813  \\
+		\midrule
+		Valor de la función objetivo                              & 17.43 \\
+		\midrule
+		Coste fijo de energía                                     & 3.75  \\
+		Coste variable de energía                                 & 7.39  \\
+		Coste de depreciación de batería                          & 0.79  \\
+		Coste de depreciación de paneles solares                  & 3.34  \\
+		Coste de depreciación de bomba de calor                   & 1.07  \\
+		Coste de depreciación de depósito de agua                 & 1.13  \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Y usando un periodo de 30 días en la figura \ref{fig:control_sand_30_days}, y
+cuadro \ref{tab:control_sand_30_days}.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/control_sand_30_days}
+	\caption{Control óptimo para los 30 primeros días del año 2022, método 'all-at-once'.}
+	\label{fig:control_sand_30_days}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:control_sand_30_days}}
+	\label{tab:control_sand_30_days}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                                 & Valor \\
+		\midrule
+		Número de iteraciones realizadas                          & 300   \\
+		Tiempo total (segundos)                                   & 396   \\
+		Número de pasos                                           & 2592  \\
+		Número de variables de diseño                             & 23328 \\
+		Número de elementos en matrices dispersas (Igualdades)    & 54416 \\
+		Número de elementos en matrices dispersas (Desigualdades) & 7774  \\
+		\midrule
+		Valor de la función objetivo                              & 85.92 \\
+		\midrule
+		Coste fijo de energía                                     & 16.06 \\
+		Coste variable de energía                                 & 43.17 \\
+		Coste de depreciación de batería                          & 2.48  \\
+		Coste de depreciación de paneles solares                  & 14.31 \\
+		Coste de depreciación de bomba de calor                   & 5.08  \\
+		Coste de depreciación de depósito de agua                 & 4.87  \\
+		\bottomrule
+	\end{tabular}
+\end{table}

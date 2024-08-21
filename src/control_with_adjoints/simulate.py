@@ -1036,6 +1036,7 @@ def plot_history(hist, only_last=True):
     parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
     parameters["excess_prices"] = dynamic_parameters["excess_prices"]
     n_steps = parameters["t_amb"].shape[0]
+    print("n_steps: ", n_steps)
     y0 = np.array(list(Y0.values())[:4])  # get only state temperatures for dae
     parameters["y0"] = y0
 
