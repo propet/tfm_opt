@@ -1660,8 +1660,8 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": parameters["E_BAT_MAX_LIMIT"] / 10,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "initial_value": parameters["E_BAT_MAX_LIMIT_100KWH"] / 10,
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
     }
     opt.add_design_variables_info(e_bat)
 
@@ -1671,9 +1671,9 @@ def run_optimization(parameters, plot=True):
         "n_params": 1,
         "type": "c",
         "lower": 0,
-        "upper": parameters["E_BAT_MAX_LIMIT"],
+        "upper": parameters["E_BAT_MAX_LIMIT_100KWH"],
         "initial_value": 10,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
     }
     opt.add_design_variables_info(e_bat_max)
 
@@ -1850,7 +1850,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": battery_energy_constraint_fun,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
         "wrt": battery_energy_wrt,
         "jac": battery_energy_jac,
     }
@@ -1983,7 +1983,7 @@ def run_optimization(parameters, plot=True):
         "lower": parameters["y0"]["e_bat"],
         "upper": parameters["y0"]["e_bat"],
         "function": lambda _, design_variables: design_variables["e_bat"][0],
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
         "wrt": e_bat_0_wrt,
         "jac": e_bat_0_jac,
     }

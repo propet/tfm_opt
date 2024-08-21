@@ -129,7 +129,6 @@ def get_battery_depreciation_by_joule(e_bat_max):
 
     # https://cdn.autosolar.es/pdf/fichas-tecnicas/Bat-LFP-12,8-25,6V-Smart-ES.pdf
     n_cycles = 3000
-    # n_cycles = 6000
     dod = 0.7
 
     # Depreciate by how much energy has been transferred

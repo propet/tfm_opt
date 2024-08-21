@@ -66,6 +66,13 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     solar_size = histories["solar_size"][i]
     tank_volume = histories["tank_volume"][i]
 
+    # Set initial values for controls to the value at t=1
+    # Since we can't optimize for t=0, and it may have an arbitrary value
+    m_dot_cond[0] = m_dot_cond[1]
+    m_dot_heating[0] = m_dot_heating[1]
+    p_compressor[0] = p_compressor[1]
+    p_bat[0] = p_bat[1]
+
     # Parameters
     h = parameters["H"]
     t_amb = parameters["t_amb"] - 273  # K to ºC
@@ -295,6 +302,6 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)

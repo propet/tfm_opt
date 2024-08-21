@@ -13,7 +13,7 @@ PARAMS = {
     "SOLAR_SIZE": 3000,  # installed power in solar panels W
     "SOLAR_SIZE_MAX": 20000,  # W for a roof of 100m2, since each kW takes 5.2m2
     "E_BAT_MAX": 13000 * 3600,  # 13000 Wh -> (13000*3600) W·s
-    "E_BAT_MAX_LIMIT": 360000000,  # W·s -> 100kWh
+    "E_BAT_MAX_LIMIT_100KWH": 360000000,  # W·s -> 100kWh
     "E_BAT_MAX_LIMIT_10KWH": 36000000,  # W·s -> 10kWh
     "E_BAT_MAX_LIMIT_1KWH": 3600000,  # W·s -> 1kWh
     "C_RATE_BAT": 0.3,  # max C-rate for battery
@@ -21,9 +21,9 @@ PARAMS = {
     "SOC_MIN": 0.3,  # Minimum State of Charge
     "SOC_MAX": 0.9,  # Maximum State of Charge
     "P_BAT_MAX": 5000,  # W
-    "P_BAT_MAX_LIMIT": 100000,  # W for e_bat_max_limit 100kWh: e_bat_max[Ws] * (1/3600)[h/s] * c-rate
-    "P_BAT_MAX_LIMIT_10KWH": 10000,  # W for e_bat_max_limit 10kWh
-    "P_BAT_MAX_LIMIT_1KWH": 1000,  # [W] for e_bat_max_limit 1kWh
+    "P_BAT_MAX_LIMIT": 0.3 * 100000,  # W for e_bat_max_limit 100kWh: c-rate * e_bat_max[Ws] * (1/3600)[h/s]
+    "P_BAT_MAX_LIMIT_10KWH": 0.3 * 10000,  # W for e_bat_max_limit 10kWh
+    "P_BAT_MAX_LIMIT_1KWH": 0.3 * 1000,  # [W] for e_bat_max_limit 1kWh
     "P_GRID_MAX": 5000,  # W
     "P_GRID_MAX_LIMIT": 100000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
@@ -130,5 +130,4 @@ Y0 = {
     "t_tank": 296.05234612,
     "t_floor": 295.27582739,
     "t_room": 293.47756316,
-    "p_bat": 1e-2,
 }

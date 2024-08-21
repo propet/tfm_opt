@@ -19,14 +19,14 @@ El problema de optimización a resolver es:
 
 \begin{align}
 	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                            \\
-	\text{sujeto a} \quad   &                                                                                                                                            \\
-	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                     & \forall k     \\
+	\text{sujeto a} \quad   & \nonumber                                                                                                                                  \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                     & \forall k > 0 \\
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                   & \forall k > 0 \\
 	                        & min(T_{habitacion}) \geq T_{objetivo}                                               \label{eq:min_t_habitacion_constraint}                 \\
-	\text{condiciones iniciales} \quad                                                                                                                                   \\
+	\text{condiciones iniciales} \quad \nonumber                                                                                                                         \\
 	                        & P_{bat_0} = 0                                                                                                                              \\
 	                        & e_0 = \text{SOC}_{min} \cdot e_{max}                                                                                                       \\
-	\text{límites} \quad    &                                                                                                                                            \\
+	\text{límites} \quad    & \nonumber                                                                                                                                  \\
 	                        & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                                                              & \forall k     \\
 	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max}, \quad                                         & \forall k     \\
 	                        & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                                                     & \forall k     \\
@@ -145,8 +145,8 @@ para un periodo de 7 días
 
 \begin{figure}[h] \centering
 	\centering
-	\includesvg[width=1\textwidth]{./capitulos/resultados_discusion/images/control_adjoints_7_days}
-	\caption{Sistema rígido.}
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/control_adjoints_7_days}
+	\caption{Control óptimo para los 7 primeros días del año 2022, usando gradientes adjuntos.}
 	\label{fig:control_adjoints_7_days}
 \end{figure}
 
@@ -159,8 +159,8 @@ El problema de optimización a resolver es:
 
 \begin{align}
 	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                                \\
-	\text{sujeto a} \quad   &                                                                                                                                                \\
-	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                         & \forall k     \\
+	\text{sujeto a} \quad   & \nonumber                                                                                                                                      \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                         & \forall k > 0 \\
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                       & \forall k > 0 \\
 	                        & \text{cop}(T_{cond_k}) \cdot P_{bomba_k} \nonumber                                                                                             \\
 	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot (T_{cond_k} - T_{tanque_k}) = 0 \label{eq:sys_1_sand}                           & \forall k > 0 \\
@@ -203,3 +203,15 @@ y teniendo como condiciones iniciales para las variables de estado:
 	 & T_{suelo_0} = 295.27[K]              \\
 	 & T_{habitacion_0} = 293.47[K]         \\
 \end{align}
+
+
+
+En la figura \ref{fig:control_sand_7_days} vemos la optimización realizada
+para un periodo de 7 días
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/control_sand_7_days}
+	\caption{Control óptimo para los 7 primeros días del año 2022, usando método 'all-at-once'.}
+	\label{fig:control_sand_7_days}
+\end{figure}

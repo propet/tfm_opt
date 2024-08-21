@@ -63,6 +63,13 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     e_bat = histories["e_bat"][i]
     p_bat = histories["p_bat"][i] / 1000  # to kW
 
+    # Set initial values for controls to the value at t=1
+    # Since we can't optimize for t=0, and it may have an arbitrary value
+    m_dot_cond[0] = m_dot_cond[1]
+    m_dot_heating[0] = m_dot_heating[1]
+    p_compressor[0] = p_compressor[1]
+    p_bat[0] = p_bat[1]
+
     # Parameters
     solar_size = parameters["SOLAR_SIZE"]
     e_bat_max = parameters["E_BAT_MAX"]
