@@ -146,6 +146,9 @@ En python, empleamos la rutina `fsolve` del paquete `scipy.optimize` para
 resolver el sistema discretizado a cada paso con Newton-Raphson.
 
 \begin{minted}{python}
+import numpy as np
+from scipy.optimize import fsolve
+
 def solve(y_0, u, dae_p, h, n_steps):
     """
     Solve the differential-algebraic equation (DAE) system using implicit time-stepping.

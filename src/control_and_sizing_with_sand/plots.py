@@ -78,7 +78,8 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     t_amb = parameters["t_amb"] - 273  # K to ºC
     n_steps = parameters["t_amb"].shape[0]
     t = np.linspace(0, n_steps * h, n_steps)
-    t = t / 3600
+    t = t / 3600 # seconds to hours
+    t = t / 24 # hours to days
     pvpc_prices = parameters["pvpc_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
     excess_prices = parameters["excess_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
     p_required = parameters["p_required"] / 1000  # to kW
@@ -148,7 +149,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     ax.plot(t, m_dot_cond, label="Bomba de calor", **plot_styles[0])
     ax.plot(t, m_dot_heating, label="Suelo radiante", **plot_styles[1])
     ax.set_ylabel(r"Caudal de agua $[kg \cdot s^{-1}]$")
-    ax.set_xlabel("Tiempo [h]")
+    ax.set_xlabel("días")
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
     save_plot(fig, ax, f"saves/plot_{title}_flows.svg")
@@ -302,6 +303,6 @@ def plot_history(hist, only_last=True):
 
 
 if __name__ == "__main__":
-    plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)

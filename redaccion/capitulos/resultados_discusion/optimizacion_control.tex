@@ -24,7 +24,7 @@ se ha copiado de un modelo de tesla powerwall
 \begin{table}[ht]
 	\centering
 	\label{tab:control_data}
-	\caption{Parámetros para problemas de control}
+	\caption{Parámetros para problemas de control.}
 	\begin{tabular}{@{}lll@{}}
 		\toprule
 		\textbf{Parámetro}     & \textbf{Valor}         & \textbf{Descripción}                       \\
@@ -94,6 +94,8 @@ $min(T_{habitacion})$ es un escalar que disponemos a través de la siguiente
 función de agregación
 
 \begin{minted}{python}
+import jax.numpy as jnp
+
 def j_t_room_min(y, u, p, h):
     """
     y: State variables (t_cond, t_tank, t_floor, t_room)
@@ -115,14 +117,14 @@ t_room_min = j_t_room_min(y, u, p, h)  # aggregation function
 
 y ya que 'j\_t\_room\_min' nos devuelve el valor de la $min(T_{habitacion})$
 dependiendo de las variables de diseño $P_{bomba}$, $\dot{m}_{cond}$ y
-$\dot{m}_{cale}$, es clave que podamos calcular los gradientes de este valor
-respecto de las variables de diseño. Necesitamos las derivadas:
+$\dot{m}_{cale}$, necesitamos los gradientes de este valor respecto de las
+variables de diseño:
 
 \begin{equation*}
 	\frac{d \min(T_{habitacion})}{d P_{bomba_k}}, \quad \frac{d \min(T_{habitacion})}{d \dot{m}_{cond_k}}, \quad \frac{d \min(T_{habitacion})}{d \dot{m}_{cale_k}}
 \end{equation*}
 
-y de forma eficiente podemos averiguarlas usando el método de los gradientes
+de forma eficiente podemos averiguarlas usando el método de los gradientes
 adjuntos discretos, explicado en la sección \ref{sec:adjoints}.
 
 Tenemos una primera evaluación de esta función en la que aprovechamos a guardar
@@ -194,11 +196,11 @@ en ese sistema:
 pero en nuestra formulación sí tenemos presente $u_0$, que serían las variables
 de diseño o controles en el paso $k=0$.
 
-Lo que hacemos es obviar la restricciones para el paso inicial, y eliminar la
-aportación de los controles en la función objetivo.
+Lo que hacemos es obviar las restricciones para el paso inicial, y eliminar la
+aportación de los controles $u_0$ en la función objetivo.
 
 Otra posibilidad sería reducir el tamaño de los vectores con las variables de
-control en un elemento $u_{1 \ldots N}$ en vez de $u_{0 \ldots N}$. Pero ello
+control en un elemento: $u_{1 \ldots N}$ en vez de $u_{0 \ldots N}$. Pero ello
 complicaría la formulación mezclando índices distintos para variables de estado
 y variables de control en las ecuaciones.
 
@@ -222,23 +224,21 @@ datos de la ejecución.
 	\label{tab:control_adjoints_7_days}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                                 & Valor \\
+		Parámetro                                 & Valor \\
 		\midrule
-		Número de iteraciones realizadas                          & 300   \\
-		Tiempo total (segundos)                                   & 424   \\
-		Número de pasos                                           & 605   \\
-		Número de variables de diseño                             & 3025  \\
-		Número de elementos en matrices dispersas (Igualdades)    & 1813  \\
-		Número de elementos en matrices dispersas (Desigualdades) & 3628  \\
+		Número de iteraciones realizadas          & 300   \\
+		Tiempo total (segundos)                   & 424   \\
+		Número de pasos                           & 605   \\
+		Número de variables de diseño             & 3025  \\
 		\midrule
-		Valor de la función objetivo                              & 17.67 \\
+		Valor de la función objetivo (€)          & 17.67 \\
 		\midrule
-		Coste fijo de energía                                     & 3.75  \\
-		Coste variable de energía                                 & 7.52  \\
-		Coste de depreciación de batería                          & 0.94  \\
-		Coste de depreciación de paneles solares                  & 3.34  \\
-		Coste de depreciación de bomba de calor                   & 1.02  \\
-		Coste de depreciación de depósito de agua                 & 1.13  \\
+		Coste fijo de energía                     & 3.75  \\
+		Coste variable de energía                 & 7.52  \\
+		Coste de depreciación de batería          & 0.94  \\
+		Coste de depreciación de paneles solares  & 3.34  \\
+		Coste de depreciación de bomba de calor   & 1.02  \\
+		Coste de depreciación de depósito de agua & 1.13  \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -262,23 +262,21 @@ para la vivienda. La información para esta operación se muestra en el cuadro
 	\label{tab:control_adjoints_30_days}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                                 & Valor \\
+		Parámetro                                 & Valor \\
 		\midrule
-		Número de iteraciones realizadas                          & 300   \\
-		Tiempo total (segundos)                                   & 1684  \\
-		Número de pasos                                           & 2592  \\
-		Número de variables de diseño                             & 12960 \\
-		Número de elementos en matrices dispersas (Igualdades)    & 7774  \\
-		Número de elementos en matrices dispersas (Desigualdades) & 15550 \\
+		Número de iteraciones realizadas          & 300   \\
+		Tiempo total (segundos)                   & 1684  \\
+		Número de pasos                           & 2592  \\
+		Número de variables de diseño             & 12960 \\
 		\midrule
-		Valor de la función objetivo                              & 90.72 \\
+		Valor de la función objetivo (€)          & 90.72 \\
 		\midrule
-		Coste fijo de energía                                     & 16.06 \\
-		Coste variable de energía                                 & 45.24 \\
-		Coste de depreciación de batería                          & 5.76  \\
-		Coste de depreciación de paneles solares                  & 14.31 \\
-		Coste de depreciación de bomba de calor                   & 4.56  \\
-		Coste de depreciación de depósito de agua                 & 4.87  \\
+		Coste fijo de energía                     & 16.06 \\
+		Coste variable de energía                 & 45.24 \\
+		Coste de depreciación de batería          & 5.76  \\
+		Coste de depreciación de paneles solares  & 14.31 \\
+		Coste de depreciación de bomba de calor   & 4.56  \\
+		Coste de depreciación de depósito de agua & 4.87  \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -293,7 +291,7 @@ para la vivienda. La información para esta operación se muestra en el cuadro
 El problema de optimización a resolver es:
 
 \begin{align}
-	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                                \\
+	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x}) \label{eq:sand_control_optimization}                                                                           \\
 	\text{sujeto a} \quad   & \nonumber                                                                                                                                      \\
 	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                         & \forall k > 0 \\
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                       & \forall k > 0 \\
@@ -343,13 +341,13 @@ y teniendo como condiciones iniciales para las variables de estado:
 Mientras que en la formulación anterior con gradientes adjuntos resolvíamos el
 sistema térmico de forma implícita cada vez que evaluábamos la temperatura
 mínima de la habitación $min(T_{habitacion})$ como función de todas las
-variables de control tomandas, aquí resolvemos el conjunto de ecuaciones de
+variables de control tomadas, aquí resolvemos el conjunto de ecuaciones de
 forma explícita a la vez que optimizamos. De ahí el nombre SAND: Simultaneous
 ANalysis and Design.
 
 Ahora las variables de estado $T_{cond}$, $T_{tanque}$, $T_{suelo}$ y
 $T_{habitacion}$, son más variables de diseño que el optimizador ha de
-manipular para satisfacer las igualdades del sistema (hora restricciones).
+manipular para satisfacer las igualdades del sistema (ahora restricciones).
 
 Por tanto lleva la desventaja de que ahora la solución para el modelo térmico
 puede no ser válido si el diseño aún no ha llegado a un punto de convergencia.
@@ -479,29 +477,31 @@ datos de la ejecución.
 	\label{tab:control_sand_7_days}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                                 & Valor \\
+		Parámetro                                 & Valor \\
 		\midrule
-		Número de iteraciones realizadas                          & 300   \\
-		Tiempo total (segundos)                                   & 90    \\
-		Número de pasos                                           & 605   \\
-		Número de variables de diseño                             & 5445  \\
-		Número de elementos en matrices dispersas (Igualdades)    & 12689 \\
-		Número de elementos en matrices dispersas (Desigualdades) & 1813  \\
+		Número de iteraciones realizadas          & 300   \\
+		Tiempo total (segundos)                   & 90    \\
+		Número de pasos                           & 605   \\
+		Número de variables de diseño             & 5445  \\
 		\midrule
-		Valor de la función objetivo                              & 17.43 \\
+		Valor de la función objetivo (€)          & 17.43 \\
 		\midrule
-		Coste fijo de energía                                     & 3.75  \\
-		Coste variable de energía                                 & 7.39  \\
-		Coste de depreciación de batería                          & 0.79  \\
-		Coste de depreciación de paneles solares                  & 3.34  \\
-		Coste de depreciación de bomba de calor                   & 1.07  \\
-		Coste de depreciación de depósito de agua                 & 1.13  \\
+		Coste fijo de energía                     & 3.75  \\
+		Coste variable de energía                 & 7.39  \\
+		Coste de depreciación de batería          & 0.79  \\
+		Coste de depreciación de paneles solares  & 3.34  \\
+		Coste de depreciación de bomba de calor   & 1.07  \\
+		Coste de depreciación de depósito de agua & 1.13  \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
 Y usando un periodo de 30 días en la figura \ref{fig:control_sand_30_days}, y
 cuadro \ref{tab:control_sand_30_days}.
+
+Llegamos a la conclusión de que el análisis y optimización del problema
+simultáneo rinde mejor a pesar de añadir complejidad a la formulación, y por
+ello solo vamos a tratar en lo siguiente con el método SAND.
 
 \begin{figure}[h] \centering
 	\centering
@@ -516,23 +516,21 @@ cuadro \ref{tab:control_sand_30_days}.
 	\label{tab:control_sand_30_days}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                                 & Valor \\
+		Parámetro                                 & Valor \\
 		\midrule
-		Número de iteraciones realizadas                          & 300   \\
-		Tiempo total (segundos)                                   & 396   \\
-		Número de pasos                                           & 2592  \\
-		Número de variables de diseño                             & 23328 \\
-		Número de elementos en matrices dispersas (Igualdades)    & 54416 \\
-		Número de elementos en matrices dispersas (Desigualdades) & 7774  \\
+		Número de iteraciones realizadas          & 300   \\
+		Tiempo total (segundos)                   & 396   \\
+		Número de pasos                           & 2592  \\
+		Número de variables de diseño             & 23328 \\
 		\midrule
-		Valor de la función objetivo                              & 85.92 \\
+		Valor de la función objetivo (€)          & 85.92 \\
 		\midrule
-		Coste fijo de energía                                     & 16.06 \\
-		Coste variable de energía                                 & 43.17 \\
-		Coste de depreciación de batería                          & 2.48  \\
-		Coste de depreciación de paneles solares                  & 14.31 \\
-		Coste de depreciación de bomba de calor                   & 5.08  \\
-		Coste de depreciación de depósito de agua                 & 4.87  \\
+		Coste fijo de energía                     & 16.06 \\
+		Coste variable de energía                 & 43.17 \\
+		Coste de depreciación de batería          & 2.48  \\
+		Coste de depreciación de paneles solares  & 14.31 \\
+		Coste de depreciación de bomba de calor   & 5.08  \\
+		Coste de depreciación de depósito de agua & 4.87  \\
 		\bottomrule
 	\end{tabular}
 \end{table}

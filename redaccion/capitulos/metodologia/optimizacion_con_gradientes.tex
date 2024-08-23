@@ -36,22 +36,6 @@ gradientes de la funcion objetivo respecto de las variables de diseño como
 guía, y su obtención es independiente del número de incógnitas, como veremos
 con la diferenciación automática y derivadas adjuntas.
 
-Sin importar la técnica escogida para orientarse en el entorno de diseño, la
-trayectoria desde el punto inicial al final crece con la dimensión, pero no de
-forma tan drástica. La diagonal de un hipercubo n-dimensional viene dada por:
-
-\begin{equation}
-	d = l\sqrt{n}
-\end{equation}
-
-Nótese que el aumento no es exponencial con el número de dimensiones, ni tan
-siquiera lineal.
-
-Si el número de iteraciones realizadas por el algoritmo de optimización es
-proporcional a la longitud del camino entre los puntos inicial y final(óptimo),
-entonces el coste computacional se incrementa con la raiz del número de
-dimensiones, o variables de diseño.
-
 Esta estrategia permite la optimización de problemas con un gran número de
 incógnitas. Por ejemplo, el modelo de lenguaje Llama-3.1-405b de Meta utiliza
 405 mil millones de variables \cite{dubey2024llama}, o parámetros como se
@@ -65,9 +49,31 @@ conocen en el contexto del aprendizaje automático.
 \end{figure}
 
 
+
+Por otro lado, y sin importar la técnica escogida para orientarse en el entorno
+de diseño, la trayectoria desde el punto inicial al final crece con la
+dimensión, pero no de forma tan drástica. La diagonal de un hipercubo
+n-dimensional viene dada por:
+
+\begin{equation}
+	d = l\sqrt{n}
+\end{equation}
+
+Nótese que el aumento no es exponencial con el número de dimensiones, ni tan
+siquiera lineal.
+
+Si el número de iteraciones realizadas por el algoritmo de optimización es
+proporcional a la longitud del camino entre los puntos inicial y final(óptimo),
+entonces el coste computacional se incrementa con la raiz del número de
+dimensiones, o variables de diseño.
+
 \subsection{Restricciones}
 
 La gran mayoría de los problemas en ingeniería requieren el uso de
 restricciones en su formulación. Estas restricciones pueden ser de igualdad o
 desigualdad y representan limitaciones físicas, económicas o de diseño que
 deben satisfacerse durante el proceso de optimización.
+
+\subsection{Intercambiabilidad entre problema con y sin restricciones}
+
+\subsection{Ecuaciones en derivadas parciales como restricciones}

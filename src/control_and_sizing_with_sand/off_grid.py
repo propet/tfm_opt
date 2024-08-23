@@ -1615,8 +1615,8 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT_100KWH"] / 10,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
+        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT_10KWH"] / 10,
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_10KWH"],
     }
     opt.add_design_variables_info(e_bat)
 
@@ -1626,9 +1626,9 @@ def run_optimization(parameters, plot=True):
         "n_params": 1,
         "type": "c",
         "lower": 0,
-        "upper": parameters["E_BAT_MAX_LIMIT_100KWH"],
-        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT_100KWH"] / 5,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
+        "upper": parameters["E_BAT_MAX_LIMIT_10KWH"] * 5,
+        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT_10KWH"] * 2,
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_10KWH"],
     }
     opt.add_design_variables_info(e_bat_max)
 
@@ -1649,8 +1649,9 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_COMPRESSOR_MAX_LIMIT"],
-        "initial_value": history["p_compressor_max"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 10,
-        "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "initial_value": 2000,
+        # "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "scale": 1 / 1000,
     }
     opt.add_design_variables_info(p_compressor_max)
 
@@ -1787,7 +1788,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": battery_energy_constraint_fun,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_10KWH"],
         "wrt": battery_energy_wrt,
         "jac": battery_energy_jac,
     }
@@ -1896,7 +1897,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": e_bat_0_constraint_fun,
-        "scale": 1 / parameters["E_BAT_MAX_LIMIT_100KWH"],
+        "scale": 1 / parameters["E_BAT_MAX_LIMIT_10KWH"],
         "wrt": e_bat_0_wrt,
         "jac": e_bat_0_jac,
     }
@@ -1905,7 +1906,7 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 300,
+        "max_iter": 2000,
         # "obj_scaling_factor": 1e-1,
         "mu_strategy": "adaptive",
         "alpha_for_y": "safer-min-dual-infeas",

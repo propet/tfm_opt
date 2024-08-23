@@ -59,7 +59,7 @@ PARAMS = {
     "T_AMB": 300,  # K (27ºC)
     "P_COMPRESSOR_MAX": 3000,  # W
     # "P_COMPRESSOR_MAX_LIMIT": 10000,  # W
-    "P_COMPRESSOR_MAX_LIMIT": 3000,  # W
+    "P_COMPRESSOR_MAX_LIMIT": 5000,  # W
 
     "LOAD_HX_EFF": 0.8,
 

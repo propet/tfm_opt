@@ -174,3 +174,22 @@ potencia solar.
 	\caption{Área de $5.263[m^2]$ para $1[kW]$ de panales solares instalados. Datos obtenidos de SAM (System Advisor Model).}
 	\label{fig:solar_panel_area}
 \end{figure}
+
+
+\subsection{Tanque de agua}
+
+Tiene forma cilíndrica con misma altura que diámetro (figura
+\ref{fig:water_tank}), y su masa y superficie son función del volumen.
+
+\begin{figure}[h] \centering
+	\centering
+	\includegraphics[width=0.2\textwidth]{./capitulos/resultados_discusion/images/water_tank.png}
+	\caption{Depósito de agua caliente.}
+	\label{fig:water_tank}
+\end{figure}
+
+\begin{align} \label{eq:tank_mass_and_area}
+	V_{tanque} & = \pi r^2 h = 2 \pi r^3 \rightarrow r = \sqrt[3]{\frac{V_{tanque}}{2\pi}} \\
+	m_{tanque} & = V_{tanque} \cdot \rho_{agua} \\
+	A_{tanque} & = 2 \pi r \cdot h
+\end{align}

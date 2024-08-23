@@ -1,15 +1,210 @@
+Ahora queremos optimizar las dimensiones de los elementos que componen nuestra
+instalación solar además de los controles para su funcionamiento. Esto es, qué
+potencia de paneles solares debemos de instalar, qué capacidad para la batería,
+potencia a contratar con la comercializadora, potencia máxima de la bomba de
+calor y cómo de voluminoso ha de ser el depósito de agua caliente.
+
+La formulación es similar a \eqref{eq:sand_control_optimization}, pero entonces
+las dimensiones las tratábamos como parámetros fijos, y ahora serán variables
+de diseño.
+
+\begin{align}
+	\min_{\mathbf{x}} \quad & \text{Coste\_Autoconsumo}(\mathbf{x}) \label{eq:regulated_sizing_optimization}                                                   \\
+	\text{sujeto a} \quad   & \nonumber                                                                                                                        \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                           & \forall k > 0 \\
+	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                         & \forall k > 0 \\
+	                        & \text{cop}(T_{cond_k}) \cdot P_{bomba_k} \nonumber                                                                               \\
+	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot (T_{cond_k} - T_{tanque_k}) = 0                                   & \forall k > 0 \\
+	                        & m_{tanque} \cdot cp_{agua} \cdot ( T_{tanque_k} - T_{tanque_{k-1}}) / h  \nonumber                                               \\
+	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot T_{cond_k} \nonumber                                                              \\
+	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot T_{cale_k} \nonumber                                                              \\
+	                        & \quad + (\dot{m}_{cond_k} + \dot{m}_{cale_k}) \cdot cp_{agua} \cdot T_{tanque_k} \nonumber                                       \\
+	                        & \quad + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque_k} - T_{amb_k}) = 0  \label{eq:sizing_dae2}                 & \forall k > 0 \\
+	                        & m_{suelo} \cdot cp_{suelo} \cdot ( T_{suelo_k} - T_{suelo_{k-1}}) / h \nonumber                                                  \\
+	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot (T_{tanque_k} - T_{cale_k})                             \nonumber                 \\
+	                        & \quad + h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})                             \nonumber                 \\
+	                        & \quad + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4) = 0          & \forall k > 0 \\
+	                        & m_{aire} \cdot cp_{aire} \cdot ( T_{habitacion_k} - T_{habitacion_{k-1}}) / h  \nonumber                                         \\
+	                        & \quad - h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})  \nonumber                                            \\
+	                        & \quad - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4)  \nonumber                   \\
+	                        & \quad + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                             \\
+	                        & \quad + U_{techo} \cdot A_{techo} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                                 \\
+	                        & \quad + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion_k} - T_{amb_k}) = 0                                 & \forall k > 0
+\end{align}
+
+con límites
+
+\begin{align}
+	 & T_{objetivo} \leq T_{habitacion_k} \leq 500[K]                                    & \forall k \\
+	 & 273[K] \leq T_{cond_k}, T_{tanque_k}, T_{suelo_k} \leq 500[K]                     & \forall k \\
+	 & 0 \leq P_{bomba_k} \leq P_{bomba_{max}} \quad                                     & \forall k \\
+	 & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad & \forall k \\
+	 & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                            & \forall k \\
+	 & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                            & \forall k \\
+	 & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                           & \forall k \\
+	 & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                           & \forall k \\
+	 & 0 \leq e_{max} [kWh] \leq 100                                                                 \\
+	 & 0 \leq P_{solar_{max}} [kW] \leq 20                                                           \\
+	 & 0 \leq P_{bomba_{max}} [kW] \leq 5                                                            \\
+	 & 0.001 \leq V_{tanque} [m^3] \leq 10                                                           \\
+\end{align}
+
+y las mismas condiciones iniciales
+
+\begin{align}
+	 & e_0 = \text{SOC}_{min} \cdot e_{max} \\
+	 & T_{cond_0} = 296.56 [K]              \\
+	 & T_{tanque_0} = 296.05[K]             \\
+	 & T_{suelo_0} = 295.27[K]              \\
+	 & T_{habitacion_0} = 293.47[K]         \\
+\end{align}
+
+
+donde $P_{bomba_{max}}$, $e_{max}$, $P_{red_{max}}$ son variables de diseño
+pertenecientes al vector $\mathbf{x}$, y el volumen del tanque de agua no
+aparece explícitamente, pero en la condición \eqref{eq:sizing_dae2} se emplea
+para determinar la masa y área del depósito, como se hizo en la relación
+\eqref{eq:tank_mass_and_area}.
+
+Y parámetros que serán comunes a todos los casos se muestran en la tabla
+\ref{tab:sizing_optimization_data}.
+
+\begin{table}[ht]
+	\centering
+	\caption{Parámetros para problemas de dimensionamiento.}
+	\label{tab:sizing_optimization_data}
+	\begin{tabular}{@{}lll@{}}
+		\toprule
+		\textbf{Parámetro}     & \textbf{Valor}         & \textbf{Descripción}                       \\
+		\midrule
+		$h$                    & $1000[s]$              & Tamaño de paso                             \\
+		$T_{objetivo}$         & $20 ^\circ C$          & Temperatura objetivo para la habitación    \\
+		$\text{SOC}_{min}$     & $0.3$                  & min State Of Charge                        \\
+		$\text{SOC}_{max}$     & $0.9$                  & max State Of Charge                        \\
+		$\eta_{bat}$           & $0.95$                 & Eficiencia de carga/descarga de la batería \\
+		$\dot{m}_{cond_{max}}$ & $0.5[kg \cdot s^{-1}]$ & Máximo caudal a bomba de calor             \\
+		$\dot{m}_{cale_{max}}$ & $0.5[kg \cdot s^{-1}]$ & Máximo caudal a suelo radiante             \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
+\clearpage
 \subsection{Autoconsumo con compensación}
-- 30 dias (no tenemos bateria virtual)
-- dimensionamiento con media ponderada
 
-- 365 dias (tenemos bateria virtual, pero no merece la pena acumular en un año, suponiendo que todos los años son iguales más o menos)
-- 365 dias con C-rate de 1
+Exactamente la formulación que acabamos de ver en
+\eqref{eq:regulated_sizing_optimization}.
 
-no es realista suponer que tenemos conocimiento perfecto de precios futuros.
-realmente tendriamos que optimizar nuestro sistema con nuestra estimacion
-de precios, como con una red neural, aunque en este trabajo no se cubre este caso.
+En caso de que la comercializadora eléctrica nos ofrezca el servicio de batería
+virtual, podremos mantener un saldo positivo mensual con la compañía. Pero a
+final de año deseamos tener esta cifra a 0, ya que no es posible recuperarlo en
+efectivo. Asumimos que el rendimiento de la instalación será constante de un
+año a otro; por lo tanto, si este año hemos tenido un saldo positivo, también
+lo tendremos el próximo año.
 
+Por tanto, la optimización para el año completo (2022), se muestran en la
+figura \ref{fig:sizing_regulated_full_year} y cuadro \ref{tab:sizing_regulated_full_year}.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/sizing_regulated_full_year}
+	\caption{Control y dimensionamiento para el año 2022 con autoconsumo.}
+	\label{fig:sizing_regulated_full_year}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:sizing_regulated_full_year}}
+	\label{tab:sizing_regulated_full_year}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                 & Valor  \\
+		\midrule
+		Número de iteraciones realizadas          & 500    \\
+		Tiempo total (minutos)                    & 207    \\
+		Número de pasos                           & 31536  \\
+		Número de variables de diseño             & 283829 \\
+		\midrule
+		Valor de la función objetivo (€)          & 354    \\
+		\midrule
+		Coste fijo de energía                     & 71.93  \\
+		Coste variable de energía                 & 0.02   \\
+		Coste de depreciación de batería          & 1.47   \\
+		Coste de depreciación de paneles solares  & 172.51 \\
+		Coste de depreciación de bomba de calor   & 23.90  \\
+		Coste de depreciación de depósito de agua & 33.42  \\
+		\midrule
+		Dimensiones                               &        \\
+		\midrule
+		Potencia solar instalada (kW)             & 2.97   \\
+		Potencia bomba calor (kW)                 & 1.25   \\
+		Potencia máxima contratada (kW)           & 1.84   \\
+		Capacidad baterías (kWh)                  & 0.70   \\
+		Volumen depósito ($m^3$)                  & 0.001  \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Resaltar que el depósito de agua ha quedado descartado, el optimizador devuelve
+1 litro para el volumen del tanque, que es el valor del límite inferior para
+esta variable. Probablemente porque el suelo radiante ya ofrece suficiente
+inercia térmica.
+
+Y tampoco se hace uso de baterías. Es curioso que no sea rentable su uso ni con
+conocimiento perfecto de los precios futuros.
+
+\clearpage
+\subsection{Autoconsumo con compensación ilimitada}
+
+Usando la función objectivo \eqref{eq:cost_free} en la misma formulación usanda
+previamente \eqref{eq:regulated_sizing_optimization}.
+
+Por tanto, la optimización para el año completo (2022), se muestran en la
+figura \ref{fig:sizing_free_full_year} y cuadro \ref{tab:sizing_free_full_year}.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/sizing_free_full_year}
+	\caption{Control y dimensionamiento para el año 2022 con compensación ilimitada.}
+	\label{fig:sizing_free_full_year}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:sizing_free_full_year}}
+	\label{tab:sizing_free_full_year}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                 & Valor  \\
+		\midrule
+		Número de iteraciones realizadas          & 500    \\
+		Tiempo total (minutos)                    & 186    \\
+		Número de pasos                           & 31536  \\
+		Número de variables de diseño             & 283829 \\
+		\midrule
+		Valor de la función objetivo (€)          & -1481  \\
+		\midrule
+		Coste fijo de energía                     & 520    \\
+		Coste variable de energía                 & -3304  \\
+		Coste de depreciación de batería          & 26     \\
+		Coste de depreciación de paneles solares  & 1161   \\
+		Coste de depreciación de bomba de calor   & 25     \\
+		Coste de depreciación de depósito de agua & 33     \\
+		\midrule
+		Dimensiones                               &        \\
+		\midrule
+		Potencia solar instalada (kW)             & 20.00  \\
+		Potencia bomba calor (kW)                 & 3.26   \\
+		Potencia máxima contratada (kW)           & 13.30  \\
+		Capacidad baterías (kWh)                  & 2.59   \\
+		Volumen depósito ($m^3$)                  & 0.001  \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+se instala potencia solar hasta ocupar todo el espacio disponible en el tejado
+de la vivienda. Ahora se emplea un poco de almacenamiento eléctrico (baterías).
+
+
+\clearpage
 \subsection{Sistema off-grid}
-
-\subsection{Libre venta de electricidad a precio de mercado}
-
