@@ -1638,9 +1638,9 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_COMPRESSOR_MAX_LIMIT"],
-        # "initial_value": history["p_compressor_max"][-1] if history else parameters["P_COMPRESSOR_MAX_LIMIT"] / 10,
         "initial_value": 2000,
-        "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        # "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "scale": 1 / 1000,
     }
     opt.add_design_variables_info(p_compressor_max)
 
@@ -1894,7 +1894,7 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     ipoptOptions = {
         "print_level": 5,  # up to 12
-        "max_iter": 300,
+        "max_iter": 500,
         # "obj_scaling_factor": 1e-1,
         "mu_strategy": "adaptive",
         "alpha_for_y": "safer-min-dual-infeas",

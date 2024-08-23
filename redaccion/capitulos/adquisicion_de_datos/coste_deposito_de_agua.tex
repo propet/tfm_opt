@@ -1,0 +1,59 @@
+Encontramos a la venta una serie de tanques de agua que sirven el propósito de
+acumuladores térmicos
+\footnote{\url{https://www.supplyhouse.com/Storage-Tanks-12551000}}, y queremos
+la relación entre el coste y su volumen.
+
+Datos en tabla \ref{tab:tank_data} y regresión en figura \ref{fig:tank_regression}.
+
+\begin{table}[htbp]
+	\centering
+	\begin{tabular}{llrr}
+		\toprule
+		Marca          & Modelo    & Volumen [$m^3$] & Precio [\euro] \\
+		\midrule
+		bradford white & AST-40-6  & 0.1514          & 1000           \\
+		john wood      & JWSB-50   & 0.18925         & 1150           \\
+		john wood      & JWSB-40   & 0.1514          & 1155           \\
+		lochinvar      & RBT030    & 0.11355         & 1170           \\
+		lochinvar      & RBT050    & 0.18925         & 1200           \\
+		bradford white & AST-80-6  & 0.3028          & 1460           \\
+		lochinvar      & SBT030    & 0.11355         & 1470           \\
+		Ao-smith       & T-80S     & 0.3028          & 1500           \\
+		lochinvar      & RBT080    & 0.3028          & 1600           \\
+		Ao-smith       & TJV-120M  & 0.450415        & 1650           \\
+		bradford white & AST-120-6 & 0.450415        & 2180           \\
+		lochinvar      & RJS120M   & 0.450415        & 2300           \\
+		Ao-smith       & T-120S    & 0.450415        & 2700           \\
+		Ao-smith       & TJV-200M  & 0.662375        & 4500           \\
+		amtrol         & 2775-5002 & 0.4542          & 3890           \\
+		Ao-smith       & T-200A    & 0.757           & 4530           \\
+		Ao-smith       & T-140A    & 0.5299          & 4500           \\
+		Ao-smith       & TJV-140A  & 0.5299          & 5500           \\
+		Ao-smith       & T-250A    & 0.94625         & 6000           \\
+		Ao-smith       & T-350S    & 1.32475         & 6300           \\
+		lochinvar      & RJA200    & 0.757           & 6370           \\
+		Ao-smith       & T-400A    & 1.514           & 8300           \\
+		Ao-smith       & TJV-350A  & 1.32475         & 10000          \\
+		Ao-smith       & TJV-T500A & 1.8925          & 10600          \\
+		Ao-smith       & TJV-1000A & 3.785           & 16400          \\
+		Ao-smith       & TJV-750A  & 2.83875         & 17500          \\
+		Ao-smith       & TH-1000A  & 3.785           & 22400          \\
+		\bottomrule
+	\end{tabular}
+	\caption{Modelos de tanques de agua.}
+	\label{tab:tank_data}
+\end{table}
+
+
+\begin{figure}[h] \centering
+	\centering
+	\includegraphics[width=1\textwidth]{./capitulos/adquisicion_de_datos/images/tank_regression.png}
+	\caption{Ajuste lineal de precios para depósitos de agua caliente.}
+	\label{fig:tank_regression}
+\end{figure}
+
+con la ecuación para el coste:
+
+\begin{equation}
+	\text{coste\_deposito} \left[\frac{\text{\euro}}{m^3}\right] = 663.27 + 5235.33 \cdot V_{tanque}
+\end{equation}

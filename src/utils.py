@@ -91,7 +91,6 @@ def get_generator_data():
     return power, cost
 
 
-
 def get_hp_depreciation_by_joule(hp_power):
     """
     hp_power [W]: maximum power for compressor, not heat capacity
@@ -668,6 +667,7 @@ def plot_prices():
     # t0 = 24 * 3600 * 90
     h = 100
     horizon = 3600 * 24 * 365
+    # horizon = 3600 * 24 * 30
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon, year=2022)
     parameters = PARAMS
@@ -680,12 +680,12 @@ def plot_prices():
 
     time = np.arange(t0, t0 + horizon, h)
 
-    plt.plot(time / 3600, daily_prices, label="diario", **plot_styles[0])
-    plt.plot(time / 3600, pvpc_prices, label="pvpc", **plot_styles[1])
-    plt.plot(time / 3600, excess_prices, label="compensación", **plot_styles[2])
+    # plt.plot(time / 3600 / 24, daily_prices, label="diario", **plot_styles[0])
+    plt.plot(time / 3600 / 24, pvpc_prices, label="pvpc", **plot_styles[0], linewidth=0.5)
+    plt.plot(time / 3600 / 24, excess_prices, label="compensación", **plot_styles[1], linewidth=0.5)
 
-    plt.legend()
-    plt.xlabel("horas")
+    plt.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
+    plt.xlabel("días")
     plt.ylabel(r"€$/kWh$")
     plt.grid(True)
     plt.show()
@@ -695,6 +695,7 @@ def plot_dynamic_parameters():
     # t0 = 24 * 3600 * 90
     h = 100
     horizon = 3600 * 24 * 365
+    # horizon = 3600 * 24 * 30
 
     dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
     parameters = PARAMS
@@ -710,19 +711,30 @@ def plot_dynamic_parameters():
     print("time.shape: ", time.shape)
     print("p_required shape: ", parameters["p_required"].shape)
 
-    fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
-    # axes[0].plot(time / 3600, parameters["p_required"], label="p_required", **plot_styles[0])
-    axes[0].plot(time / 3600, parameters["t_amb"], label="t_amb", **plot_styles[0])
-    axes[0].legend()
-
-    # axes[0].plot(time / 3600, parameters["daily_prices"], label="daily_prices", **plot_styles[0])
+    # fig, axes = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
+    # # axes[0].plot(time / 3600, parameters["p_required"], label="p_required", **plot_styles[0])
+    # axes[0].plot(time / 3600, parameters["t_amb"], label="t_amb", **plot_styles[0])
     # axes[0].legend()
+    #
+    # # axes[0].plot(time / 3600, parameters["daily_prices"], label="daily_prices", **plot_styles[0])
+    # # axes[0].legend()
+    #
+    # axes[1].plot(time / 3600, parameters["w_solar_per_w_installed"], label="w_solar_per_w_installed", **plot_styles[1])
+    # # axes[1].plot(time / 3600, parameters["daily_prices"], label="daily_prices", **plot_styles[0])
+    # # axes[1].legend()
+    # # axes[1].set_xlabel("hour", fontsize=14)
+    #
+    # plt.grid(True)
+    # plt.show()
 
-    axes[1].plot(time / 3600, parameters["w_solar_per_w_installed"], label="w_solar_per_w_installed", **plot_styles[1])
-    # axes[1].plot(time / 3600, parameters["daily_prices"], label="daily_prices", **plot_styles[0])
-    # axes[1].legend()
-    # axes[1].set_xlabel("hour", fontsize=14)
-
+    parameters["p_required"] = parameters["p_required"] / 1000 # W to kW
+    parameters["t_amb"] = parameters["t_amb"] - 273
+    # plt.plot(time / 3600 / 24, parameters["p_required"], **plot_styles[0], linewidth=0.5)
+    # plt.plot(time / 3600 / 24, parameters["w_solar_per_w_installed"], **plot_styles[0], linewidth=0.5)
+    plt.plot(time / 3600 / 24, parameters["t_amb"], **plot_styles[0], linewidth=0.5)
+    # plt.ylabel("kW")
+    plt.ylabel("Temperatura [ºC]")
+    plt.xlabel("días")
     plt.grid(True)
     plt.show()
 
@@ -740,7 +752,7 @@ def plot_data_regressions():
     # tank_cost = tank_cost0 + tank_slope * tank_volume
     # plt.scatter(tank_volume_data, tank_cost_data, **plot_styles[0])
     # plt.plot(tank_volume, tank_cost, **plot_styles[1])
-    # plt.title("Water tank cost")
+    # # plt.title("Water tank cost")
     # plt.ylabel("€")
     # plt.xlabel(r"$m^3$")
     # plt.show()
@@ -776,7 +788,7 @@ def plot_data_regressions():
     # battery_cost = battery_cost0 + battery_slope * battery_kwatts_hour
     # plt.scatter(battery_kwatts_hour_data, battery_cost_data, **plot_styles[0])
     # plt.plot(battery_kwatts_hour, battery_cost, **plot_styles[1])
-    # plt.title("Battery cost")
+    # # plt.title("Battery cost")
     # plt.xlabel(r"$kW \cdot h$")
     # plt.ylabel("€")
     # plt.show()
@@ -788,7 +800,7 @@ def plot_data_regressions():
     # hp_cost = hp_cost0 + hp_slope * hp_power_w
     # plt.scatter(hp_power_w_data, hp_cost_data, **plot_styles[0])
     # plt.plot(hp_power_w, hp_cost, **plot_styles[1])
-    # plt.title("Heat pump cost")
+    # # plt.title("Heat pump cost")
     # plt.xlabel(r"$W$")
     # plt.ylabel("€")
     # plt.show()
@@ -800,7 +812,7 @@ def plot_data_regressions():
     # hp_cost = hp_cost0 + hp_slope * hp_power_kw
     # plt.scatter(hp_power_kw_data, hp_cost_data, **plot_styles[0])
     # plt.plot(hp_power_kw, hp_cost, **plot_styles[1])
-    # plt.title("Heat pump cost")
+    # # plt.title("Heat pump cost")
     # plt.xlabel(r"$kW$")
     # plt.ylabel("€")
     # plt.show()
@@ -815,15 +827,28 @@ def plot_data_regressions():
     # plt.ylabel("€")
     # plt.show()
 
-    # Generators
-    generator_cost0, generator_slope = linear_regression(generator_power_w_data, generator_cost_data)
+    # # Generators
+    # generator_cost0, generator_slope = linear_regression(generator_power_w_data, generator_cost_data)
+    # print(f"generator y0: {generator_cost0}, slope: {generator_slope}")
+    # generator_power_w = np.linspace(4000, 170000, 1000)
+    # generator_cost = generator_cost0 + generator_slope * generator_power_w
+    # plt.scatter(generator_power_w_data, generator_cost_data, **plot_styles[0])
+    # plt.plot(generator_power_w, generator_cost, **plot_styles[1])
+    # plt.title("Diesel generator cost")
+    # plt.xlabel(r"$W$")
+    # plt.ylabel("€")
+    # plt.show()
+
+    # Generators scaled from W to kW
+    generator_power_kw_data = generator_power_w_data / 1000
+    generator_cost0, generator_slope = linear_regression(generator_power_kw_data, generator_cost_data)
     print(f"generator y0: {generator_cost0}, slope: {generator_slope}")
-    generator_power_w = np.linspace(4000, 170000, 1000)
-    generator_cost = generator_cost0 + generator_slope * generator_power_w
-    plt.scatter(generator_power_w_data, generator_cost_data, **plot_styles[0])
-    plt.plot(generator_power_w, generator_cost, **plot_styles[1])
-    plt.title("Diesel generator cost")
-    plt.xlabel(r"$W$")
+    generator_power_kw = np.linspace(4, 170, 1000)
+    generator_cost = generator_cost0 + generator_slope * generator_power_kw
+    plt.scatter(generator_power_kw_data, generator_cost_data, **plot_styles[0])
+    plt.plot(generator_power_kw, generator_cost, **plot_styles[1])
+    # plt.title("Diesel generator cost")
+    plt.xlabel(r"$kW$")
     plt.ylabel("€")
     plt.show()
 
@@ -844,7 +869,7 @@ def plot_cop():
 
 
 if __name__ == "__main__":
-    # plot_data_regressions()
+    plot_data_regressions()
     # plot_prices()
     # plot_dynamic_parameters()
-    plot_cop()
+    # plot_cop()

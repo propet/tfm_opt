@@ -24,7 +24,7 @@ se ha copiado de un modelo de tesla powerwall
 \begin{table}[ht]
 	\centering
 	\label{tab:control_data}
-	\caption{Parámetros para problemas de control}
+	\caption{Parámetros para problemas de control.}
 	\begin{tabular}{@{}lll@{}}
 		\toprule
 		\textbf{Parámetro}     & \textbf{Valor}         & \textbf{Descripción}                       \\
@@ -293,7 +293,7 @@ para la vivienda. La información para esta operación se muestra en el cuadro
 El problema de optimización a resolver es:
 
 \begin{align}
-	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                                \\
+	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x}) \label{eq:sand_control_optimization}                                                                                                               \\
 	\text{sujeto a} \quad   & \nonumber                                                                                                                                      \\
 	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                         & \forall k > 0 \\
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                       & \forall k > 0 \\
@@ -349,7 +349,7 @@ ANalysis and Design.
 
 Ahora las variables de estado $T_{cond}$, $T_{tanque}$, $T_{suelo}$ y
 $T_{habitacion}$, son más variables de diseño que el optimizador ha de
-manipular para satisfacer las igualdades del sistema (hora restricciones).
+manipular para satisfacer las igualdades del sistema (ahora restricciones).
 
 Por tanto lleva la desventaja de que ahora la solución para el modelo térmico
 puede no ser válido si el diseño aún no ha llegado a un punto de convergencia.
@@ -502,6 +502,10 @@ datos de la ejecución.
 
 Y usando un periodo de 30 días en la figura \ref{fig:control_sand_30_days}, y
 cuadro \ref{tab:control_sand_30_days}.
+
+Llegamos a la conclusión de que el análisis y optimización del problema
+simultáneo rinde mejor a pesar de añadir complejidad a la formulación, y por
+ello solo vamos a tratar en lo siguiente con el método SAND.
 
 \begin{figure}[h] \centering
 	\centering
