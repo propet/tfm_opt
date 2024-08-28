@@ -5,8 +5,8 @@ PARAMS = {
     # "T0": 200 * 24 * 3600,
     "T0": 0,
     # "HORIZON": 10000,  # s
-    # "HORIZON": 365 * 24 * 3600,  # s
-    "HORIZON": 30 * 24 * 3600,  # s
+    "HORIZON": 365 * 24 * 3600,  # s
+    # "HORIZON": 30 * 24 * 3600,  # s
     # "HORIZON": 7 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 
