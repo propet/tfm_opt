@@ -207,3 +207,43 @@ de la vivienda. Ahora se emplea un poco de almacenamiento eléctrico (baterías)
 
 \clearpage
 \subsection{Sistema off-grid}
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/sizing_offgrid_full_year}
+	\caption{Control y dimensionamiento para el año 2022 con compensación ilimitada.}
+	\label{fig:sizing_offgrid_full_year}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:sizing_offgrid_full_year}}
+	\label{tab:sizing_offgrid_full_year}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                 & Valor  \\
+		\midrule
+		Número de iteraciones realizadas          & 500    \\
+		Tiempo total (minutos)                    & 186    \\
+		Número de pasos                           & 31536  \\
+		Número de variables de diseño             & 283829 \\
+		\midrule
+		Valor de la función objetivo (€)          & -1481  \\
+		\midrule
+		Coste fijo de energía                     & 520    \\
+		Coste variable de energía                 & -3304  \\
+		Coste de depreciación de batería          & 26     \\
+		Coste de depreciación de paneles solares  & 1161   \\
+		Coste de depreciación de bomba de calor   & 25     \\
+		Coste de depreciación de depósito de agua & 33     \\
+		\midrule
+		Dimensiones                               &        \\
+		\midrule
+		Potencia solar instalada (kW)             & 20.00  \\
+		Potencia bomba calor (kW)                 & 3.26   \\
+		Potencia máxima contratada (kW)           & 13.30  \\
+		Capacidad baterías (kWh)                  & 2.59   \\
+		Volumen depósito ($m^3$)                  & 0.001  \\
+		\bottomrule
+	\end{tabular}
+\end{table}

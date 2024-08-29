@@ -351,8 +351,8 @@ def plot_film(filename):
         os.remove(os.path.join(directory, filename))
 
 
-def save_dict_to_file(dict):
-    filename = "saves/dict_file.pkl"
+def save_dict_to_file(dict, filename):
+    filename = f"saves/{filename}.pkl"
     # Open a file in write-binary mode and use pickle to serialize the dictionary
     with open(filename, "wb") as f:
         pickle.dump(dict, f)

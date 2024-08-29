@@ -8,6 +8,7 @@ PARAMS = {
     "HORIZON": 365 * 24 * 3600,  # s
     # "HORIZON": 30 * 24 * 3600,  # s
     # "HORIZON": 7 * 24 * 3600,  # s
+    # "HORIZON": 1 * 24 * 3600,  # s
     # "N_HOURS": 100000,  # 8760 in a year
 
     "MAX_BAT_CAPACITY": 13000,  # W·h
@@ -26,7 +27,7 @@ PARAMS = {
     "P_BAT_MAX_LIMIT_10KWH": 0.3 * 10000,  # W for e_bat_max_limit 10kWh
     "P_BAT_MAX_LIMIT_1KWH": 0.3 * 1000,  # [W] for e_bat_max_limit 1kWh
     "P_GRID_MAX": 5000,  # W
-    "P_GRID_MAX_LIMIT": 100000,  # W
+    "P_GRID_MAX_LIMIT": 20000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W
     "MAX_HEAT_POWER": 10000,  # W
     "MAX_ELECTRIC_DEMAND": 4000,  # W

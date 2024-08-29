@@ -14,6 +14,8 @@ from utils import (
     get_solar_panels_depreciation_by_second,
     get_hp_depreciation_by_joule,
     get_tank_depreciation_by_second,
+    get_generator_depreciation_by_joule,
+    load_dict_from_file,
 )
 
 
@@ -40,8 +42,9 @@ def get_costs(histories, parameters):
         "fixed_energy_cost": np.sum(h * get_fixed_energy_cost_by_second(p_grid_max)),
         "battery drep": np.sum(h * np.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
         "solar drep": np.sum(h * get_solar_panels_depreciation_by_second(solar_size)),
-        "HP drep": np.sum(h * np.abs(p_compressor) * get_hp_depreciation_by_joule(p_compressor_max)),
+        "HP drep": np.sum(h * p_compressor * get_hp_depreciation_by_joule(p_compressor_max)),
         "tank drep": np.sum(h * get_tank_depreciation_by_second(tank_volume)),
+        "generator drep": np.sum(h * p_grid * get_generator_depreciation_by_joule(p_grid_max))
     }
 
 
@@ -173,6 +176,7 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
     m_dot_cond = histories["m_dot_cond"][i]
     m_dot_heating = histories["m_dot_heating"][i]
     p_compressor = histories["p_compressor"][i]
+    p_waste = histories["p_waste"][i]
     e_bat = histories["e_bat"][i]
     p_bat = histories["p_bat"][i]
     solar_size = histories["solar_size"][i]
@@ -188,7 +192,7 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
     excess_prices = parameters["excess_prices"]
     p_required = parameters["p_required"]
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
-    p_grid = -p_solar + p_compressor + p_bat + p_required
+    p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
 
     fig, axes = plt.subplots(3, 1, figsize=(8.27, 11.69), sharex=True)
     fig.subplots_adjust(hspace=0.5)
@@ -227,13 +231,14 @@ def plot_full(i, histories, parameters, title=None, show=True, block=True, save=
     axes[2].plot(t, p_grid, label="p_grid", **plot_styles[0])
     axes[2].plot(t, p_compressor, label="p_comp", **plot_styles[1])
     axes[2].plot(t, p_bat, label="p_bat", **plot_styles[2])
+    axes[2].plot(t, p_waste, label="p_waste", **plot_styles[3])
     axes[2].set_ylabel("Power[W]")
     axes[2].legend(loc="upper left")
     axes[2].grid(True)
     axes[2].set_xlabel("Time [h]")
     ax2 = axes[2].twinx()
-    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[3])
-    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[4])
+    ax2.plot(t, m_dot_cond, label="m_dot_cond", **plot_styles[4])
+    ax2.plot(t, m_dot_heating, label="m_dot_heating", **plot_styles[5])
     ax2.set_ylabel("Mass flow rates")
     ax2.legend(loc="upper right")
 
@@ -302,7 +307,63 @@ def plot_history(hist, only_last=True):
     plot_film(filename_gif)
 
 
+def plot_dict(dictfile):
+    # Get inputs
+    dict = load_dict_from_file(dictfile)
+    histories = {
+        "t_cond": [dict["t_cond"]],
+        "t_tank": [dict["t_tank"]],
+        "t_floor": [dict["t_floor"]],
+        "t_room": [dict["t_room"]],
+        "p_bat": [dict["p_bat"]],
+        "e_bat": [dict["e_bat"]],
+        "p_compressor": [dict["p_compressor"]],
+        "p_waste": [dict["p_waste"]],
+        "m_dot_cond": [dict["m_dot_cond"]],
+        "m_dot_heating": [dict["m_dot_heating"]],
+        "e_bat_max": [dict["e_bat_max"]],
+        "solar_size": [dict["solar_size"]],
+        "p_compressor_max": [dict["p_compressor_max"]],
+        "p_grid_max": [dict["p_grid_max"]],
+        "tank_volume": [dict["tank_volume"]],
+    }
+
+    h = PARAMS["H"]
+    horizon = PARAMS["HORIZON"]
+    t0 = PARAMS["T0"]
+
+    dynamic_parameters = get_dynamic_parameters(t0, h, horizon)
+    parameters = PARAMS
+    parameters["q_dot_required"] = dynamic_parameters["q_dot_required"]
+    parameters["p_required"] = dynamic_parameters["p_required"]
+    parameters["t_amb"] = dynamic_parameters["t_amb"]
+    parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
+    parameters["daily_prices"] = dynamic_parameters["daily_prices"]
+    parameters["pvpc_prices"] = dynamic_parameters["pvpc_prices"]
+    parameters["excess_prices"] = dynamic_parameters["excess_prices"]
+
+    i = 0
+    title = dictfile.replace(".hst", "")
+    title = title.replace("saves/", "")
+    save_plots(i, histories, parameters, title=title, save=False, show=True)
+    plot_full(i, histories, parameters, save=False, show=True)
+
+    # Print statistics
+    costs = get_costs(histories, parameters)
+    print(costs)
+    print("p_compressor max:", np.max(histories["p_compressor"][-1]))
+    print("p_compressor_max:", histories["p_compressor_max"][-1])
+    print("p_grid_max:", histories["p_grid_max"][-1])
+    print("e_bat_max[Ws]:", histories["e_bat_max"][-1])
+    print("e_bat_max[kWh]:", histories["e_bat_max"][-1] / (1000 * 3600))
+    print("tank_volume:", histories["tank_volume"][-1])
+    print("solar_size:", histories["solar_size"][-1])
+    print("p_bat_max[w]: ", (histories["e_bat_max"][-1] * parameters["C_RATE_BAT"] / 3600))
+    return
+
+
 if __name__ == "__main__":
     # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
-    plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
+    plot_dict(dictfile="saves/sizing_off_grid.pkl")
