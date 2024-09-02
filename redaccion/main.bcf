@@ -2364,15 +2364,28 @@
     <bcf:citekey order="1" intorder="1">dubey2024llama</bcf:citekey>
     <bcf:citekey order="2" intorder="1">mdobook</bcf:citekey>
     <bcf:citekey order="3" intorder="1">mdobook</bcf:citekey>
-    <bcf:citekey order="4" intorder="1">SAM2023</bcf:citekey>
-    <bcf:citekey order="5" intorder="1">incropera1996fundamentals</bcf:citekey>
-    <bcf:citekey order="6" intorder="1">refrigerating2009ashrae</bcf:citekey>
-    <bcf:citekey order="7" intorder="1">podder2019mppt</bcf:citekey>
-    <bcf:citekey order="8" intorder="1">incropera1996fundamentals</bcf:citekey>
-    <bcf:citekey order="9" intorder="1">cengel2007transferencia</bcf:citekey>
-    <bcf:citekey order="10" intorder="1">Wu2020</bcf:citekey>
-    <bcf:citekey order="11" intorder="1">wachter2006implementation</bcf:citekey>
-    <bcf:citekey order="12" intorder="1">shewchuk1994introduction</bcf:citekey>
+    <bcf:citekey order="4" intorder="1">kingma2014adam</bcf:citekey>
+    <bcf:citekey order="5" intorder="1">mdobook</bcf:citekey>
+    <bcf:citekey order="6" intorder="1">mdobook</bcf:citekey>
+    <bcf:citekey order="7" intorder="1">mdobook</bcf:citekey>
+    <bcf:citekey order="8" intorder="1">mdobook</bcf:citekey>
+    <bcf:citekey order="9" intorder="1">jax2018github</bcf:citekey>
+    <bcf:citekey order="10" intorder="1">scieur2022curse</bcf:citekey>
+    <bcf:citekey order="11" intorder="1">mdobook</bcf:citekey>
+    <bcf:citekey order="12" intorder="1">mdobook</bcf:citekey>
+    <bcf:citekey order="13" intorder="1">zhang2022petsc</bcf:citekey>
+    <bcf:citekey order="14" intorder="1">petzold1982description</bcf:citekey>
+    <bcf:citekey order="15" intorder="1">hindmarsh2005sundials</bcf:citekey>
+    <bcf:citekey order="16" intorder="1">pantelides1988consistent</bcf:citekey>
+    <bcf:citekey order="17" intorder="1">SAM2023</bcf:citekey>
+    <bcf:citekey order="18" intorder="1">incropera1996fundamentals</bcf:citekey>
+    <bcf:citekey order="19" intorder="1">refrigerating2009ashrae</bcf:citekey>
+    <bcf:citekey order="20" intorder="1">podder2019mppt</bcf:citekey>
+    <bcf:citekey order="21" intorder="1">incropera1996fundamentals</bcf:citekey>
+    <bcf:citekey order="22" intorder="1">cengel2007transferencia</bcf:citekey>
+    <bcf:citekey order="23" intorder="1">Wu2020</bcf:citekey>
+    <bcf:citekey order="24" intorder="1">wachter2006implementation</bcf:citekey>
+    <bcf:citekey order="25" intorder="1">shewchuk1994introduction</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nty">

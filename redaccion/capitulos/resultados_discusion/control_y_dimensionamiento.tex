@@ -8,28 +8,50 @@ La formulación es similar a \eqref{eq:sand_control_optimization}, pero entonces
 las dimensiones las tratábamos como parámetros fijos, y ahora serán variables
 de diseño.
 
+También incorporamos en todas las funciones objetivo la penalización por desvío
+de la temperatura de la habitación de la objetivo de 20ºC
+\eqref{eq:temperature_penalization}.
+
+En invierno no se hace realmente necesaria imponerla, porque de forma natural
+el calentar el hogar supone un gasto, y siempre tratamos de minimizar el gasto.
+Pero puede darse que en unas horas de calor el optimizador piense en calentar
+la casa, incluso por encima de los 30 grados, porque posteriormente tendremos
+un periodo donde la energía eléctrica será cara, y de esta forma es más
+económico mantener la habitación siempre por encima de la temperatura objetivo.
+En alguna ocasión el optimizador incluso decide encender la calefacción en
+verano, donde inevitablemente nos encontramos por encima de la temperatura
+ideal, ya que no disponemos de aire acondicionado.
+
+Para evitar este comportamiento indeseado, introducimos la penalización.
+
+Y aprovechando este comentario, invitamos a observar cómo en todos los casos
+estudiados la bomba de calor se apaga para los meses de verano y la temperatura
+de la habitación se despega de la temperatura objetivo. No importa cuánto
+penalicemos el desvío, nos es imposible seguir la referencia de 20 grados,
+porque no tenemos refrigeración en la vivienda.
+
 \begin{align}
-	\min_{\mathbf{x}} \quad & \text{Coste\_Autoconsumo}(\mathbf{x}) \label{eq:regulated_sizing_optimization}                                                   \\
-	\text{sujeto a} \quad   & \nonumber                                                                                                                        \\
-	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                           & \forall k > 0 \\
-	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                         & \forall k > 0 \\
-	                        & \text{cop}(T_{cond_k}) \cdot P_{bomba_k} \nonumber                                                                               \\
-	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot (T_{cond_k} - T_{tanque_k}) = 0                                   & \forall k > 0 \\
-	                        & m_{tanque} \cdot cp_{agua} \cdot ( T_{tanque_k} - T_{tanque_{k-1}}) / h  \nonumber                                               \\
-	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot T_{cond_k} \nonumber                                                              \\
-	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot T_{cale_k} \nonumber                                                              \\
-	                        & \quad + (\dot{m}_{cond_k} + \dot{m}_{cale_k}) \cdot cp_{agua} \cdot T_{tanque_k} \nonumber                                       \\
-	                        & \quad + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque_k} - T_{amb_k}) = 0  \label{eq:sizing_dae2}                 & \forall k > 0 \\
-	                        & m_{suelo} \cdot cp_{suelo} \cdot ( T_{suelo_k} - T_{suelo_{k-1}}) / h \nonumber                                                  \\
-	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot (T_{tanque_k} - T_{cale_k})                             \nonumber                 \\
-	                        & \quad + h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})                             \nonumber                 \\
-	                        & \quad + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4) = 0          & \forall k > 0 \\
-	                        & m_{aire} \cdot cp_{aire} \cdot ( T_{habitacion_k} - T_{habitacion_{k-1}}) / h  \nonumber                                         \\
-	                        & \quad - h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})  \nonumber                                            \\
-	                        & \quad - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4)  \nonumber                   \\
-	                        & \quad + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                             \\
-	                        & \quad + U_{techo} \cdot A_{techo} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                                 \\
-	                        & \quad + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion_k} - T_{amb_k}) = 0                                 & \forall k > 0
+	\min_{\mathbf{x}} \quad & \text{Coste\_Autoconsumo}(\mathbf{x}) + \text{penalizacion\_T\_objetivo} \label{eq:regulated_sizing_optimization}                 \\
+	\text{sujeto a} \quad   & \nonumber                                                                                                                         \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} + P_{sobrante_k} \quad                           & \forall k > 0 \\
+	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                          & \forall k > 0 \\
+	                        & \text{cop}(T_{cond_k}) \cdot P_{bomba_k} \nonumber                                                                                \\
+	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot (T_{cond_k} - T_{tanque_k}) = 0                                    & \forall k > 0 \\
+	                        & m_{tanque} \cdot cp_{agua} \cdot ( T_{tanque_k} - T_{tanque_{k-1}}) / h  \nonumber                                                \\
+	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot T_{cond_k} \nonumber                                                               \\
+	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot T_{cale_k} \nonumber                                                               \\
+	                        & \quad + (\dot{m}_{cond_k} + \dot{m}_{cale_k}) \cdot cp_{agua} \cdot T_{tanque_k} \nonumber                                        \\
+	                        & \quad + U_{tanque} \cdot A_{tanque} \cdot (T_{tanque_k} - T_{amb_k}) = 0  \label{eq:sizing_dae2}                  & \forall k > 0 \\
+	                        & m_{suelo} \cdot cp_{suelo} \cdot ( T_{suelo_k} - T_{suelo_{k-1}}) / h \nonumber                                                   \\
+	                        & \quad - \dot{m}_{cale_k} \cdot cp_{agua} \cdot (T_{tanque_k} - T_{cale_k})                             \nonumber                  \\
+	                        & \quad + h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})                             \nonumber                  \\
+	                        & \quad + \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4) = 0           & \forall k > 0 \\
+	                        & m_{aire} \cdot cp_{aire} \cdot ( T_{habitacion_k} - T_{habitacion_{k-1}}) / h  \nonumber                                          \\
+	                        & \quad - h_{suelo_k} \cdot A_{suelo} \cdot (T_{suelo_k} - T_{habitacion_k})  \nonumber                                             \\
+	                        & \quad - \sigma \cdot \epsilon_{hormigon} \cdot A_{suelo} \cdot (T_{suelo_k}^4 - T_{habitacion_k}^4)  \nonumber                    \\
+	                        & \quad + U_{paredes} \cdot A_{paredes} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                              \\
+	                        & \quad + U_{techo} \cdot A_{techo} \cdot (T_{habitacion_k} - T_{amb_k}) \nonumber                                                  \\
+	                        & \quad + U_{ventanas} \cdot A_{ventanas} \cdot (T_{habitacion_k} - T_{amb_k}) = 0                                  & \forall k > 0
 \end{align}
 
 con límites
@@ -41,6 +63,7 @@ con límites
 	 & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad & \forall k \\
 	 & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                            & \forall k \\
 	 & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                            & \forall k \\
+	 & 0 \leq P_{sobrante_k} \leq 10[kW] \quad                                           & \forall k \\
 	 & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                           & \forall k \\
 	 & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                           & \forall k \\
 	 & 0 \leq e_{max} [kWh] \leq 100                                                                 \\
@@ -117,29 +140,29 @@ figura \ref{fig:sizing_regulated_full_year} y cuadro \ref{tab:sizing_regulated_f
 	\label{tab:sizing_regulated_full_year}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                 & Valor  \\
+		Parámetro                                      & Valor                 \\
 		\midrule
-		Número de iteraciones realizadas          & 500    \\
-		Tiempo total (minutos)                    & 207    \\
-		Número de pasos                           & 31536  \\
-		Número de variables de diseño             & 283829 \\
+		Número de iteraciones realizadas               & 500                   \\
+		Tiempo total (minutos)                         & 190                   \\
+		Número de pasos                                & 31536                 \\
+		Número de variables de diseño                  & 315365                \\
 		\midrule
-		Valor de la función objetivo (€)          & 354    \\
+		Coste (€), sin penalización por $T_{objetivo}$ & 366.73                \\
 		\midrule
-		Coste fijo de energía                     & 71.93  \\
-		Coste variable de energía                 & 0.02   \\
-		Coste de depreciación de batería          & 1.47   \\
-		Coste de depreciación de paneles solares  & 172.51 \\
-		Coste de depreciación de bomba de calor   & 23.90  \\
-		Coste de depreciación de depósito de agua & 33.42  \\
+		Coste fijo de energía                          & 80.10                 \\
+		Coste variable de energía                      & -0.51 $\rightarrow$ 0 \\
+		Coste de depreciación de batería               & 0.73                  \\
+		Coste de depreciación de paneles solares       & 179.76                \\
+		Coste de depreciación de bomba de calor        & 72.72                 \\
+		Coste de depreciación de depósito de agua      & 33.42                 \\
 		\midrule
-		Dimensiones                               &        \\
+		Dimensiones                                    &                       \\
 		\midrule
-		Potencia solar instalada (kW)             & 2.97   \\
-		Potencia bomba calor (kW)                 & 1.25   \\
-		Potencia máxima contratada (kW)           & 1.84   \\
-		Capacidad baterías (kWh)                  & 0.70   \\
-		Volumen depósito ($m^3$)                  & 0.001  \\
+		Potencia solar instalada (kW)                  & 3.09                  \\
+		Potencia bomba calor (kW)                      & 0.32                  \\
+		Potencia máxima contratada (kW)                & 2.05                  \\
+		Capacidad baterías (kWh)                       & 0.004                 \\
+		Volumen depósito ($m^3$)                       & 0.001                 \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -152,11 +175,69 @@ inercia térmica.
 Y tampoco se hace uso de baterías. Es curioso que no sea rentable su uso ni con
 conocimiento perfecto de los precios futuros.
 
+Para validar esta hipótesis, realizamos la misma optimización, pero esta vez
+dejamos las baterías a un quinto de su precio. Queremos averiguar si esta vez
+el optimizador hará uso de las baterías, siendo tan baratas.
+
+Y efectivamente vemos en tabla
+\ref{tab:sizing_regulated_full_year_cheap_batteries} y la figura
+\ref{fig:sizing_regulated_full_year_cheap_batteries} cómo se pasa a usar una
+batería de $6.5[kWh]$.
+
+En comparación con la ejecución anterior, la bomba de calor tiene el mismo
+tamaño, pero ahora se instala más potencia solar, y se reduce considerablemente
+la potencia fija contratada, ya que resulta más económico almacenar la energía
+en baterías e ir vendiendo más progresivamente, no solo cuando los paneles
+solares produzcan.
+
+\begin{figure}[h] \centering
+	\centering
+	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/sizing_regulated_full_year_cheap_batteries}
+	\caption{Autoconsumo en caso de tener baterías 5 veces más baratas.}
+	\label{fig:sizing_regulated_full_year_cheap_batteries}
+\end{figure}
+
+\begin{table}[ht]
+	\centering
+	\caption{Datos para ejecución mostrada en la figura \ref{fig:sizing_regulated_full_year_cheap_batteries}}
+	\label{tab:sizing_regulated_full_year_cheap_batteries}
+	\begin{tabular}{@{}lcc@{}}
+		\toprule
+		Parámetro                                      & Valor                 \\
+		\midrule
+		Número de iteraciones realizadas               & 500                   \\
+		Tiempo total (minutos)                         & 179                   \\
+		Número de pasos                                & 31536                 \\
+		Número de variables de diseño                  & 315365                \\
+		\midrule
+		Coste (€), sin penalización por $T_{objetivo}$ & 322.48                \\
+		\midrule
+		Coste fijo de energía                          & 34.49                 \\
+		Coste variable de energía                      & -1.35 $\rightarrow$ 0 \\
+		Coste de depreciación de batería               & 40.23                 \\
+		Coste de depreciación de paneles solares       & 141.58                \\
+		Coste de depreciación de bomba de calor        & 72.76                 \\
+		Coste de depreciación de depósito de agua      & 33.42                 \\
+		\midrule
+		Dimensiones                                    &                       \\
+		\midrule
+		Potencia solar instalada (kW)                  & 2.44                  \\
+		Potencia bomba calor (kW)                      & 0.33                  \\
+		Potencia máxima contratada (kW)                & 0.88                  \\
+		Capacidad baterías (kWh)                       & 6.55                  \\
+		Volumen depósito ($m^3$)                       & 0.001                 \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
 \clearpage
 \subsection{Autoconsumo con compensación ilimitada}
 
-Usando la función objectivo \eqref{eq:cost_free} en la misma formulación usanda
-previamente \eqref{eq:regulated_sizing_optimization}.
+Usando la función objectivo \eqref{eq:cost_free} en la misma formulación usada
+previamente \eqref{eq:regulated_sizing_optimization}, y añadiendo el término
+para penalizar la diferencia con la temperatura objectivo
+\eqref{eq:temperature_penalization}.
 
 Por tanto, la optimización para el año completo (2022), se muestran en la
 figura \ref{fig:sizing_free_full_year} y cuadro \ref{tab:sizing_free_full_year}.
@@ -174,29 +255,29 @@ figura \ref{fig:sizing_free_full_year} y cuadro \ref{tab:sizing_free_full_year}.
 	\label{tab:sizing_free_full_year}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                 & Valor  \\
+		Parámetro                                      & Valor    \\
 		\midrule
-		Número de iteraciones realizadas          & 500    \\
-		Tiempo total (minutos)                    & 186    \\
-		Número de pasos                           & 31536  \\
-		Número de variables de diseño             & 283829 \\
+		Número de iteraciones realizadas               & 500      \\
+		Tiempo total (minutos)                         & 180      \\
+		Número de pasos                                & 31536    \\
+		Número de variables de diseño                  & 315365   \\
 		\midrule
-		Valor de la función objetivo (€)          & -1481  \\
+		Coste (€), sin penalización por $T_{objetivo}$ & -1427.16 \\
 		\midrule
-		Coste fijo de energía                     & 520    \\
-		Coste variable de energía                 & -3304  \\
-		Coste de depreciación de batería          & 26     \\
-		Coste de depreciación de paneles solares  & 1161   \\
-		Coste de depreciación de bomba de calor   & 25     \\
-		Coste de depreciación de depósito de agua & 33     \\
+		Coste fijo de energía                          & 559.10   \\
+		Coste variable de energía                      & -3324.24 \\
+		Coste de depreciación de batería               & 60.64    \\
+		Coste de depreciación de paneles solares       & 1161.00  \\
+		Coste de depreciación de bomba de calor        & 82.92    \\
+		Coste de depreciación de depósito de agua      & 33.42    \\
 		\midrule
-		Dimensiones                               &        \\
+		Dimensiones                                    &          \\
 		\midrule
-		Potencia solar instalada (kW)             & 20.00  \\
-		Potencia bomba calor (kW)                 & 3.26   \\
-		Potencia máxima contratada (kW)           & 13.30  \\
-		Capacidad baterías (kWh)                  & 2.59   \\
-		Volumen depósito ($m^3$)                  & 0.001  \\
+		Potencia solar instalada (kW)                  & 20.00    \\
+		Potencia bomba calor (kW)                      & 0.44     \\
+		Potencia máxima contratada (kW)                & 14.29    \\
+		Capacidad baterías (kWh)                       & 1.96     \\
+		Volumen depósito ($m^3$)                       & 0.001    \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -208,10 +289,25 @@ de la vivienda. Ahora se emplea un poco de almacenamiento eléctrico (baterías)
 \clearpage
 \subsection{Sistema off-grid}
 
+Uso de la función objetivo \eqref{eq:cost_free} y término para seguir la
+temperatura objetivo de 20ºC \eqref{eq:temperature_penalization}.
+
+Resultados visibles en figura \ref{fig:sizing_offgrid_full_year} y cuadro
+\ref{tab:sizing_offgrid_full_year}.
+
+Cabe destacar que la producción solar es muy reducida, puesto que ya no podemos
+vender, y el coste anual por operar el sistema es de ~900\euro, casi el triple
+que bajo la tarifa de compensación simplificada.
+
+Y observamos cómo se usan conjuntamente grupo electrógeno, paneles solares y
+baterías. Una posible alternativa habría sido prescindir del generador diesel,
+y utilizar únicamente paneles y batería, pero parece que con los precios de
+mercado lo más económico es un mix.
+
 \begin{figure}[h] \centering
 	\centering
 	\includesvg[width=0.92\textwidth]{./capitulos/resultados_discusion/images/sizing_offgrid_full_year}
-	\caption{Control y dimensionamiento para el año 2022 con compensación ilimitada.}
+	\caption{Control y dimensionamiento para el año 2022 con sistema offgrid.}
 	\label{fig:sizing_offgrid_full_year}
 \end{figure}
 
@@ -221,29 +317,30 @@ de la vivienda. Ahora se emplea un poco de almacenamiento eléctrico (baterías)
 	\label{tab:sizing_offgrid_full_year}
 	\begin{tabular}{@{}lcc@{}}
 		\toprule
-		Parámetro                                 & Valor  \\
+		Parámetro                                      & Valor  \\
 		\midrule
-		Número de iteraciones realizadas          & 500    \\
-		Tiempo total (minutos)                    & 186    \\
-		Número de pasos                           & 31536  \\
-		Número de variables de diseño             & 283829 \\
+		Número de iteraciones realizadas               & 500    \\
+		Tiempo total (minutos)                         & 203    \\
+		Número de pasos                                & 31536  \\
+		Número de variables de diseño                  & 315365 \\
 		\midrule
-		Valor de la función objetivo (€)          & -1481  \\
+		Coste (€), sin penalización por $T_{objetivo}$ & 898    \\
 		\midrule
-		Coste fijo de energía                     & 520    \\
-		Coste variable de energía                 & -3304  \\
-		Coste de depreciación de batería          & 26     \\
-		Coste de depreciación de paneles solares  & 1161   \\
-		Coste de depreciación de bomba de calor   & 25     \\
-		Coste de depreciación de depósito de agua & 33     \\
+		Coste fijo de energía                          & 32.80  \\
+		Coste variable de energía                      & 458.07 \\
+		Coste de depreciación de batería               & 124.07 \\
+		Coste de depreciación de paneles solares       & 36.37  \\
+		Coste de depreciación de bomba de calor        & 74.44  \\
+		Coste de depreciación de depósito de agua      & 33.42  \\
+		Coste de depreciación de generador             & 139.69 \\
 		\midrule
-		Dimensiones                               &        \\
+		Dimensiones                                    &        \\
 		\midrule
-		Potencia solar instalada (kW)             & 20.00  \\
-		Potencia bomba calor (kW)                 & 3.26   \\
-		Potencia máxima contratada (kW)           & 13.30  \\
-		Capacidad baterías (kWh)                  & 2.59   \\
-		Volumen depósito ($m^3$)                  & 0.001  \\
+		Potencia solar instalada (kW)                  & 0.62   \\
+		Potencia bomba calor (kW)                      & 0.34   \\
+		Potencia generador diesel (kW)                 & 0.84   \\
+		Capacidad baterías (kWh)                       & 4.04   \\
+		Volumen depósito ($m^3$)                       & 0.001  \\
 		\bottomrule
 	\end{tabular}
 \end{table}

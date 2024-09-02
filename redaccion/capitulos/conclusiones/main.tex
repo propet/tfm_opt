@@ -1,0 +1,36 @@
+En este trabajo hemos desarrollado un modelo de optimización energética para
+una vivienda unifamiliar en Madrid, alcanzando con éxito los objetivos
+propuestos.
+
+Implementamos el método de gradientes adjuntos discretos para obtener las
+derivadas de manera eficiente en un sistema de ecuaciones diferenciales
+algebraicas (DAE) que representa el comportamiento dinámico de la vivienda y
+sus sistemas energéticos. Este enfoque ha permitido optimizar tanto el control
+del sistema como el dimensionamiento de los equipos (bomba de calor, paneles
+fotovoltaicos, baterías y tanque de agua) a lo largo de un año completo,
+reduciendo significativamente el coste total de operación.
+
+Además, utilizamos la técnica SAND (Simultaneous ANalysis and Design) para
+resolver el problema, comparando su rendimiento con el enfoque basado en
+gradientes adjuntos. Los resultados han demostrado que SAND es notablemente más
+eficiente, reduciendo el tiempo computacional en aproximadamente un orden de
+magnitud. Esta mejora en eficiencia es crucial dado el gran número de variables
+de diseño involucradas, que en nuestro caso ascienden a cientos de miles.
+
+Los escenarios de operación evaluados (autoconsumo con compensación
+simplificada, conexión a la red con venta de excedentes, y operación off-grid)
+nos han permitido analizar el comportamiento del sistema bajo diferentes
+condiciones realistas. Los resultados obtenidos son aplicables no solo a
+viviendas unifamiliares, sino también a otros casos como negocios o bloques de
+viviendas.
+
+Si bien no se entró en el modelado en detalle de la bomba de calor ni se
+consideraron paneles solares térmicos, nuestro enfoque tiene el potencial de
+ser ampliado en futuros trabajos para incluir estos elementos. Dichas
+extensiones podrían proporcionar una visión más integral y detallada del
+sistema energético, acercándonos aún más a una optimización completa y realista
+para diferentes tipos de edificaciones.
+
+En resumen, este trabajo muestra el poder de los métodos numéricos como los
+gradientes adjuntos y SAND en la resolución de problemas de gran escala y
+dimensionalidad.

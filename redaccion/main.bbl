@@ -19,6 +19,84 @@
 
 \refsection{0}
   \datalist[entry]{nty/global//global/global}
+    \entry{jax2018github}{software}{}
+      \name{author}{11}{}{%
+        {{hash=b75383e6b48c8360c7a60031424c85cf}{%
+           family={Bradbury},
+           familyi={B\bibinitperiod},
+           given={James},
+           giveni={J\bibinitperiod}}}%
+        {{hash=29563c986154ca2b45d286b4dd5ef92a}{%
+           family={Frostig},
+           familyi={F\bibinitperiod},
+           given={Roy},
+           giveni={R\bibinitperiod}}}%
+        {{hash=7ab2d7e7f2bfceec36e42ad1962fde11}{%
+           family={Hawkins},
+           familyi={H\bibinitperiod},
+           given={Peter},
+           giveni={P\bibinitperiod}}}%
+        {{hash=e4d515e534ba184f553d5a2a926e0ea7}{%
+           family={Johnson},
+           familyi={J\bibinitperiod},
+           given={Matthew\bibnamedelima James},
+           giveni={M\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=0101ae5b219809cf901e7645ca40b9ae}{%
+           family={Leary},
+           familyi={L\bibinitperiod},
+           given={Chris},
+           giveni={C\bibinitperiod}}}%
+        {{hash=07e607fb522f06610feb023ecfa712e2}{%
+           family={Maclaurin},
+           familyi={M\bibinitperiod},
+           given={Dougal},
+           giveni={D\bibinitperiod}}}%
+        {{hash=bca7d753be3217d63404d860acb6e5f5}{%
+           family={Necula},
+           familyi={N\bibinitperiod},
+           given={George},
+           giveni={G\bibinitperiod}}}%
+        {{hash=56bf0b340039cf8594436a624ff548a9}{%
+           family={Paszke},
+           familyi={P\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod}}}%
+        {{hash=0fd9a0e34f1b2adda41357c948d14986}{%
+           family={Vander{P}las},
+           familyi={V\bibinitperiod},
+           given={Jake},
+           giveni={J\bibinitperiod}}}%
+        {{hash=02f809ed2547f721c304772c06378c2d}{%
+           family={Wanderman-{M}ilne},
+           familyi={W\bibinithyphendelim M\bibinitperiod},
+           given={Skye},
+           giveni={S\bibinitperiod}}}%
+        {{hash=fe167f78433aabd363ac3c06710a1945}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Qiao},
+           giveni={Q\bibinitperiod}}}%
+      }
+      \strng{namehash}{be9c2f36b976223518e841214253df92}
+      \strng{fullhash}{12f83c04441cfb40a3c9b086929c12bf}
+      \strng{bibnamehash}{be9c2f36b976223518e841214253df92}
+      \strng{authorbibnamehash}{be9c2f36b976223518e841214253df92}
+      \strng{authornamehash}{be9c2f36b976223518e841214253df92}
+      \strng{authorfullhash}{12f83c04441cfb40a3c9b086929c12bf}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{JAX}: composable transformations of {P}ython+{N}um{P}y programs}
+      \field{version}{0.3.13}
+      \field{year}{2018}
+      \verb{urlraw}
+      \verb http://github.com/google/jax
+      \endverb
+      \verb{url}
+      \verb http://github.com/google/jax
+      \endverb
+    \endentry
     \entry{cengel2007transferencia}{book}{}
       \name{author}{2}{}{%
         {{hash=7393c064ff2624f0f01cf6b2b0759040}{%
@@ -154,6 +232,65 @@
       \field{title}{ASHRAE handbook: fundamentals}
       \field{year}{2009}
     \endentry
+    \entry{hindmarsh2005sundials}{article}{}
+      \name{author}{7}{}{%
+        {{hash=61352b48b93bc3f63e471b5aed3c1018}{%
+           family={Hindmarsh},
+           familyi={H\bibinitperiod},
+           given={Alan\bibnamedelima C},
+           giveni={A\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+        {{hash=47f40a4753b307cc18f4e98aee18bafb}{%
+           family={Brown},
+           familyi={B\bibinitperiod},
+           given={Peter\bibnamedelima N},
+           giveni={P\bibinitperiod\bibinitdelim N\bibinitperiod}}}%
+        {{hash=7aaebcb237199fc6f34ac33f5a239ba4}{%
+           family={Grant},
+           familyi={G\bibinitperiod},
+           given={Keith\bibnamedelima E},
+           giveni={K\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=8ae650f76a22caa2cddfadcba7d4cbbe}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Steven\bibnamedelima L},
+           giveni={S\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
+        {{hash=a3b6b515ef41d06f36fa360c64c7ac19}{%
+           family={Serban},
+           familyi={S\bibinitperiod},
+           given={Radu},
+           giveni={R\bibinitperiod}}}%
+        {{hash=e0603e9cf0cffc4a99f9623c9947a775}{%
+           family={Shumaker},
+           familyi={S\bibinitperiod},
+           given={Dan\bibnamedelima E},
+           giveni={D\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+        {{hash=9b7752cf62291a2eb71e5e1be2b0380e}{%
+           family={Woodward},
+           familyi={W\bibinitperiod},
+           given={Carol\bibnamedelima S},
+           giveni={C\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {ACM New York, NY, USA}%
+      }
+      \strng{namehash}{273ff60c7c0b382df79128d43674f9c0}
+      \strng{fullhash}{4b7b44501c5d28f44f6db51a3a46b95d}
+      \strng{bibnamehash}{273ff60c7c0b382df79128d43674f9c0}
+      \strng{authorbibnamehash}{273ff60c7c0b382df79128d43674f9c0}
+      \strng{authornamehash}{273ff60c7c0b382df79128d43674f9c0}
+      \strng{authorfullhash}{4b7b44501c5d28f44f6db51a3a46b95d}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{ACM Transactions on Mathematical Software (TOMS)}
+      \field{number}{3}
+      \field{title}{SUNDIALS: Suite of nonlinear and differential/algebraic equation solvers}
+      \field{volume}{31}
+      \field{year}{2005}
+      \field{pages}{363\bibrangedash 396}
+      \range{pages}{34}
+    \endentry
     \entry{incropera1996fundamentals}{book}{}
       \true{moreauthor}
       \true{morelabelname}
@@ -195,6 +332,28 @@
       \field{title}{Fundamentals of heat and mass transfer}
       \field{volume}{6}
       \field{year}{1996}
+    \endentry
+    \entry{kingma2014adam}{article}{}
+      \name{author}{1}{}{%
+        {{hash=b6fbd171848aad4edf3925543f1f1522}{%
+           family={Kingma},
+           familyi={K\bibinitperiod},
+           given={Diederik\bibnamedelima P},
+           giveni={D\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+      }
+      \strng{namehash}{b6fbd171848aad4edf3925543f1f1522}
+      \strng{fullhash}{b6fbd171848aad4edf3925543f1f1522}
+      \strng{bibnamehash}{b6fbd171848aad4edf3925543f1f1522}
+      \strng{authorbibnamehash}{b6fbd171848aad4edf3925543f1f1522}
+      \strng{authornamehash}{b6fbd171848aad4edf3925543f1f1522}
+      \strng{authorfullhash}{b6fbd171848aad4edf3925543f1f1522}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:1412.6980}
+      \field{title}{Adam: A method for stochastic optimization}
+      \field{year}{2014}
     \endentry
     \entry{mdobook}{book}{}
       \name{author}{2}{}{%
@@ -260,6 +419,60 @@
       \field{title}{{System Advisor Model Version 2023.12.17}}
       \field{year}{2023}
     \endentry
+    \entry{pantelides1988consistent}{article}{}
+      \name{author}{1}{}{%
+        {{hash=1bde2c0772746688963d420c622018ab}{%
+           family={Pantelides},
+           familyi={P\bibinitperiod},
+           given={Constantinos\bibnamedelima C},
+           giveni={C\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {SIAM}%
+      }
+      \strng{namehash}{1bde2c0772746688963d420c622018ab}
+      \strng{fullhash}{1bde2c0772746688963d420c622018ab}
+      \strng{bibnamehash}{1bde2c0772746688963d420c622018ab}
+      \strng{authorbibnamehash}{1bde2c0772746688963d420c622018ab}
+      \strng{authornamehash}{1bde2c0772746688963d420c622018ab}
+      \strng{authorfullhash}{1bde2c0772746688963d420c622018ab}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{SIAM Journal on scientific and statistical computing}
+      \field{number}{2}
+      \field{title}{The consistent initialization of differential-algebraic systems}
+      \field{volume}{9}
+      \field{year}{1988}
+      \field{pages}{213\bibrangedash 231}
+      \range{pages}{19}
+    \endentry
+    \entry{petzold1982description}{report}{}
+      \name{author}{1}{}{%
+        {{hash=f08c98d15f33a47a2a502c1da8062eef}{%
+           family={Petzold},
+           familyi={P\bibinitperiod},
+           given={Linda\bibnamedelima R},
+           giveni={L\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Sandia National Labs., Livermore, CA (USA)}%
+      }
+      \strng{namehash}{f08c98d15f33a47a2a502c1da8062eef}
+      \strng{fullhash}{f08c98d15f33a47a2a502c1da8062eef}
+      \strng{bibnamehash}{f08c98d15f33a47a2a502c1da8062eef}
+      \strng{authorbibnamehash}{f08c98d15f33a47a2a502c1da8062eef}
+      \strng{authornamehash}{f08c98d15f33a47a2a502c1da8062eef}
+      \strng{authorfullhash}{f08c98d15f33a47a2a502c1da8062eef}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Description of DASSL: a differential/algebraic system solver}
+      \field{type}{techreport}
+      \field{year}{1982}
+    \endentry
     \entry{podder2019mppt}{article}{}
       \name{author}{3}{}{%
         {{hash=d2638da3b4d7172e1cd78cc58169df7e}{%
@@ -298,6 +511,46 @@
       \field{year}{2019}
       \field{pages}{1615\bibrangedash 1632}
       \range{pages}{18}
+    \endentry
+    \entry{scieur2022curse}{article}{}
+      \name{author}{4}{}{%
+        {{hash=cec256cc503bc0f0752bca34d0445248}{%
+           family={Scieur},
+           familyi={S\bibinitperiod},
+           given={Damien},
+           giveni={D\bibinitperiod}}}%
+        {{hash=9bf237a59d859c698045c3e46e4abc83}{%
+           family={Gidel},
+           familyi={G\bibinitperiod},
+           given={Gauthier},
+           giveni={G\bibinitperiod}}}%
+        {{hash=4d00ac5543be0df3aca7039891bbd3dd}{%
+           family={Bertrand},
+           familyi={B\bibinitperiod},
+           given={Quentin},
+           giveni={Q\bibinitperiod}}}%
+        {{hash=bab4e5caee2d67831e464ce575022b37}{%
+           family={Pedregosa},
+           familyi={P\bibinitperiod},
+           given={Fabian},
+           giveni={F\bibinitperiod}}}%
+      }
+      \strng{namehash}{53729a73cdce3ee0a9cfc67022390d7a}
+      \strng{fullhash}{1c8171f01f5590da369d47736bf07969}
+      \strng{bibnamehash}{53729a73cdce3ee0a9cfc67022390d7a}
+      \strng{authorbibnamehash}{53729a73cdce3ee0a9cfc67022390d7a}
+      \strng{authornamehash}{53729a73cdce3ee0a9cfc67022390d7a}
+      \strng{authorfullhash}{1c8171f01f5590da369d47736bf07969}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Advances in Neural Information Processing Systems}
+      \field{title}{The curse of unrolling: Rate of differentiating through optimization}
+      \field{volume}{35}
+      \field{year}{2022}
+      \field{pages}{17133\bibrangedash 17145}
+      \range{pages}{13}
     \endentry
     \entry{shewchuk1994introduction}{article}{}
       \true{moreauthor}
@@ -409,6 +662,45 @@
       \verb{doi}
       \verb 10.21105/joss.02564
       \endverb
+    \endentry
+    \entry{zhang2022petsc}{article}{}
+      \name{author}{3}{}{%
+        {{hash=5c197210ea3c3cd10b35ad3c6922e157}{%
+           family={Zhang},
+           familyi={Z\bibinitperiod},
+           given={Hong},
+           giveni={H\bibinitperiod}}}%
+        {{hash=582949948f9a938c966c5c8d0f6ced6c}{%
+           family={Constantinescu},
+           familyi={C\bibinitperiod},
+           given={Emil\bibnamedelima M},
+           giveni={E\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=db20e2f433b4eee5280b269cfbfcc84f}{%
+           family={Smith},
+           familyi={S\bibinitperiod},
+           given={Barry\bibnamedelima F},
+           giveni={B\bibinitperiod\bibinitdelim F\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {SIAM}%
+      }
+      \strng{namehash}{719ae83b99ff407d49e295232229a763}
+      \strng{fullhash}{719ae83b99ff407d49e295232229a763}
+      \strng{bibnamehash}{719ae83b99ff407d49e295232229a763}
+      \strng{authorbibnamehash}{719ae83b99ff407d49e295232229a763}
+      \strng{authornamehash}{719ae83b99ff407d49e295232229a763}
+      \strng{authorfullhash}{719ae83b99ff407d49e295232229a763}
+      \field{sortinit}{Z}
+      \field{sortinithash}{96892c0b0a36bb8557c40c49813d48b3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{SIAM Journal on Scientific Computing}
+      \field{number}{1}
+      \field{title}{PETSc TSAdjoint: a discrete adjoint ODE solver for first-order and second-order sensitivity analysis}
+      \field{volume}{44}
+      \field{year}{2022}
+      \field{pages}{C1\bibrangedash C24}
+      \range{pages}{-1}
     \endentry
   \enddatalist
 \endrefsection

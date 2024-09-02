@@ -8,11 +8,14 @@ from utils import (
     get_solar_panels_depreciation_by_second,
     jax_to_numpy,
     get_battery_depreciation_by_joule,
+    get_battery_depreciation_by_second,
     get_solar_panels_depreciation_by_second,
     get_tank_depreciation_by_second,
     get_hp_depreciation_by_joule,
+    get_hp_depreciation_by_second,
     get_fixed_energy_cost_by_second,
     sparse_to_required_format,
+    save_dict_to_file,
 )
 from custom_types import DesignVariables, DesignVariableInfo, ConstraintInfo, Parameters
 import scipy.sparse as sp
@@ -32,6 +35,7 @@ def obj_fun(
     p_grid_max,
     tank_volume,
     t_room,
+    p_waste,
     pvpc_prices,
     excess_prices,
     p_required,
@@ -42,26 +46,34 @@ def obj_fun(
     # Neglect t=0 because we can't have optimized controls for it
     p_bat = p_bat[1:]
     p_compressor = p_compressor[1:]
+    p_waste = p_waste[1:]
     pvpc_prices = pvpc_prices[1:]
     excess_prices = excess_prices[1:]
     p_required = p_required[1:]
     w_solar_per_w_installed = w_solar_per_w_installed[1:]
     h = h[1:]
 
+    print("p_compressor_max: ", p_compressor_max)
+    print("p_grid_max: ", p_grid_max)
+    print("e_bat_max[kWh]: ", e_bat_max / 1000 / 3600)
+
     p_solar = w_solar_per_w_installed * solar_size
-    p_grid = -p_solar + p_compressor + p_bat + p_required
+    p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     cost = (
         # Variable energy cost
         # ∘ buy at pvpc price, sell at excess price, but can't earn money at the end
         jnp.maximum(0, jnp.sum(h * jnp.maximum(pvpc_prices * p_grid, excess_prices * p_grid)))
         # ∘ Fixed energy cost
         + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
-        # ∘ depreciate battery by usage
-        + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
+        # ∘ depreciate battery by time or usage
+        + jnp.maximum(
+           jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
+           jnp.sum(h * get_battery_depreciation_by_second(e_bat_max)),
+        )
         # ∘ depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
-        # ∘ depreciate heat pump by usage
-        + jnp.sum(h * p_compressor * get_hp_depreciation_by_joule(p_compressor_max))
+        # ∘ depreciate heat pump by time
+        + jnp.sum(h * get_hp_depreciation_by_second(p_compressor_max))
         # ∘ depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
         # t_target difference penalization
@@ -78,11 +90,13 @@ get_dobj_dp_compressor_max = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=
 get_dobj_dp_grid_max = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=5)))
 get_dobj_dtank_volume = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=6)))
 get_dobj_dt_room = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=7)))
+get_dobj_dp_waste = jax_to_numpy(jax.jit(jax.jacobian(obj_fun, argnums=8)))
 
 
 def obj(opt, design_variables: DesignVariables) -> np.ndarray:
     # Design variables
     p_compressor = design_variables["p_compressor"]
+    p_waste = design_variables["p_waste"]
     p_bat = design_variables["p_bat"]
     t_room = design_variables["t_room"]
     e_bat_max = design_variables["e_bat_max"][0]
@@ -109,6 +123,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
         p_grid_max,
         tank_volume,
         t_room,
+        p_waste,
         pvpc_prices,
         excess_prices,
         p_required,
@@ -122,6 +137,7 @@ def obj(opt, design_variables: DesignVariables) -> np.ndarray:
 def obj_sens(opt, design_variables: DesignVariables):
     # Design variables
     p_compressor = design_variables["p_compressor"]
+    p_waste = design_variables["p_waste"]
     p_bat = design_variables["p_bat"]
     t_room = design_variables["t_room"]
     e_bat_max = design_variables["e_bat_max"][0]
@@ -148,6 +164,7 @@ def obj_sens(opt, design_variables: DesignVariables):
         p_grid_max,
         tank_volume,
         t_room,
+        p_waste,
         pvpc_prices,
         excess_prices,
         p_required,
@@ -163,6 +180,7 @@ def obj_sens(opt, design_variables: DesignVariables):
     dobj_dp_grid_max = get_dobj_dp_grid_max(*fun_inputs)
     dobj_dtank_volume = get_dobj_dtank_volume(*fun_inputs)
     dobj_dt_room = get_dobj_dt_room(*fun_inputs)
+    dobj_dp_waste = get_dobj_dt_room(*fun_inputs)
 
     obj_jac = {
         "p_bat": dobj_dp_bat,
@@ -173,6 +191,7 @@ def obj_sens(opt, design_variables: DesignVariables):
         "p_grid_max": dobj_dp_grid_max,
         "tank_volume": dobj_dtank_volume,
         "t_room": dobj_dt_room,
+        "p_waste": dobj_dp_waste,
     }
     obj_wrt = [
         "p_bat",
@@ -183,6 +202,7 @@ def obj_sens(opt, design_variables: DesignVariables):
         "p_grid_max",
         "tank_volume",
         "t_room",
+        "p_waste",
     ]
     return (obj_jac, obj_wrt)
 
@@ -1006,24 +1026,27 @@ def p_grid_fun(
     p_bat,
     p_compressor,
     solar_size,
+    p_waste,
     p_required,
     w_solar_per_w_installed,
 ):
     # p_grid = - p_solar + p_compressor + p_bat + p_required
     p_solar = w_solar_per_w_installed * solar_size
-    p_grid = -p_solar + p_compressor + p_bat + p_required
+    p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     return p_grid
 
 
 get_dp_grid_dp_bat = jax_to_numpy(jax.jit(jax.jacobian(p_grid_fun, argnums=0)))
 get_dp_grid_dp_compressor = jax_to_numpy(jax.jit(jax.jacobian(p_grid_fun, argnums=1)))
 get_dp_grid_dsolar_size = jax_to_numpy(jax.jit(jax.jacobian(p_grid_fun, argnums=2)))
+get_dp_grid_dp_waste = jax_to_numpy(jax.jit(jax.jacobian(p_grid_fun, argnums=3)))
 
 
 def p_grid_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # Design variables
     p_bat = design_variables["p_bat"]
     p_compressor = design_variables["p_compressor"]
+    p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"][0]
 
     # Parameters
@@ -1038,6 +1061,7 @@ def p_grid_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
             p_bat[i],
             p_compressor[i],
             solar_size,
+            p_waste[i],
             p_required[i],
             w_solar_per_w_installed[i],
         )
@@ -1050,6 +1074,7 @@ def p_grid_constraint_sens(opt, design_variables: DesignVariables):
     # Design variables
     p_bat = design_variables["p_bat"]
     p_compressor = design_variables["p_compressor"]
+    p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"][0]
 
     # Parameters
@@ -1061,32 +1086,38 @@ def p_grid_constraint_sens(opt, design_variables: DesignVariables):
     dp_grid_dp_bat = sp.lil_matrix((n_steps - 1, n_steps))
     dp_grid_dp_compressor = sp.lil_matrix((n_steps - 1, n_steps))
     dp_grid_dsolar_size = sp.lil_matrix((n_steps - 1, 1))
+    dp_grid_dp_waste = sp.lil_matrix((n_steps - 1, n_steps))
 
     for i in range(1, n_steps):
         fun_inputs = (
             p_bat[i],
             p_compressor[i],
             solar_size,
+            p_waste[i],
             p_required[i],
             w_solar_per_w_installed[i],
         )
         dp_grid_dp_bat[i - 1, i] = get_dp_grid_dp_bat(*fun_inputs) + 1e-20
         dp_grid_dp_compressor[i - 1, i] = get_dp_grid_dp_compressor(*fun_inputs) + 1e-20
         dp_grid_dsolar_size[i - 1, 0] = get_dp_grid_dsolar_size(*fun_inputs) + 1e-20
+        dp_grid_dp_waste[i - 1, i] = get_dp_grid_dp_waste(*fun_inputs) + 1e-20
 
     dp_grid_dp_bat = sparse_to_required_format(dp_grid_dp_bat.tocsr())
     dp_grid_dp_compressor = sparse_to_required_format(dp_grid_dp_compressor.tocsr())
     dp_grid_dsolar_size = sparse_to_required_format(dp_grid_dsolar_size.tocsr())
+    dp_grid_dp_waste = sparse_to_required_format(dp_grid_dp_waste.tocsr())
 
     p_grid_jac = {
         "p_bat": dp_grid_dp_bat,
         "p_compressor": dp_grid_dp_compressor,
         "solar_size": dp_grid_dsolar_size,
+        "p_waste": dp_grid_dp_waste,
     }
     p_grid_wrt = [
         "p_bat",
         "p_compressor",
         "solar_size",
+        "p_waste",
     ]
     return (p_grid_jac, p_grid_wrt)
 
@@ -1096,6 +1127,7 @@ def p_grid_max_fun(
     p_compressor,
     solar_size,
     p_grid_max,
+    p_waste,
     p_required,
     w_solar_per_w_installed,
 ):
@@ -1103,7 +1135,7 @@ def p_grid_max_fun(
     # -p_grid_max < p_grid < p_grid_max
     # -1 < p_grid / p_grid_max < 1
     p_solar = w_solar_per_w_installed * solar_size
-    p_grid = -p_solar + p_compressor + p_bat + p_required
+    p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     return p_grid / p_grid_max
 
 
@@ -1111,12 +1143,14 @@ get_dp_grid_max_dp_bat = jax_to_numpy(jax.jit(jax.jacobian(p_grid_max_fun, argnu
 get_dp_grid_max_dp_compressor = jax_to_numpy(jax.jit(jax.jacobian(p_grid_max_fun, argnums=1)))
 get_dp_grid_max_dsolar_size = jax_to_numpy(jax.jit(jax.jacobian(p_grid_max_fun, argnums=2)))
 get_dp_grid_max_dp_grid_max = jax_to_numpy(jax.jit(jax.jacobian(p_grid_max_fun, argnums=3)))
+get_dp_grid_max_dp_waste = jax_to_numpy(jax.jit(jax.jacobian(p_grid_max_fun, argnums=4)))
 
 
 def p_grid_max_constraint_fun(opt, design_variables: DesignVariables) -> np.ndarray:
     # Design variables
     p_bat = design_variables["p_bat"]
     p_compressor = design_variables["p_compressor"]
+    p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"][0]
     p_grid_max = design_variables["p_grid_max"][0]
 
@@ -1130,6 +1164,7 @@ def p_grid_max_constraint_fun(opt, design_variables: DesignVariables) -> np.ndar
         p_compressor,
         solar_size,
         p_grid_max,
+        p_waste,
         p_required,
         w_solar_per_w_installed,
     )
@@ -1139,6 +1174,7 @@ def p_grid_max_constraint_sens(opt, design_variables: DesignVariables):
     # Design variables
     p_bat = design_variables["p_bat"]
     p_compressor = design_variables["p_compressor"]
+    p_waste = design_variables["p_waste"]
     solar_size = design_variables["solar_size"][0]
     p_grid_max = design_variables["p_grid_max"][0]
 
@@ -1152,6 +1188,7 @@ def p_grid_max_constraint_sens(opt, design_variables: DesignVariables):
     dp_grid_max_dp_compressor = sp.lil_matrix((n_steps, n_steps))
     dp_grid_max_dsolar_size = sp.lil_matrix((n_steps, 1))
     dp_grid_max_dp_grid_max = sp.lil_matrix((n_steps, 1))
+    dp_grid_max_dp_waste = sp.lil_matrix((n_steps, n_steps))
 
     for i in range(n_steps):
         fun_inputs = (
@@ -1159,6 +1196,7 @@ def p_grid_max_constraint_sens(opt, design_variables: DesignVariables):
             p_compressor[i],
             solar_size,
             p_grid_max,
+            p_waste[i],
             p_required[i],
             w_solar_per_w_installed[i],
         )
@@ -1166,23 +1204,27 @@ def p_grid_max_constraint_sens(opt, design_variables: DesignVariables):
         dp_grid_max_dp_compressor[i, i] = get_dp_grid_max_dp_compressor(*fun_inputs) + 1e-20
         dp_grid_max_dsolar_size[i, 0] = get_dp_grid_max_dsolar_size(*fun_inputs) + 1e-20
         dp_grid_max_dp_grid_max[i, 0] = get_dp_grid_max_dp_grid_max(*fun_inputs) + 1e-20
+        dp_grid_max_dp_waste[i, i] = get_dp_grid_max_dp_waste(*fun_inputs) + 1e-20
 
     dp_grid_max_dp_bat = sparse_to_required_format(dp_grid_max_dp_bat.tocsr())
     dp_grid_max_dp_compressor = sparse_to_required_format(dp_grid_max_dp_compressor.tocsr())
     dp_grid_max_dsolar_size = sparse_to_required_format(dp_grid_max_dsolar_size.tocsr())
     dp_grid_max_dp_grid_max = sparse_to_required_format(dp_grid_max_dp_grid_max.tocsr())
+    dp_grid_max_dp_waste = sparse_to_required_format(dp_grid_max_dp_waste.tocsr())
 
     p_grid_max_jac = {
         "p_bat": dp_grid_max_dp_bat,
         "p_compressor": dp_grid_max_dp_compressor,
         "solar_size": dp_grid_max_dsolar_size,
         "p_grid_max": dp_grid_max_dp_grid_max,
+        "p_waste": dp_grid_max_dp_waste,
     }
     p_grid_max_wrt = [
         "p_bat",
         "p_compressor",
         "solar_size",
         "p_grid_max",
+        "p_waste",
     ]
     return (p_grid_max_jac, p_grid_max_wrt)
 
@@ -1482,7 +1524,8 @@ def sens(opt, design_variables: DesignVariables, func_values):
 
 def run_optimization(parameters, plot=True):
     optName = "sizing_regulated"
-    historyFileName = f"saves/{optName}.hst"
+    # historyFileName = f"saves/{optName}.hst"
+    historyFileName = None
     opt = Opt(optName, obj, historyFileName=historyFileName)
 
     # If you wanna run again with the last found
@@ -1536,6 +1579,17 @@ def run_optimization(parameters, plot=True):
         "scale": 1 / 1000,
     }
     opt.add_design_variables_info(p_compressor)
+
+    p_waste: DesignVariableInfo = {
+        "name": "p_waste",
+        "n_params": n_steps,
+        "type": "c",
+        "lower": 0,
+        "upper": 10000,
+        "initial_value": history["p_waste"][-1] if history else 1,
+        "scale": 1,
+    }
+    opt.add_design_variables_info(p_waste)
 
     # States
     # t_cond        = y[0]
@@ -1604,7 +1658,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT_1KWH"] * parameters["SOC_MIN"],
+        "initial_value": history["e_bat"][-1] if history else ( parameters["E_BAT_MAX_LIMIT_1KWH"] * 4) * parameters["SOC_MIN"],
         "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
     }
     opt.add_design_variables_info(e_bat)
@@ -1614,9 +1668,9 @@ def run_optimization(parameters, plot=True):
         "name": "e_bat_max",
         "n_params": 1,
         "type": "c",
-        "lower": 0,
-        "upper": parameters["E_BAT_MAX_LIMIT_1KWH"],
-        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT_1KWH"],
+        "lower": parameters["E_BAT_MAX_LIMIT_1KWH"] / 10,
+        "upper": parameters["E_BAT_MAX_LIMIT_1KWH"] * 10,
+        "initial_value": history["e_bat_max"][-1] if history else parameters["E_BAT_MAX_LIMIT_1KWH"] * 4,
         "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
     }
     opt.add_design_variables_info(e_bat_max)
@@ -1638,7 +1692,7 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_COMPRESSOR_MAX_LIMIT"],
-        "initial_value": 2000,
+        "initial_value": 3000,
         # "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
         "scale": 1 / 1000,
     }
@@ -1650,8 +1704,9 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": 0,
         "upper": parameters["P_GRID_MAX_LIMIT"],
-        "initial_value": history["p_grid_max"][-1] if history else parameters["P_GRID_MAX_LIMIT"] / 10,
-        "scale": 1 / parameters["P_GRID_MAX_LIMIT"],
+        "initial_value": history["p_grid_max"][-1] if history else parameters["P_GRID_MAX_LIMIT"],
+        # "scale": 1 / parameters["P_GRID_MAX_LIMIT"],
+        "scale": 1 / 1000,
     }
     opt.add_design_variables_info(p_grid_max)
 
@@ -1662,7 +1717,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0.001,  # 0.001[m3] -> 1[l]
         "upper": 10,
         "initial_value": history["tank_volume"][-1] if history else 0.001,
-        "scale": 100,
+        "scale": 1 / 0.001,
     }
     opt.add_design_variables_info(tank_volume)
 
@@ -1679,6 +1734,7 @@ def run_optimization(parameters, plot=True):
         "t_floor": np.ones(n_steps),
         "t_room": np.ones(n_steps),
         "p_compressor": np.ones(n_steps),
+        "p_waste": np.ones(n_steps),
         "m_dot_cond": np.ones(n_steps),
         "m_dot_heating": np.ones(n_steps),
         "p_bat": np.ones(n_steps),
@@ -1712,8 +1768,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae1_constraint_fun,
-        # "scale": 1,
-        "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "scale": 1 / (parameters["CP_WATER"] * 300),
         "wrt": dae1_wrt,
         "jac": dae1_jac,
     }
@@ -1725,7 +1780,6 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae2_constraint_fun,
-        # "scale": 1,
         "scale": 1 / (parameters["CP_WATER"] * 300),
         "wrt": dae2_wrt,
         "jac": dae2_jac,
@@ -1738,8 +1792,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae3_constraint_fun,
-        # "scale": 1,
-        "scale": 1 / (parameters["CP_WATER"] * 5),
+        "scale": 1 / (parameters["CP_WATER"] * 300),
         "wrt": dae3_wrt,
         "jac": dae3_jac,
     }
@@ -1751,8 +1804,7 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae4_constraint_fun,
-        # "scale": 1,
-        "scale": 1 / (parameters["CP_WATER"] * 5),
+        "scale": 1 / (parameters["U_WALLS"] * parameters["A_WALLS"] * 300),
         "wrt": dae4_wrt,
         "jac": dae4_jac,
     }
@@ -1788,7 +1840,8 @@ def run_optimization(parameters, plot=True):
         "lower": None,
         "upper": None,
         "function": p_grid_constraint_fun,
-        "scale": 1 / (parameters["P_GRID_MAX_LIMIT"] / 2),
+        # "scale": 1 / (parameters["P_GRID_MAX_LIMIT"] / 2),
+        "scale": 1 / 1000,
         "wrt": p_grid_wrt,
         "jac": p_grid_jac,
     }
@@ -1895,7 +1948,7 @@ def run_optimization(parameters, plot=True):
     ipoptOptions = {
         "print_level": 5,  # up to 12
         "max_iter": 500,
-        # "obj_scaling_factor": 1e-1,
+        # "obj_scaling_factor": 1e3,
         "mu_strategy": "adaptive",
         "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,
@@ -1910,6 +1963,9 @@ def run_optimization(parameters, plot=True):
 
     # Run
     sol = opt.optimize(sens=sens)
+
+    # Save solution
+    save_dict_to_file(sol.xStar, optName)
 
     p_compressor = sol.xStar["p_compressor"]
     m_dot_cond = sol.xStar["m_dot_cond"]

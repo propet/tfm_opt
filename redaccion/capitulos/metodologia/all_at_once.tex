@@ -1,0 +1,45 @@
+Como vimos en la sección \ref{sec:optimization}, solvers de ecuaciones en
+derivadas parciales normalmente no exponen el sistema que resuelven, se limitan
+a devolver la solución y con suerte el cálculo de las derivadas adjuntas, por
+algún método visto en la sección \ref{sec:adjoints}.
+
+Si tuvíeramos un modelo en forma residual, con variables de diseño $x$, y
+estados $y$:
+
+\begin{equation}
+	r(x, y) = 0
+\end{equation}
+
+El problema de optimización típicamente planteado tiene la forma:
+
+\begin{align}
+	\min_{\mathbf{x}} \quad & f(\mathbf{x}, \text{devuelve\_y}(x)) \nonumber     \\
+	\text{sujeto a} \quad   & h(\mathbf{x}, \text{devuelve\_y}(x)) = 0 \nonumber \\
+	                        & g(\mathbf{x}, \text{devuelve\_y}(x)) < 0 \nonumber \\
+\end{align}
+
+$h$ son condiciones de igualdad, $g$ de desigualdad y la función
+$\text{devuelve\_y}$ resuelve el sistema $r$ para encontrar los estados $y$.
+
+Pero en otras circunstancias, como cuando resolvemos nosotros mismos las
+ecuaciones, o realizamos el modelado de un equipo, podemos optar por aplicar
+las ecuaciones del sistema como restricciones de igualdad en el problema de
+optimización.
+
+Entonces podemos plantear un problema como:
+
+\begin{align}
+	\min_{\mathbf{x}, \mathbf{y}} \quad & f(\mathbf{x}, \mathbf{y}) \nonumber     \\
+	\text{sujeto a} \quad               & h(\mathbf{x}, \mathbf{y}) = 0 \nonumber \\
+	                                    & g(\mathbf{x}, \mathbf{y}) < 0 \nonumber \\
+	                                    & r(\mathbf{x}, \mathbf{y}) = 0 \nonumber \\
+\end{align}
+
+En comparación a como cuando usamos derivadas adjuntas, la cantidad de
+variables de diseño y restricciones es mayor, pero a cambio el análisis del
+sistema y su optimización se realizan de forma simultánea (SAND: Simultaneous
+ANalysis and Design).
+
+En algunos casos como el que se explorará más adelante, se encuentra que la
+ejecución del problema en esta forma es hasta un orden de magnitud más rápida
+que con el uso de derivadas adjuntas.

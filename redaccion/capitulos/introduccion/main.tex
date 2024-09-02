@@ -1,0 +1,58 @@
+La eficiencia energética se ha convertido en una prioridad tanto por razones
+económicas como ambientales. Con el aumento de los precios de la energía y los
+intereses por reducir las emisiones de carbono, optimizar el consumo energético
+en nuestros hogares resulta deseado. Siendo Madrid una ciudad con considerables
+niveles de radiación solar a lo largo del año, las tecnologías como los paneles
+solares y otros sistemas sostenibles presentan una oportunidad para reducir
+costos.
+
+Este trabajo se centra en la optimización energética de una vivienda
+unifamiliar en Madrid, utilizando un sistema que mezcla varias elementos: una
+bomba de calor, paneles fotovoltaicos, baterías para almacenar la energía
+eléctrica, y un tanque de agua para almacenamiento térmico. El objetivo es
+encontrar la combinación óptima de control y dimensiones de estos equipos para
+que el propietario pague lo menos posible en su factura anual de energía y
+mantenga la casa a una temperatura confortable en torno a los 20°C.
+
+La bomba de calor se destaca como una de las soluciones más eficientes para la
+climatización del hogar, especialmente en comparación con la calefacción
+eléctrica o de gas, que suelen ser menos eficientes y más costosas. Este
+sistema permite mover el calor desde el exterior hacia el interior de la
+vivienda con un menor consumo de electricidad, lo cual es una gran ventaja
+cuando se combina con paneles fotovoltaicos.
+
+Y elegimos una calefacción por suelo radiante que se acopla bien con el sistema
+de aerotermia, ya que una bomba de calor no es muy eficiente generando agua
+caliente sanitaria a muy alta temperatura, pero esto va de la mano con las
+necesidades de un suelo radiante, que con una gran superficie de radiación
+puede trabajar con bajas temperaturas.
+
+El problema de optimización abordado en este trabajo es de gran escala,
+involucrando cientos de miles de variables de diseño que abarcan aspectos como
+la potencia de la bomba de calor, la capacidad instalada de paneles solares, la
+potencia máxima contratada con la comercializadora, la capacidad de la batería
+y el volumen del tanque de agua. Para resolver este problema, se recurre a
+técnicas de optimización basadas en gradientes, en concreto a través del método
+de gradientes adjuntos discretos para obtener las derivadas de manera
+eficiente. La formulación del problema se basa en un conjunto de ecuaciones
+diferenciales algebraicas que modelan el comportamiento del sistema durante
+todo el año.
+
+Además, en un análisis comparativo, se implementa la técnica SAND (Simultaneous
+ANalysis and Design), permitiendo optimizar simultáneamente el diseño y las
+decisiones de control de todo el sistema de manera conjunta. Esta técnica,
+también conocida como 'all-at-once', se compara con el enfoque de optimización
+con gradientes adjuntos para analizar el rendimiento de ambos métodos en la
+obtención de soluciones óptimas que minimicen el coste total.
+
+Este trabajo explora las posibilidades de optimización en un escenario de
+autoconsumo con compensación simplificada, donde se limita la compensación
+económica por los excedentes de electricidad vertidos a la red, también
+considera un escenario de conexión a la red con venta de excedentes al precio
+de mercado y un escenario de operación en modo 'off-grid', donde la vivienda
+permanece desconectada de la red eléctrica.
+
+Se pretende ilustrar el método para poder optimizar el consumo energético en
+viviendas o negocios con el uso de energías renovables, no solo para nuestra
+localización y casa modelo, ya que los principios son igualmente aplicables a
+otro contexto.

@@ -45,13 +45,22 @@ Tomando todas las potencias en alterna, el balance energético de esta
 instalación queda reflejado por:
 
 \begin{equation} \label{eq:power_balance}
-	P_{red} + P_{solar} = P_{carga} + P_{bat} + P_{bomba}
+	P_{red} + P_{solar} = P_{carga} + P_{bat} + P_{bomba} + P_{sobrante}
 \end{equation}
 
-donde las potencias de entrada al nodo se consideran positivas. Para la red,
-la potencia es positiva cuando se demanda energía de esta, y para la batería,
-cuando se está cargando. La figura \ref{fig:electric_node} ilustra este
-balance.
+donde las potencias de entrada al nodo se consideran positivas. Para la red, la
+potencia es positiva cuando se demanda energía de esta, y para la batería,
+cuando se está cargando.
+
+Además hemos introducido una potencia sobrante, destinada a servir de válvula
+de escape para el sistema. Correspondería a una resistencia eléctrica para
+desechar energía, no calentando el hogar. Puesto que en algún escenario donde
+la potencia de red está saturada, la batería se encuentra llena y además no
+queremos dar potencia a la bomba de calor (verano), el sistema se encontraba
+algo limitado y pasaba a encender la calefacción en periodos donde no nos
+interesa.
+
+La figura \ref{fig:electric_node} ilustra este balance.
 
 \begin{figure}[h] \centering
 	\centering

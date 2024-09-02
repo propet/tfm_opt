@@ -51,7 +51,8 @@ El problema de optimización a resolver es:
 \begin{align}
 	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x})                                                                                                            \\
 	\text{sujeto a} \quad   & \nonumber                                                                                                                                  \\
-	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                     & \forall k > 0 \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k}  \nonumber                                                                                          \\
+	                        & \quad + P_{bat_k} + P_{carga_k} + P_{sobrante_k} \quad                                                                     & \forall k > 0 \\
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                   & \forall k > 0 \\
 	                        & min(T_{habitacion}) \geq T_{objetivo}                                               \label{eq:min_t_habitacion_constraint}                 \\
 	\text{condiciones iniciales} \quad \nonumber                                                                                                                         \\
@@ -61,14 +62,16 @@ El problema de optimización a resolver es:
 	                        & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad                                          & \forall k     \\
 	                        & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                                                     & \forall k     \\
 	                        & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                                                     & \forall k     \\
+	                        & 0 \leq P_{sobrante_k} \leq 10[kW] \quad                                                                                    & \forall k     \\
 	                        & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                                                    & \forall k     \\
 	                        & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                                                                    & \forall k
 \end{align}
 
 
 donde $\mathbf{x}$ es el vector de variables de diseño: $P_{bomba}$, $P_{bat}$,
-$\dot{m}_{cond}$ y $\dot{m}_{cale}$. Cada una de ellas con tantos elementos
-como pasos en la simulación, siendo k el índice, o número de paso.
+$P_{sobrante}$, $\dot{m}_{cond}$ y $\dot{m}_{cale}$. Cada una de ellas con
+tantos elementos como pasos en la simulación, siendo k el índice, o número de
+paso.
 
 Las dos primeras restricciones representan el balance de potencias y dinámica
 de la batería a cada paso, respectivamente, mientras que la tercera
@@ -293,7 +296,7 @@ El problema de optimización a resolver es:
 \begin{align}
 	\min_{\mathbf{x}} \quad & \text{Coste\_Total}(\mathbf{x}) \label{eq:sand_control_optimization}                                                                           \\
 	\text{sujeto a} \quad   & \nonumber                                                                                                                                      \\
-	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} \quad                                                         & \forall k > 0 \\
+	                        & P_{red_k} = -P_{solar_k} + P_{bomba_k} + P_{bat_k} + P_{carga_k} + P_{sobrante_k} \quad                                        & \forall k > 0 \\
 	                        & e_k = e_{k-1} + \eta_{bat} \cdot P_{bat_k} \cdot h \quad                                                                       & \forall k > 0 \\
 	                        & \text{cop}(T_{cond_k}) \cdot P_{bomba_k} \nonumber                                                                                             \\
 	                        & \quad - \dot{m}_{cond_k} \cdot cp_{agua} \cdot (T_{cond_k} - T_{tanque_k}) = 0 \label{eq:sys_1_sand}                           & \forall k > 0 \\
@@ -323,6 +326,7 @@ con los límites:
 	 & \text{SOC}_{min} \cdot e_{max} \leq e_k \leq \text{SOC}_{max} \cdot e_{max} \quad           & \forall k \\
 	 & -P_{bat_{max}} \leq P_{bat_k} \leq P_{bat_{max}} \quad                                      & \forall k \\
 	 & -P_{red_{max}} \leq P_{red_k} \leq P_{red_{max}} \quad                                      & \forall k \\
+	 & 0 \leq P_{sobrante_k} \leq 10[kW] \quad                                                     & \forall k \\
 	 & 0 \leq \dot{m}_{cond_k} \leq \dot{m}_{cond_{max}} \quad                                     & \forall k \\
 	 & 0 \leq \dot{m}_{cale_k} \leq \dot{m}_{cale_{max}} \quad                                     & \forall k
 \end{align}

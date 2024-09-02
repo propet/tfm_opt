@@ -1,0 +1,38 @@
+El principal objetivo de este trabajo es desarrollar un modelo de optimización
+energética para una vivienda que permita minimizar el coste total anual
+derivado del uso de una bomba de calor, paneles fotovoltaicos, almacenamiento
+de energía (baterías) y un sistema de acumulación térmica (tanque de agua).
+Para alcanzar este objetivo, el trabajo abordará los siguientes aspectos:
+
+\begin{itemize}
+	\item \textbf{Implentación de gradientes adjuntos discretos para un sistema
+		      DAE}: para calcular de manera eficiente los gradientes del sistema.
+	      Sección \ref{sec:adjoints}.
+
+	\item \textbf{Técnica SAND (Simultaneous Analysis and Design)}: para resolver
+	      el problema de optimización, comparando este enfoque con la metodología con
+	      gradientes adjuntos, explorando ventajas y desventajas en términos de
+	      rendimiento. Sección \ref{sec:all_at_once}.
+
+	\item \textbf{Adquisición de datos}: precios de la electricidad y aproximación
+	      del coste real de los equipos por regresión lineal de datos comerciales.
+	      Capítulo \ref{chap:data_acquisition}.
+
+	\item \textbf{Modelar el sistema energético de la vivienda}: se representará
+	      el comportamiento dinámico de la vivienda y sus sistemas energéticos mediante
+	      un conjunto de ecuaciones diferenciales y algebraicas (DAE's). Secciones
+	      \ref{sec:modelo_vivienda}, \ref{sec:sistema_termico} y
+	      \ref{sec:sistema_termico}.
+
+	\item \textbf{Evaluar escenarios de operación}: se estudiarán tres escenarios
+	      representativos: (1) autoconsumo con compensación simplificada, (2) conexión
+	      a la red con venta de excedentes de energía a precio de mercado, y (3)
+	      operación off-grid, para minimizar el coste. Sección
+	      \ref{sec:funciones_objetivo}.
+
+	\item \textbf{Realizar simulaciones y evaluar resultados}: finalmente, el
+	      modelo se validará y se ejecutarán simulaciones que permitan determinar las
+	      configuraciones óptimas de los equipos y las señales de control a lo largo de
+	      un año completo. Secciones \ref{sec:control} y
+	      \ref{sec:control_y_dimensionamiento}.
+\end{itemize}

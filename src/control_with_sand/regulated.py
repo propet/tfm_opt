@@ -11,6 +11,7 @@ from utils import (
     get_solar_panels_depreciation_by_second,
     get_tank_depreciation_by_second,
     get_hp_depreciation_by_joule,
+    get_hp_depreciation_by_second,
     get_fixed_energy_cost_by_second,
     sparse_to_required_format,
 )
@@ -64,8 +65,8 @@ def obj_fun(
         + jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max))
         # ∘ depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
-        # ∘ depreciate heat pump by usage
-        + jnp.sum(h * p_compressor * get_hp_depreciation_by_joule(p_compressor_max))
+        # ∘ depreciate heat pump by time
+        + jnp.sum(h * get_hp_depreciation_by_second(p_compressor_max))
         # ∘ depreciate water tank by time
         + jnp.sum(h * get_tank_depreciation_by_second(tank_volume))
     )
@@ -1322,7 +1323,8 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae1_constraint_fun,
-        "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        # "scale": 1 / parameters["P_COMPRESSOR_MAX_LIMIT"],
+        "scale": 1 / (parameters["CP_WATER"] * 300),
         "wrt": dae1_wrt,
         "jac": dae1_jac,
     }
@@ -1346,7 +1348,8 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae3_constraint_fun,
-        "scale": 1 / (parameters["CP_WATER"] * 5),
+        # "scale": 1 / (parameters["CP_WATER"] * 5),
+        "scale": 1 / (parameters["CP_WATER"] * 300),
         "wrt": dae3_wrt,
         "jac": dae3_jac,
     }
@@ -1358,7 +1361,8 @@ def run_optimization(parameters, plot=True):
         "lower": 0,
         "upper": 0,
         "function": dae4_constraint_fun,
-        "scale": 1 / (parameters["CP_WATER"] * 5),
+        # "scale": 1 / (parameters["CP_WATER"] * 5),
+        "scale": 1 / (parameters["U_WALLS"] * parameters["A_WALLS"] * 300),
         "wrt": dae4_wrt,
         "jac": dae4_jac,
     }
@@ -1466,6 +1470,7 @@ def run_optimization(parameters, plot=True):
         "print_level": 5,  # up to 12
         "max_iter": 300,
         # "obj_scaling_factor": 1e-1,
+        "obj_scaling_factor": 1e3,
         "mu_strategy": "adaptive",
         "alpha_for_y": "safer-min-dual-infeas",
         "mumps_mem_percent": 4000,

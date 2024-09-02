@@ -171,7 +171,7 @@ estimados para un DoD del 70\%, hasta que su capacidad se ve reducida al
 Con esta información podemos calcular la energía total que puede trasegarse durante
 el periodo de funcionamiento total:
 
-\begin{equation}
+\begin{equation} \label{eq:battery_life_joules}
 	\text{julios} = 2 \cdot \text{ciclos} \cdot \text{DoD} \cdot e_\text{bat,max}
 \end{equation}
 
@@ -181,7 +181,7 @@ Recordando que $e_\text{bat,max}$ es la capacidad.
 Solo resta dividir esta cantidad del coste de las baterías para tener la depreciación
 por julio.
 
-\begin{equation}
+\begin{equation} \label{eq:battery_depreciation_by_joule}
 	D_\text{bat}(e_\text{bat,max}) = \frac{\text{coste\_bat}}{\text{julios}} \left[\frac{\text{\euro}}{J}\right]
 \end{equation}
 
@@ -194,30 +194,55 @@ finalmente hacemos la suma para todos los pasos en el periodo de optimización $
 	\sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot D_\text{bat}(e_\text{bat,max})
 \end{equation}
 
+No obstante surge otro problema en principio no evidente, y es que el coste por
+julio de vida útil es decreciente para la capacidad de la batería. Cuanto mayor
+sea el acumulador, más económico nos resulta su uso.
+
+Es más visible cuando en la ecuación para la depreciación
+\eqref{eq:battery_depreciation_by_joule} incorporamos el valor del coste
+\eqref{eq:battery_cost} y de los julios totales en su vida estimada
+\eqref{eq:battery_life_joules}.
+
+\begin{align}
+	D_\text{bat}(e_\text{bat,max}) & = \frac{\text{coste\_bat}}{\text{julios}} \nonumber                                                                                       \\
+	                               & = \frac{11.87 + 611.78 \cdot e_{\text{bat\_max}}}{2 \cdot \text{ciclos} \cdot \text{DoD} \cdot e_\text{bat,max}} \nonumber                \\
+	                               & = \frac{11.87}{2 \cdot \text{ciclos} \cdot \text{DoD} \cdot e_{\text{bat\_max}}} +  \frac{611.78}{2 \cdot \text{ciclos} \cdot \text{DoD}}
+\end{align}
+
+Por lo que el optimizador abusará de este fenómeno para siempre dimensionar las
+baterías hasta su límite máximo.
+
+El problema es que implícitamente estamos asumiendo que la batería durará
+infinitamente en el tiempo, hasta que no se le de el uso que tiene, o se
+consuman sus ciclos.
+
+En realidad lo que queremos es el máximo entre la depreciación de la batería
+por su uso, y la depreciación por tiempo.
+
+De forma similar, la garantía para un coche eléctrico se da hasta un máximo de
+años, o de kilómetros recorridos por el vehículo.
+
+Y en nuestro caso, expresamos la depreciación como:
+
+\begin{equation}
+	\text{max} \left( \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot \text{Du}_\text{bat}(e_\text{bat,max}), \quad \sum_{t=1}^{T} h \cdot \text{Dt}_\text{bat}(e_\text{bat,max}) \right)
+\end{equation}
+
+donde hemos designado $\text{Du}$ como la depreciación por uso, $\text{Dt}$ la
+depreciación por tiempo, y de estas tomamos el máximo como el coste por
+depreciación.
 
 \subsubsection{Bomba de calor}
 
-Igualmente hemos considerado una depreciación por uso para la bomba de calor,
-pero en esta ocasión asumimos que la bomba de calor puede trabajar en su máximo
-de potencia durante toda su vida útil de 10 años, para evaluar la cantidad de
-energía que esta puede circular.
+Para la bomba de calor no tenemos claro cómo estimar su número máximo de horas
+de funcionamiento, por lo que no consideramos su depreciación por uso, y
+simplemente depreciamos por unidad de tiempo.
+
+Le asignamos una vida útil de 20 años.
 
 \begin{equation}
-	\text{julios} = P_\text{bomba,max}[W] \cdot 10[\text{año}] \cdot \frac{8760[\text{hora}]}{1[\text{año}]} \cdot \frac{3600[s]}{1[\text{hora}]} = 315.36 \cdot 10^6 [J]
+	\sum_{t=1}^{T} h \cdot D_\text{bomba}(S)                                                                                                        \\
 \end{equation}
-
-\begin{equation}
-	D_\text{bomba}(P_\text{bomba,max}) = \frac{\text{coste\_bomba}}{\text{julios}} \left[\frac{\text{\euro}}{J}\right]
-\end{equation}
-
-Y de forma similar, para el coste total se tiene:
-
-\begin{equation}
-	\sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max})
-\end{equation}
-
-aunque aquí no es preciso tomar el valor absoluto de la potencia, ya que para
-la bomba de calor siempre será positiva (no podemos extraer energía de ella).
 
 
 \subsubsection{Generador diesel}
@@ -226,17 +251,30 @@ Para el caso de una vivienda off-grid, reemplazamos la red por un generador
 diesel. Y para este también hemos hecho una depreciación basada en el uso,
 semejante a la bomba de calor, con una longevidad del equipo de 10 años.
 
+Pero al igual que con las baterías, no podemos simplemente depreciar por uso, y
+debemos de tomar el máximo entre la depreciación por uso y tiempo.
+
+\begin{equation}
+	\text{max} \left( \sum_{t=1}^{T} h \cdot P_\text{red}(t) \cdot \text{Du}_\text{red}(P_{red_{max}}), \quad \sum_{t=1}^{T} h \cdot \text{Dt}_\text{red}(P_{red_{max}}) \right)
+\end{equation}
+
+Aunque se trate de un grupo electrógeno, lo seguimos denominando como la red
+para no modificar las ecuaciones.
+
+Y se comporta como si fuera la red, salvo que no podemos inyectar potencia en
+este.
+
 
 \subsection{Coste en modalidad de autoconsumo con compensación}
 
 \begin{equation} \label{eq:cost_regulated}
 	\begin{split}
-		\text{Coste\_Autoconsumo} = & \max \left(0, \sum_{t=1}^{T} h \cdot \max(\text{precio}_\text{pvpc}(t) \cdot P_{red}(t), \text{precio}_\text{diario}(t) \cdot P_{red}(t)) \right) \\
-		                                   & + \sum_{t=1}^{T} h \cdot C_\text{fijo}(P_\text{red,max})                                                                                          \\
-		                                   & + \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot D_\text{bat}(e_\text{bat,max})                                                                   \\
-		                                   & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                                                                                        \\
-		                                   & + \sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max})                                                               \\
-		                                   & + \sum_{t=1}^{T} h \cdot D_\text{tanque}(V)
+		\text{Coste\_Autoconsumo} = & \max \left(0, \sum_{t=1}^{T} h \cdot \max(\text{precio}_\text{pvpc}(t) \cdot P_{red}(t), \text{precio}_\text{diario}(t) \cdot P_{red}(t)) \right)                                      \\
+		                            & + \sum_{t=1}^{T} h \cdot C_\text{fijo}(P_\text{red,max})                                                                                                                               \\
+		                            & + \text{max} \left( \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot \text{Du}_\text{bat}(e_\text{bat,max}), \quad \sum_{t=1}^{T} h \cdot \text{Dt}_\text{bat}(e_\text{bat,max}) \right) \\
+		                            & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                                                                                                                             \\
+		                            & + \sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max})                                                                                                    \\
+		                            & + \sum_{t=1}^{T} h \cdot D_\text{tanque}(V)
 	\end{split}
 \end{equation}
 
@@ -247,7 +285,7 @@ donde:
 	      Dada por el balance de potencias en \eqref{eq:power_balance}:
 
 	      \begin{equation} \label{eq:p_grid}
-		      P_{red} =  - P_{solar} + P_{carga} + P_{bat} + P_{bomba}
+		      P_{red} =  - P_{solar} + P_{carga} + P_{bat} + P_{bomba} + P_{sobrante}
 	      \end{equation}
 
 	\item $h$: intervalo de tiempo entre muestras.
@@ -257,8 +295,10 @@ donde:
 	      el instante $t$.
 	\item $C_\text{fijo}(P_\text{red,max})$: coste fijo por potencia máxima
 	      contratada.
-	\item $D_\text{bat}(e_\text{bat,max})$: depreciación de la batería por unidad
+	\item $\text{Du}_\text{bat}(e_\text{bat,max})$: depreciación de la batería por unidad
 	      de energía.
+	\item $\text{Dt}_\text{bat}(e_\text{bat,max})$: depreciación de la batería por unidad
+	      de tiempo.
 	\item $D_\text{solar}(S)$: depreciación de los paneles solares por unidad de
 	      tiempo.
 	\item $D_\text{bomba}(P_\text{bomba,max})$: depreciación de la bomba de calor
@@ -305,29 +345,34 @@ Se permite de esta forma el beneficio económico por la venta de excedentes.
 
 \begin{equation} \label{eq:cost_free}
 	\begin{split}
-		\text{Coste\_compensacion\_ilimitada} = & \sum_{t=1}^{T} h \cdot \max(\text{precio}_\text{pvpc}(t) \cdot P_{red}(t), \text{precio}_\text{diario}(t) \cdot P_{red}(t)) \\
-		                                        & + \sum_{t=1}^{T} h \cdot C_\text{fijo}(P_\text{red,max})                                                                    \\
-		                                        & + \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot D_\text{bat}(e_\text{bat,max})                                             \\
-		                                        & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                                                                  \\
-		                                        & + \sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max})                                         \\
+		\text{Coste\_compensacion\_ilimitada} = & \sum_{t=1}^{T} h \cdot \max(\text{precio}_\text{pvpc}(t) \cdot P_{red}(t), \text{precio}_\text{diario}(t) \cdot P_{red}(t))                                                            \\
+		                                        & + \sum_{t=1}^{T} h \cdot C_\text{fijo}(P_\text{red,max})                                                                                                                               \\
+		                                        & + \text{max} \left( \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot \text{Du}_\text{bat}(e_\text{bat,max}), \quad \sum_{t=1}^{T} h \cdot \text{Dt}_\text{bat}(e_\text{bat,max}) \right) \\
+		                                        & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                                                                                                                             \\
+		                                        & + \sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max})                                                                                                    \\
 		                                        & + \sum_{t=1}^{T} h \cdot D_\text{tanque}(V)
 	\end{split}
 \end{equation}
 
 \subsection{Coste para sistema off-grid}
 
-Aquí adaptamos el coste \ref{eq:cost_free}, para sustituir la red por un grupo electrógeno.
-Aunque a la potencia de este la seguimos llamando $P_{red}$, y solo aplicamos la condición $P_{red} > 0$,
-ya que ahora no podemos volcar nada de potencia, y su coste variable en $[kW\cdot h]$ viene dado
-por el precio del litro de diesel, que hemos tomado de $1.5 \left[\frac{\text{\euro}}{l}\right]$.
+Aquí adaptamos el coste \ref{eq:cost_free}, para sustituir la red por un grupo
+electrógeno. Aunque a la potencia de este la seguimos llamando $P_{red}$, y
+solo aplicamos la condición $P_{red} > 0$, ya que ahora no podemos volcar nada
+de potencia, y su coste variable en $[kW\cdot h]$ viene dado por el precio del
+litro de diesel, que hemos tomado de $1.5 \left[\frac{\text{\euro}}{l}\right]$.
 
-\begin{equation}
+Tenemos la ventaja de que no hay término fijo de la factura, de potencia
+contratada con la comercializadora, porque no hay comercializadora en escenario
+off-grid.
+
+\begin{equation} \label{eq:cost_offgrid}
 	\begin{split}
-		\text{Coste\_offgrid} = & \sum_{t=1}^{T} h \cdot \text{precio}_\text{diesel} \cdot P_{red}(t)                 \\
-		                        & + \sum_{t=1}^{T} h \cdot C_\text{fijo}(P_\text{red,max})                            \\
-		                        & + \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot D_\text{bat}(e_\text{bat,max})     \\
-		                        & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                          \\
-		                        & + \sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max}) \\
+		\text{Coste\_offgrid} = & \sum_{t=1}^{T} h \cdot \text{precio}_\text{diesel} \cdot P_{red}(t)                                                                                                                    \\
+		                        & + \text{max} \left( \sum_{t=1}^{T} h \cdot P_\text{red}(t) \cdot \text{Du}_\text{red}(P_{red_{max}}), \quad \sum_{t=1}^{T} h \cdot \text{Dt}_\text{red}(P_{red_{max}}) \right)         \\
+		                        & + \text{max} \left( \sum_{t=1}^{T} h \cdot |P_\text{bat}(t)| \cdot \text{Du}_\text{bat}(e_\text{bat,max}), \quad \sum_{t=1}^{T} h \cdot \text{Dt}_\text{bat}(e_\text{bat,max}) \right) \\
+		                        & + \sum_{t=1}^{T} h \cdot D_\text{solar}(S)                                                                                                                                             \\
+		                        & + \sum_{t=1}^{T} h \cdot P_\text{bomba}(t) \cdot D_\text{bomba}(P_\text{bomba,max})                                                                                                    \\
 		                        & + \sum_{t=1}^{T} h \cdot D_\text{tanque}(V)
 	\end{split}
 \end{equation}
@@ -367,7 +412,7 @@ Para subsanar este problema, e intentar no desviarnos de la temperatura marcada 
 el hogar, añadimos a las funciones objetivo un término adicional para penalizar
 la diferencia entre la temperatura de la habitación y la temperatura objectivo, como:
 
-\begin{equation}
+\begin{equation} \label{eq:temperature_penalization}
 	\sum_{t=1}^{T} \varepsilon \cdot (T_{habitacion} - T_{objetivo})^2
 \end{equation}
 

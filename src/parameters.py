@@ -18,6 +18,7 @@ PARAMS = {
     "E_BAT_MAX_LIMIT_100KWH": 360000000,  # W·s -> 100kWh
     "E_BAT_MAX_LIMIT_10KWH": 36000000,  # W·s -> 10kWh
     "E_BAT_MAX_LIMIT_1KWH": 3600000,  # W·s -> 1kWh
+    "E_BAT_MAX_LIMIT_001KWH": 36000,  # W·s -> 1kWh
     "C_RATE_BAT": 0.3,  # max C-rate for battery
     "V_BAT": 48,  # [V] nominal battery voltage (The most common voltage used for solar batteries are 6V, 12V, 24V and 48 Volts)
     "SOC_MIN": 0.3,  # Minimum State of Charge
@@ -26,6 +27,7 @@ PARAMS = {
     "P_BAT_MAX_LIMIT": 0.3 * 100000,  # W for e_bat_max_limit 100kWh: c-rate * e_bat_max[Ws] * (1/3600)[h/s]
     "P_BAT_MAX_LIMIT_10KWH": 0.3 * 10000,  # W for e_bat_max_limit 10kWh
     "P_BAT_MAX_LIMIT_1KWH": 0.3 * 1000,  # [W] for e_bat_max_limit 1kWh
+    "P_BAT_MAX_LIMIT_001KWH": 0.3 * 10,  # [W] for e_bat_max_limit 1kWh
     "P_GRID_MAX": 5000,  # W
     "P_GRID_MAX_LIMIT": 20000,  # W
     "MAX_SOLAR_RADIATION": 10000,  # W

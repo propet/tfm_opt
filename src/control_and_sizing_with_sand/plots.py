@@ -11,10 +11,13 @@ from utils import (
     plot_film,
     get_fixed_energy_cost_by_second,
     get_battery_depreciation_by_joule,
+    get_battery_depreciation_by_second,
     get_solar_panels_depreciation_by_second,
     get_hp_depreciation_by_joule,
+    get_hp_depreciation_by_second,
     get_tank_depreciation_by_second,
     get_generator_depreciation_by_joule,
+    get_generator_depreciation_by_second,
     load_dict_from_file,
 )
 
@@ -37,14 +40,22 @@ def get_costs(histories, parameters):
     p_solar = parameters["w_solar_per_w_installed"] * solar_size
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
+    print("p_grid max:", np.max(p_grid))
+
     return {
         "variable_energy_cost": np.sum(h * np.maximum(pvpc_prices * p_grid, excess_prices * p_grid)),
         "fixed_energy_cost": np.sum(h * get_fixed_energy_cost_by_second(p_grid_max)),
-        "battery drep": np.sum(h * np.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
+        "battery drep": np.maximum(
+            np.sum(h * np.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
+            np.sum(h * get_battery_depreciation_by_second(e_bat_max)),
+        ),
         "solar drep": np.sum(h * get_solar_panels_depreciation_by_second(solar_size)),
-        "HP drep": np.sum(h * p_compressor * get_hp_depreciation_by_joule(p_compressor_max)),
+        "HP drep": np.sum(h * get_hp_depreciation_by_second(p_compressor_max)),
         "tank drep": np.sum(h * get_tank_depreciation_by_second(tank_volume)),
-        "generator drep": np.sum(h * p_grid * get_generator_depreciation_by_joule(p_grid_max))
+        "generator drep": np.maximum(
+            np.sum(h * np.abs(p_grid) * get_generator_depreciation_by_joule(p_grid_max)),
+            np.sum(h * get_generator_depreciation_by_second(p_grid_max)),
+        ),
     }
 
 
@@ -66,6 +77,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     e_bat_max = histories["e_bat_max"][i]
     e_bat_max_kwh = histories["e_bat_max"][i].item() / (1000 * 3600)
     p_bat = histories["p_bat"][i] / 1000  # to kW
+    p_waste = histories["p_waste"][i] / 1000  # to kW
     solar_size = histories["solar_size"][i]
     tank_volume = histories["tank_volume"][i]
 
@@ -81,8 +93,8 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     t_amb = parameters["t_amb"] - 273  # K to ºC
     n_steps = parameters["t_amb"].shape[0]
     t = np.linspace(0, n_steps * h, n_steps)
-    t = t / 3600 # seconds to hours
-    t = t / 24 # hours to days
+    t = t / 3600  # seconds to hours
+    t = t / 24  # hours to days
     pvpc_prices = parameters["pvpc_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
     excess_prices = parameters["excess_prices"] * (1000 * 3600)  # $/(Ws) to $/(kWh)
     p_required = parameters["p_required"] / 1000  # to kW
@@ -140,6 +152,7 @@ def save_plots(i, histories, parameters, title=None, show=True, block=True, save
     ax.plot(t, p_grid, label="Red", **plot_styles[0])
     ax.plot(t, p_compressor, label="Compresor", **plot_styles[1])
     ax.plot(t, p_bat, label="Batería", **plot_styles[2])
+    ax.plot(t, p_waste, label="Sobrante", **plot_styles[3])
     ax.set_ylabel("Potencia [kW]")
     ax.legend(fontsize=8, frameon=True, fancybox=True, framealpha=0.8)
     ax.grid(True)
@@ -328,6 +341,8 @@ def plot_dict(dictfile):
         "tank_volume": [dict["tank_volume"]],
     }
 
+    print("p_grid_max dict", dict["p_grid_max"])
+
     h = PARAMS["H"]
     horizon = PARAMS["HORIZON"]
     t0 = PARAMS["T0"]
@@ -353,7 +368,7 @@ def plot_dict(dictfile):
     print(costs)
     print("p_compressor max:", np.max(histories["p_compressor"][-1]))
     print("p_compressor_max:", histories["p_compressor_max"][-1])
-    print("p_grid_max:", histories["p_grid_max"][-1])
+    print("p_grid_max:", np.max(histories["p_grid_max"][-1]))
     print("e_bat_max[Ws]:", histories["e_bat_max"][-1])
     print("e_bat_max[kWh]:", histories["e_bat_max"][-1] / (1000 * 3600))
     print("tank_volume:", histories["tank_volume"][-1])
@@ -364,6 +379,8 @@ def plot_dict(dictfile):
 
 if __name__ == "__main__":
     # plot_history(hist="saves/sizing_regulated.hst", only_last=True)
+    plot_dict("saves/sizing_regulated.pkl")
     # plot_history(hist="saves/sizing_free_market.hst", only_last=True)
+    # plot_dict("saves/sizing_free_market.pkl")
     # plot_history(hist="saves/sizing_off_grid.hst", only_last=True)
-    plot_dict(dictfile="saves/sizing_off_grid.pkl")
+    # plot_dict(dictfile="saves/sizing_off_grid.pkl")

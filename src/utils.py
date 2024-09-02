@@ -99,16 +99,33 @@ def get_generator_data():
 def get_hp_depreciation_by_joule(hp_power):
     """
     hp_power [W]: maximum power for compressor, not heat capacity
+    Let's say that a diesel engine (for a car) can travel up
+    to 1e6[km], going at 100[km/h] that's 1e4[h], the engine
+    lifespan in hours.
+    And we're gonna assume that the generator has the same lifespan than
+    the car engine.
     """
-    years_lifespan = 10
-    seconds_in_year = 365 * 24 * 3600
-    seconds_in_lifespan = seconds_in_year * years_lifespan
+    hours_lifespan = 10000
+    seconds_in_lifespan = hours_lifespan * 3600
     cost0 = 871.9339209961945  # from linear regression
     slope = 1.783401453095622  # [$/W] from linear regression
     cost = cost0 + slope * hp_power
     depreciation_by_joule = cost / (hp_power * seconds_in_lifespan)
     return depreciation_by_joule
 
+
+def get_hp_depreciation_by_second(hp_power):
+    """
+    hp_power [W]: maximum power for compressor, not heat capacity
+    """
+    years_lifespan = 20
+    seconds_in_year = 365 * 24 * 3600
+    seconds_in_lifespan = seconds_in_year * years_lifespan
+    cost0 = 871.9339209961945  # from linear regression
+    slope = 1.783401453095622  # [$/W] from linear regression
+    cost = cost0 + slope * hp_power
+    depreciation_by_second = cost / seconds_in_lifespan
+    return depreciation_by_second
 
 def get_tank_depreciation_by_second(tank_volume):
     """
@@ -130,6 +147,7 @@ def get_battery_depreciation_by_joule(e_bat_max):
     cost0 = 11.873235223976735  # from linear regression
     slope = 0.00016994110156603917  # [$/Ws] -> 600[$/kWh] from linear regression
     cost = cost0 + slope * e_bat_max
+    # cost = cost / 5
 
     # https://cdn.autosolar.es/pdf/fichas-tecnicas/Bat-LFP-12,8-25,6V-Smart-ES.pdf
     n_cycles = 3000
@@ -151,6 +169,8 @@ def get_battery_depreciation_by_second(e_bat_max):
     cost0 = 11.873235223976735  # from linear regression
     slope = 0.00016994110156603917  # [$/Ws] -> 600[$/kWh] from linear regression
     cost = cost0 + slope * e_bat_max
+    # cost = cost / 5
+
     depreciation_by_second = cost / seconds_in_lifespan
     return depreciation_by_second
 
@@ -179,6 +199,20 @@ def get_generator_depreciation_by_joule(generator_power):
     cost = cost0 + slope * generator_power
     depreciation_by_joule = cost / (generator_power * seconds_in_lifespan)
     return depreciation_by_joule
+
+
+def get_generator_depreciation_by_second(generator_power):
+    """
+    AC generator_power [W]
+    """
+    years_lifespan = 20
+    seconds_in_year = 365 * 24 * 3600
+    seconds_in_lifespan = seconds_in_year * years_lifespan
+    cost0 = 2637.2943203079794  # from linear regression
+    slope = 0.18673399507937297  # [$/m3] from linear regression
+    cost = cost0 + slope * generator_power
+    depreciation_by_second = cost / seconds_in_lifespan
+    return depreciation_by_second
 
 
 def get_fixed_energy_cost_by_second(p_grid_max):
@@ -874,7 +908,17 @@ def plot_cop():
 
 
 if __name__ == "__main__":
-    plot_data_regressions()
+    # plot_data_regressions()
     # plot_prices()
     # plot_dynamic_parameters()
     # plot_cop()
+
+    # hp_powers = np.linspace(1000, 10000, 1000)
+    # depreciation_by_joule = get_hp_depreciation_by_joule(hp_powers)
+    # plt.plot(hp_powers, depreciation_by_joule)
+    # plt.show()
+
+    e_bat_maxs = np.linspace(1000000, 1e8, 1000)
+    depreciation_by_joule = get_battery_depreciation_by_joule(e_bat_maxs)
+    plt.plot(e_bat_maxs, depreciation_by_joule)
+    plt.show()

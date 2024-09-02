@@ -1,0 +1,342 @@
+Para procurar las derivadas de nuestras ecuaciones es extendido el uso de la
+diferenciación automática (DA).
+
+Esta nos permite obtener los gradientes de forma eficiente, precisa, y
+ahorrando mucha labor manual, que siempre es más propensa a introducir errores
+de cálculo.
+
+Desde el punto de vista del usuario, este escribe en un lenguaje de
+programación una función que realice las operaciones que su modelo o ecuaciones
+requieran, y una librería automáticamente se encargará por él de sacar los
+gradientes de esa función respecto de las variables de entrada. Y en contraste
+con el método por diferencias finitas, DA es más preciso y permite la obtención
+de los gradientes respecto de $n$ entradas con un coste computacional
+comparable al de evaluar la función original una sola vez, y no $n$ veces, lo
+que lo hace mucho más eficiente.
+
+Como ejemplo, usamos \textbf{jax} \cite{jax2018github} como framework de python
+de DA que además proporciona multitud de operaciones para uso con matrices,
+similar a matlab o numpy.
+
+\begin{minted}{python}
+import jax
+import jax.numpy as jnp
+
+# Definimos una función simple con varias entradas
+def funcion_ejemplo(x, y, z):
+    return jnp.sin(x) * jnp.exp(y) + z**2
+
+# Creamos la función para calcular el gradiente
+grad_funcion = jax.grad(funcion_ejemplo, argnums=(0, 1, 2))
+
+# Evaluamos la función y su gradiente en un punto
+x, y, z = 1.0, 2.0, 3.0
+valor = funcion_ejemplo(x, y, z)
+gradiente = grad_funcion(x, y, z)
+
+print(f"Valor de la función: {valor}")
+print(f"Gradiente: {gradiente}")
+\end{minted}
+
+En este código, definimos una función con tres entradas que incluye operaciones
+trigonométricas y exponenciales. En la línea 9 se inicializa la función para
+calcular el gradiente, y en la línea 14 evaluamos el valor para unas entradas
+en particular.
+
+La librería de DA conoce las derivadas de cada una de las operaciones
+elementales que forman nuestra función (e.g. suma, multiplicación, funciones
+trigonométricas), y aplicando la regla de la cadena propaga los gradientes para
+construir la derivada total de funciones arbitrariamente complejas. Este
+proceso se realiza de forma transparente para el usuario, quien solo necesita
+definir la función original.
+
+Pero para entender un poco mejor el funcionamiento de la DA, podemos considerar
+un programa de ordenador como una secuencia de composición de funciones.
+
+Suponiendo que todos los bucles del programa se encuentran desenrollados, cada
+línea de código es una función de las variables anteriores. Y las variables son
+en general vectores.
+
+\begin{equation}
+	v_i = V_i(v_1, v_2, \ldots, v_{i-1})
+\end{equation}
+
+Se busca aplicar la regla de la cadena para calcular las derivadas de las
+variables finales (valores de objetivos o restricciones) con respecto a las
+primeras variables (variables de diseño). Un ejemplo de 3 líneas de código:
+
+\begin{align}
+	v = V(x) \label{eq:ad_example_first_eq}  \\
+	f = F(v) \label{eq:ad_example_second_eq} \\
+	l = L(f) \label{eq:ad_example_third_eq}
+\end{align}
+
+Internamente, los frameworks de DA operan siguiendo dos modos: modo reverso o
+modo directo. En el modo directo propaga los gradientes desde las entradas
+hacia la salida, siendo adecuado para funciones con pocas entradas y muchas
+salidas. Por otro lado, en el modo reverso los gradientes se propagan desde la
+salida hacia las entradas, lo que es especialmente eficiente para funciones con
+muchas entradas y pocas salidas, que es el caso más común en optimización.
+
+
+\subsection{Modo directo}
+
+El modo directo permite calcular todas las derivadas con respecto a una única
+variable de entrada en una sola pasada. Además, no requiere almacenar variables
+intermedias para un cálculo posterior, lo que puede resultar beneficioso en
+términos de memoria.
+
+El proceso comienza estableciendo un vector semilla:
+
+\begin{equation} \label{eq:direct_seed}
+	\begin{bmatrix}
+		\frac{dx_1}{dx_1} \\
+		\frac{dx_2}{dx_1}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		1 \\
+		0
+	\end{bmatrix}
+\end{equation}
+
+A continuación, se realiza una secuencia de productos jacobiano-vector (JVP)
+para propagar los gradientes. Esta operación proporciona todos los gradientes
+intermedios y finales para una única variable de entrada en una sola
+evaluación.
+
+Es posible realizar múltiples ejecuciones en modo directo utilizando diferentes
+vectores semilla. El coste computacional aumentaría de forma lineal con el
+número de pasadas.
+
+\begin{equation} \label{eq:direct_first_jac}
+	\begin{bmatrix}
+		\frac{dv_1}{dx_1} \\
+		\frac{dv_2}{dx_1}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\frac{\partial v_1}{\partial x_1} & \frac{\partial v_1}{\partial x_2} \\
+		\frac{\partial v_2}{\partial x_1} & \frac{\partial v_2}{\partial x_2}
+	\end{bmatrix}
+	\begin{bmatrix}
+		\frac{dx_1}{dx_1} \\
+		\frac{dx_2}{dx_1}
+	\end{bmatrix}
+\end{equation}
+
+\begin{equation} \label{eq:direct_second_jac}
+	\begin{bmatrix}
+		\frac{df_1}{dx_1} \\
+		\frac{df_2}{dx_1}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\frac{\partial f_1}{\partial v_1} & \frac{\partial f_1}{\partial v_2} \\
+		\frac{\partial f_2}{\partial v_1} & \frac{\partial f_2}{\partial v_2}
+	\end{bmatrix}
+	\begin{bmatrix}
+		\frac{dv_1}{dx_1} \\
+		\frac{dv_2}{dx_1}
+	\end{bmatrix}
+\end{equation}
+
+\begin{equation} \label{eq:direct_third_jac}
+	\begin{bmatrix}
+		\frac{dl_1}{dx_1} \\
+		\frac{dl_2}{dx_1}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\frac{\partial l_1}{\partial f_1} & \frac{\partial l_1}{\partial f_2} \\
+		\frac{\partial l_2}{\partial f_1} & \frac{\partial l_2}{\partial f_2}
+	\end{bmatrix}
+	\begin{bmatrix}
+		\frac{df_1}{dx_1} \\
+		\frac{df_2}{dx_1}
+	\end{bmatrix}
+\end{equation}
+
+Vemos que partiendo del valor semilla \eqref{eq:direct_seed}, en
+\eqref{eq:direct_first_jac} tenemos la jacobiana para la función $V$
+\eqref{eq:ad_example_first_eq}, y del producto de la jacobiana con el vector
+semilla (JVP), tenemos los gradientes de las variables $v$ respecto de la entrada
+$x_1$.
+
+La siguiente jacobiana en \eqref{eq:direct_second_jac} proviene de la ecuación
+para la función $F$ \eqref{eq:ad_example_second_eq}, y resulta en
+$\frac{df}{dx_1}$.
+
+Para la última función del ejemplo $L$ \eqref{eq:ad_example_third_eq}, la ecuación
+\eqref{eq:direct_third_jac} finalmente arroja los valores de las derivadas de los
+valores de salida $l_1$ y $l_2$ respecto de la entrada $x_1$.
+
+
+\subsection{Modo reverso}
+
+El modo reverso permite calcular todas las derivadas con respecto a una única
+variable de salida en una sola pasada, partiendo de la salida, hacia la
+entrada. En inglés se traduce como backward pass, y en el contexto de las redes
+neuronales se conoce como backpropagation.
+
+Primero se establece el vector semilla, derivadas de las salidas respecto de
+salida elegida.
+
+\begin{equation}
+	\begin{bmatrix}
+		\frac{dl_1}{dl_1} \
+		\frac{dl_1}{dl_2}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		1 \
+		0
+	\end{bmatrix}
+\end{equation}
+
+Y se propagan los gradientes hacia atrás, como una serie de productos
+vector-jacobiano, VJP (Vector Jacobian Product).
+
+Para el mismo ejemplo anterior, ahora se haría, en orden:
+
+\begin{equation}
+	\begin{bmatrix}
+		\frac{dl_1}{df_1} \\
+		\frac{dl_1}{df_2}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\frac{dl_1}{dl_1}
+		\frac{dl_1}{dl_2}
+	\end{bmatrix}
+	\begin{bmatrix}
+		\frac{\partial l_1}{\partial f_1} & \frac{\partial l_1}{\partial f_2} \\
+		\frac{\partial l_2}{\partial f_1} & \frac{\partial l_2}{\partial f_2}
+	\end{bmatrix}
+\end{equation}
+
+\begin{equation}
+	\begin{bmatrix}
+		\frac{dl_1}{dv_1} \\
+		\frac{dl_1}{dv_2}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\frac{dl_1}{df_1}
+		\frac{dl_1}{df_2}
+	\end{bmatrix}
+	\begin{bmatrix}
+		\frac{\partial f_1}{\partial v_1} & \frac{\partial f_1}{\partial v_2} \\
+		\frac{\partial f_2}{\partial v_1} & \frac{\partial f_2}{\partial v_2}
+	\end{bmatrix}
+\end{equation}
+
+\begin{equation}
+	\begin{bmatrix}
+		\frac{dl_1}{dx_1} \\
+		\frac{dl_1}{dx_2}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\frac{dl_1}{dv_1}
+		\frac{dl_1}{dv_2}
+	\end{bmatrix}
+	\begin{bmatrix}
+		\frac{\partial v_1}{\partial x_1} & \frac{\partial v_1}{\partial x_2} \\
+		\frac{\partial v_2}{\partial x_1} & \frac{\partial v_2}{\partial x_2}
+	\end{bmatrix}
+\end{equation}
+
+Partimos de $\frac{dl_1}{dl}$, después calculamos $\frac{dl_1}{dv}$, y por
+último $\frac{dl_1}{dx}$.
+
+Pero debido a que hacemos la propagación hacia la entrada, y las jacobianas
+dependen de los valores de la computación original, necesitamos guardar estos
+valores para su uso en la pasada hacia atrás. Técnica conocida como "taping".
+
+Por ejemplo, para la operación producto, se necesitan los valores usados en la
+evaluación.
+
+\begin{align}
+	z = producto(x, y) \\
+	J_{z} =
+	\begin{bmatrix}
+		\frac{\partial z}{\partial x} & \frac{\partial z}{\partial y}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		y & x
+	\end{bmatrix}
+\end{align}
+
+
+\subsection{Implementación}
+
+La implementación de DA puede realizarse mediante transformación del código
+fuente o sobrecarga de operadores (overloading).
+
+\subsubsection{Transformación del código fuente}
+
+Consiste en añadir nuevas variables en código para guardar los gradientes.
+
+Por ejemplo, para una función como:
+
+\begin{minted}{python}
+  def funcion_original(x):
+      f = x
+      for i in range(1, 11):
+          f = sin(x + f)
+      return f
+\end{minted}
+
+la transformación de su código para tener las derivadas en modo directo de la
+salida $f$ respecto de la entrada $x$, sería
+
+\begin{minted}{python}
+def funcion_transformada(x, x_dot):
+    f = x
+    f_dot = x_dot
+
+    for i in range(1, 11):
+        f = np.sin(x + f)
+        f_dot = (x_dot + f_dot) * np.cos(x + f)
+
+    return f, f_dot
+\end{minted}
+
+el usuario provee el código original, y una librería o programa lo transforma
+para incorporar las operaciones de la diferenciación automática.
+
+\subsubsection{Sobrecarga de operadores}
+
+En lenguajes que permiten la sobrecarga de operadores (overloading), se puede
+especificar que en cada operación, a parte de devolver el resultado, se guarde
+el valor de la derivada.
+
+Las variables se representan como objetos con las propiedades valor y
+gradiente.
+
+Como ejemplo de modo directo, para la multiplicación definimos cómo se realiza
+la operación y cómo se calcula la derivada:
+
+\begin{minted}{python}
+class Variable:
+    def __init__(self, value, derivative=0.0):
+        self.value = value
+        self.derivative = derivative
+
+    def __mul__(self, other):
+        # c = a * b
+        new_value = self.value * other.value
+        # dc/dx = da/dx * b + a * db/dx
+        new_derivative = self.derivative * other.value + self.value * other.derivative
+        return Variable(new_value, new_derivative)
+
+# Ejemplo de uso
+x = Variable(3.0, 1.0)  # Representa la variable x: valor 3.0 y derivada 1.0 (dx/dx)
+y = Variable(2.0, 0.0)  # Representa una constante: valor 2.0 y derivada 0.0 (dy/dx)
+
+z = x * y
+print(z.value)  # z = 6
+print(z.derivative)  # dz/dx = 2
+\end{minted}
