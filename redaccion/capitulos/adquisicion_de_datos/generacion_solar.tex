@@ -1,14 +1,14 @@
 A partir de la potencia solar instalada queremos llegar al dato de cuánta
 potencia eléctrica se produce a lo largo del año, porque la potencia instalada
-representa el máximo extraible, pero esta se verá reducida con pérdidas y
+representa el máximo extraíble, pero esta se verá reducida con pérdidas y
 niveles de radiación inferiores al máximo de diseño.
 
 Para ello utilizamos el software SAM \cite{SAM2023} (System Advisor Model)
-desarrollado por el NREL, usando los datos metereológicos para el año 2022 que
+desarrollado por el NREL, usando los datos meteorológicos para el año 2022 que
 procuramos en la sección \ref{sec:temperatura_ambiente}.
 
-Inicializamos un proyecto fotovoltaico con modelo PVWAtts, para $1[kW]$ de
-paneles montados en tejado sin orientación, inversor de eficiencia 0.96, y
+Inicializamos un proyecto fotovoltaico con modelo PVWatts, para $1[kW]$ de
+paneles montados en tejado con orientación fija, inversor de eficiencia 0.96, y
 otros parámetros dejados por defecto (figura \ref{fig:sam_solar_parameters}).
 
 \begin{figure}[h] \centering

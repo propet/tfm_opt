@@ -23,11 +23,11 @@ de mantenimiento, o alquiler de los elementos de la instalación.
 
 	\item \textbf{Depreciación de equipos}: los componentes pierden valor con el
 	      tiempo y el uso. Hemos aplicado una depreciación lineal, desde el coste
-	      inicial función de la dimensión del equipo (dadas en el capítulo de adquisión
-	      de datos), hasta el final de su esperanza de vida donde el valor es nulo.
-	      Esta desvalorización se ha hecho temporal para los paneles solares y depósito
-	      de agua (vida útil de 20 años), y por uso para la bomba de calor, baterías y
-	      generador diesel.
+	      inicial función de la dimensión del equipo (dadas en el capítulo de
+	      adquisición de datos), hasta el final de su esperanza de vida donde el valor
+	      es nulo. Esta desvalorización se ha hecho temporal para los paneles
+	      solares, depósito de agua y bomba de calor (vida útil de 20 años), y por
+	      uso o tiempo para baterías y generador diesel.
 \end{itemize}
 
 a continuación consideramos tres tipos de escenarios distintos en los que solo
@@ -65,7 +65,7 @@ Traducido a vatios y segundos es:
 \subsubsection{Depósito de agua caliente}
 
 El coste del tanque es función de su volumen, y lo obtenemos de la fórmula dada
-por la regresión linear del capitulo de adquisión de datos. Dividimos el coste
+por la regresión linear del capitulo de adquisición de datos. Dividimos el coste
 del tanque por el número de segundos que tiene su vida útil (20 años) para
 sacar su desvalorización temporal.
 
@@ -155,7 +155,7 @@ modos de funcionamiento (tabla \ref{tab:DoD_results}).
 \end{table}
 
 
-De la ficha técnica de un producto comercial, hemos extraido sus ciclos
+De la ficha técnica de un producto comercial, hemos extraído sus ciclos
 estimados para un DoD del 70\%, hasta que su capacidad se ve reducida al
 80\% de la nominal (figura \ref{fig:battery_datasheet_cycles}).
 
@@ -179,7 +179,7 @@ multiplicando por dos debido a que la célula se carga y descarga en un ciclo.
 Recordando que $e_\text{bat,max}$ es la capacidad.
 
 Solo resta dividir esta cantidad del coste de las baterías para tener la depreciación
-por julio.
+por Julio.
 
 \begin{equation} \label{eq:battery_depreciation_by_joule}
 	D_\text{bat}(e_\text{bat,max}) = \frac{\text{coste\_bat}}{\text{julios}} \left[\frac{\text{\euro}}{J}\right]
@@ -187,7 +187,7 @@ por julio.
 
 Así que en la función objetivo hacemos el producto de la potencia destinada a
 la batería en valor absoluto por el tiempo en segundos de un paso, para
-conseguir los julios manejados con los que obtenemos la depreciación, y
+conseguir los Julios manejados con los que obtenemos la depreciación, y
 finalmente hacemos la suma para todos los pasos en el periodo de optimización $T$.
 
 \begin{equation}
@@ -195,12 +195,12 @@ finalmente hacemos la suma para todos los pasos en el periodo de optimización $
 \end{equation}
 
 No obstante surge otro problema en principio no evidente, y es que el coste por
-julio de vida útil es decreciente para la capacidad de la batería. Cuanto mayor
+Julio de vida útil es decreciente para la capacidad de la batería. Cuanto mayor
 sea el acumulador, más económico nos resulta su uso.
 
 Es más visible cuando en la ecuación para la depreciación
 \eqref{eq:battery_depreciation_by_joule} incorporamos el valor del coste
-\eqref{eq:battery_cost} y de los julios totales en su vida estimada
+\eqref{eq:battery_cost} y de los Julios totales en su vida estimada
 \eqref{eq:battery_life_joules}.
 
 \begin{align}
@@ -378,9 +378,9 @@ off-grid.
 \end{equation}
 
 
-\subsection{Penalización por desvío de la temperatura objetivo}
+\subsection{Penalización por desvío respecto a la temperatura objetivo}
 
-Todas las funciones objectivo descritas persiguen minimizar el coste de
+Todas las funciones objetivo descritas persiguen minimizar el coste de
 operación de la instalación, pero no se ha hecho mención sobre la temperatura a
 la que deseamos mantener la vivienda.
 
@@ -410,7 +410,7 @@ no sigue el curso de acción deseado.
 
 Para subsanar este problema, e intentar no desviarnos de la temperatura marcada para
 el hogar, añadimos a las funciones objetivo un término adicional para penalizar
-la diferencia entre la temperatura de la habitación y la temperatura objectivo, como:
+la diferencia entre la temperatura de la habitación y la temperatura objetivo, como:
 
 \begin{equation} \label{eq:temperature_penalization}
 	\sum_{t=1}^{T} \varepsilon \cdot (T_{habitacion} - T_{objetivo})^2

@@ -10,8 +10,9 @@
 Consideramos un modelo de vivienda simple con una única habitación de planta
 cuadrada con $100[m^2]$ de área. Techo plano.
 
-Las paredes son de $2.5[m]$ de alto, por lo tanto con una extesión total de
-$100[m^2]$. De los cuales 25 son ventanas y los otros 75 son pared.
+Las paredes son de $2.5[m]$ de alto, por lo tanto con una extensión total de
+$100[m^2]$. De los cuales $25[m^2]$ son ventanas y los otros $75[m^2]$ son
+pared.
 
 El volumen es de $100[m^2] \cdot 2.5[m] = 250[m^3]$, con
 tan solo aire en su interior, que tiene una densidad de
@@ -31,7 +32,7 @@ modelo
 que muestra (figura \ref{fig:window_tranmittance}) sus medidas de transmitancia
 para el marco (frame), vidrio (glass) y global (window). Escogiendo el vidrio
 de baja emisividad (BE) y relleno de argón, tenemos un valor de
-$1.4\left[\frac{W}{m^2 \cdot K}\right]$, que asumimos engloba las perdidas por
+$1.4\left[\frac{W}{m^2 \cdot K}\right]$, que asumimos engloba las pérdidas por
 conducción, convección y radiación.
 
 \begin{figure}[h] \centering
@@ -133,15 +134,16 @@ perímetro exterior del tubo.
 \begin{figure}[h] \centering
 	\centering
 	\includegraphics[width=0.6\textwidth]{./capitulos/resultados_discusion/images/esquema_tubos_suelo.png}
-	\caption{Suelo radiante, configuración zig-zag. 220 metros de longitud.}
+	\caption{Suelo radiante, configuración zig-zag. $220[m]$ de longitud.}
 	\label{fig:esquema_tubos_suelo}
 \end{figure}
 
-De nuevo hemos optado por un arreglo simple para facilitar los cálculos,
-pero también es común el patrón de espiral, mostrado en la figura \ref{fig:spiral_pattern_floor},
-que distribuye el calor de forma más uniforme por el suelo, aunque con una buena
-conductividad del material de la losa que integra los tubos (hormigón), las diferencias de
-temperaturas en distintas partes de la habitación deberían de ser poco perceptibles.
+De nuevo hemos optado por un arreglo simple para facilitar los cálculos, pero
+también es común el patrón de espiral, mostrado en la figura
+\ref{fig:spiral_pattern_floor}, que distribuye el calor de forma más uniforme
+por el suelo, aunque con una buena conductividad térmica del hormigón que
+integra los tubos, las diferencias de temperaturas en distintas partes de la
+habitación deberían de ser poco perceptibles.
 
 \begin{figure}[h] \centering
 	\centering
@@ -151,8 +153,8 @@ temperaturas en distintas partes de la habitación deberían de ser poco percept
 \end{figure}
 
 La losa de hormigón que da una inercia térmica considerable al suelo, se ha
-tomado de 5cm. Y tampoco hemos considerado que se haya recubierto la losa de
-hormigón con ningún azulejo, porcelánico o madera.
+tomado de 5cm.y tampoco hemos considerado que la losa de hormigón esté
+recubierta con ningún azulejo, porcelánico o madera.
 
 Con una densidad del hormigón de $2300[kg\cdot m^{-3}]$, la masa de esta losa es:
 
@@ -171,7 +173,7 @@ potencia solar.
 \begin{figure}[h] \centering
 	\centering
 	\includegraphics[width=1\textwidth]{./capitulos/resultados_discusion/images/solar_panel_area.png}
-	\caption{Área de $5.263[m^2]$ para $1[kW]$ de panales solares instalados. Datos obtenidos de SAM (System Advisor Model).}
+	\caption{Área de $5.263[m^2]$ para $1[kW]$ de paneles solares instalados. Datos obtenidos de SAM (System Advisor Model).}
 	\label{fig:solar_panel_area}
 \end{figure}
 
@@ -191,5 +193,5 @@ Tiene forma cilíndrica con misma altura que diámetro (figura
 \begin{align} \label{eq:tank_mass_and_area}
 	V_{tanque} & = \pi r^2 h = 2 \pi r^3 \rightarrow r = \sqrt[3]{\frac{V_{tanque}}{2\pi}} \\
 	m_{tanque} & = V_{tanque} \cdot \rho_{agua} \\
-	A_{tanque} & = 2 \pi r \cdot h
+	A_{tanque} & = 2 \pi r \cdot h + 2 \pi r^2
 \end{align}

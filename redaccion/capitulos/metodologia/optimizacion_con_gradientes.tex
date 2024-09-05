@@ -38,7 +38,7 @@ respecto de las variables de diseño como guía, y su obtención es independient
 del número de incógnitas, como veremos con la diferenciación automática y
 derivadas adjuntas.
 
-Esta estrategia permite la optimización de problemas con un gran número de
+Esta estrategia permite la optimización de problemas con un elevado número de
 incógnitas. Por ejemplo, el modelo de lenguaje Llama-3.1-405b de Meta utiliza
 405 mil millones de variables \cite{dubey2024llama}, o parámetros como se
 conocen en el contexto del aprendizaje automático.
@@ -182,7 +182,7 @@ las condiciones de optimalidad de primer orden quedan como:
 	\end{aligned}
 \end{equation}
 
-Pero definiendo hábilmente la función lagrangiana, obtenemos las mismas
+Pero definiendo hábilmente la función Lagrangiana, obtenemos las mismas
 condiciones derivándola respecto de las variables de diseño y los
 multiplicadores de Lagrange.
 
@@ -197,12 +197,12 @@ multiplicadores de Lagrange.
 	\end{aligned}
 \end{equation}
 
-El teorema de Lagrange establece que para cada mínimo restringido de $f$, hay
+El teorema de Lagrange establece que para cada mínimo restringido de $f$ hay
 un punto crítico para $\mathcal{L}$. Pero estos puntos críticos para el
-lagrangiano son puntos de silla, lo que nos impide directamente minimizar la
-lagrangiana con métodos de optimización sin restricciones.
+Lagrangiano son puntos de silla, lo que nos impide directamente minimizar la
+Lagrangiana con métodos de optimización sin restricciones.
 
-A pesar de la utilidad de la lagrangiana, no es cierto que nos permita eliminar las
+A pesar de la utilidad de la Lagrangiana, no es cierto que nos permita eliminar las
 restricciones del problema:
 
 \begin{equation}
@@ -235,7 +235,7 @@ equivale a
 	g(x) + s^2 = 0
 \end{equation}
 
-Y las incorporamos igualmente en la función lagrangiana:
+Y las incorporamos igualmente en la función Lagrangiana:
 
 \begin{equation}
 	\mathcal{L}(x, \lambda, \sigma, s) = f(x) + \lambda^T h(x) + \sigma^T (g(x) + s \odot s)
@@ -248,7 +248,7 @@ Pero los multiplicadores de Lagrange de desigualdad $\sigma$ tienen la
 peculiaridad de que deben ser no negativos. Esta condición de no negatividad se
 aplica como una cota en las condiciones KKT (Karush-Kuhn-Tucker, condiciones
 generales de primer orden), que resultan de igualar a cero las derivadas de la
-lagrangiana respecto de sus variables de diseño ($x$, $\lambda$, $\sigma$ y
+Lagrangiana respecto de sus variables de diseño ($x$, $\lambda$, $\sigma$ y
 $s$).
 
 \begin{align}
@@ -345,7 +345,7 @@ término distorsiona la función objetivo, por lo que $\mu_b$ se va haciendo
 progresivamente más cercano a 0 para aproximarse al verdadero objetivo conforme
 avanza la optimización.
 
-La lagrangiana de esta formulación es:
+La función Lagrangiana de esta formulación es:
 
 \begin{equation}
 	\mathcal{L}(x, \lambda, \sigma, s) = f(x) - \mu_b \mathbf{e}^T \ln s + \lambda^T h(x) + (\sigma^T g(x) + s^T \sigma)
@@ -429,14 +429,14 @@ $s_\lambda$, $s_\sigma$ y  $s_s$.
 
 \subsection{Intercambiabilidad entre problemas con y sin restricciones}
 
-Como vimos previamente, la lagrangiana de un problema nos proporciona las
+Como vimos previamente, la Lagrangiana de un problema nos proporciona las
 condiciones de primer orden para la optimalidad de un problema, pero no es una
 representación sin restricciones de un problema equivalente con restricciones.
 
 Aunque sí es posible transformar un problema con condiciones en uno sin ellas a
 través de otros medios.
 
-Uno de ellos es incorporar las restricciones en la función objectivo como
+Uno de ellos es incorporar las restricciones en la función objetivo como
 penalizaciones, como en el método de penalización cuadrática exterior, que
 transforma un problema del estilo:
 

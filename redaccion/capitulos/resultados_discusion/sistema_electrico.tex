@@ -2,7 +2,7 @@
 	\centering
 	\includegraphics[width=1\textwidth]{./capitulos/resultados_discusion/images/diagrama_electrico.png}
 	\caption{Esquema eléctrico.}
-	\label{fig:electic_diagram}
+	\label{fig:electric_diagram}
 \end{figure}
 
 Tenemos un sistema con paneles fotovoltaicos conectados a un controlador de
@@ -54,8 +54,8 @@ cuando se está cargando.
 
 Además hemos introducido una potencia sobrante, destinada a servir de válvula
 de escape para el sistema. Correspondería a una resistencia eléctrica para
-desechar energía, no calentando el hogar. Puesto que en algún escenario donde
-la potencia de red está saturada, la batería se encuentra llena y además no
+desechar energía, no calentando el hogar. Puesto que en algún escenario en el
+que la potencia de red está saturada, la batería se encuentra llena y además no
 queremos dar potencia a la bomba de calor (verano), el sistema se encontraba
 algo limitado y pasaba a encender la calefacción en periodos donde no nos
 interesa.
@@ -104,7 +104,7 @@ está 'vacía'
 
 Y la potencia máxima con la que podemos cargar o descargar es función de la capacidad,
 a través del factor C-rate, que para células de LiFePO4 establecimos era de aproximadamente
-0.3 el valor recomendado, mientras que el máximo nominal de contínuo funcionamiento era de 1.
+0.3 el valor recomendado, mientras que el máximo nominal de continuo funcionamiento era de 1.
 
 Podemos relacionar la capacidad y potencia máxima, primero sabiendo que
 el C-rate se define como la relación entre la corriente máxima y la capacidad en amperios-hora:
@@ -122,7 +122,7 @@ multiplicando ambos miembros por la tensión nominal, obtenemos:
 
 Cuando tratemos de sacar las dimensiones óptimas de baterías, bomba de calor y
 potencia contratada de red, tendremos como variables de diseño la capacidad de
-la batería (de la cual se deriva la potencia máxima de la batería), la potencía
+la batería (de la cual se deriva la potencia máxima de la batería), la potencia
 máxima del compresor y potencia máxima de red.
 
 Y estos valores máximos los aplicaremos como restricciones para las variables

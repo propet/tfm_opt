@@ -1,22 +1,22 @@
-Para procurar las derivadas de nuestras ecuaciones es extendido el uso de la
+Para procurar las derivadas de nuestras ecuaciones es común el uso de la
 diferenciación automática (DA).
 
 Esta nos permite obtener los gradientes de forma eficiente, precisa, y
 ahorrando mucha labor manual, que siempre es más propensa a introducir errores
 de cálculo.
 
-Desde el punto de vista del usuario, este escribe en un lenguaje de
-programación una función que realice las operaciones que su modelo o ecuaciones
-requieran, y una librería automáticamente se encargará por él de sacar los
-gradientes de esa función respecto de las variables de entrada. Y en contraste
-con el método por diferencias finitas, DA es más preciso y permite la obtención
-de los gradientes respecto de $n$ entradas con un coste computacional
-comparable al de evaluar la función original una sola vez, y no $n$ veces, lo
-que lo hace mucho más eficiente.
+El usuario escribe en un lenguaje de programación una función que realice las
+operaciones que su modelo o ecuaciones requieran, y una librería
+automáticamente se encargará por él de sacar los gradientes de esa función
+respecto de las variables de entrada. Y en contraste con el método por
+diferencias finitas, DA es más preciso y permite la obtención de los gradientes
+respecto de $n$ entradas con un coste computacional comparable al de evaluar la
+función original una sola vez, y no $n$ veces, lo que lo hace mucho más
+eficiente.
 
 Como ejemplo, usamos \textbf{jax} \cite{jax2018github} como framework de python
 de DA que además proporciona multitud de operaciones para uso con matrices,
-similar a matlab o numpy.
+similar a MATLAB o NumPy.
 
 \begin{minted}{python}
 import jax
@@ -197,7 +197,7 @@ salida elegida.
 Y se propagan los gradientes hacia atrás, como una serie de productos
 vector-jacobiano, VJP (Vector Jacobian Product).
 
-Para el mismo ejemplo anterior, ahora se haría, en orden:
+Para el mismo ejemplo anterior, ahora se haría en el siguiente orden:
 
 \begin{equation}
 	\begin{bmatrix}
@@ -304,8 +304,8 @@ def funcion_transformada(x, x_dot):
     return f, f_dot
 \end{minted}
 
-el usuario provee el código original, y una librería o programa lo transforma
-para incorporar las operaciones de la diferenciación automática.
+el usuario proporciona el código original, y una librería o programa lo
+transforma para incorporar las operaciones de la diferenciación automática.
 
 \subsubsection{Sobrecarga de operadores}
 

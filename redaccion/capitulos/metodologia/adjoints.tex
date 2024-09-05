@@ -11,7 +11,7 @@ intermedios para realizar la propagación hacia atrás (backward pass) en la
 diferenciación automática, lo que resulta computacionalmente costoso y poco
 eficiente en términos de memoria.
 
-Por ejemplo, resolver un sistema de ecuaciones lineales típicamente emplea un
+Por ejemplo, resolver un sistema de ecuaciones lineales sueler emplear un
 método de Krylov como el de gradiente conjugado, que iterativamente modifica
 los valores para la solución hasta cumplir con un margen de tolerancia
 prestablecido. Para sistemas de ecuaciones no lineales se emplea
@@ -92,8 +92,8 @@ por \eqref{eq:dy_dx_adjoint_theory}. Ya que $\frac{dy}{dx}$ tiene $n_y$ filas
 por $n_x$ columnas, conseguir esta requiere determinar $n_x$ sistemas lineales,
 uno por cada columna (entrada).
 
-Este es el método directo. Es la estrategia favorable a seguir cuando el número
-de variables de diseño es mayor al número de variables de salida $n_f$.
+Este es el método directo. Esta es la estrategia favorable a seguir cuando el
+número de variables de diseño es mayor al número de variables de salida $n_f$.
 
 La alternativa es despejar el producto de los dos primeros factores, aquí llamado
 $\psi$, de donde sacamos la relación:
@@ -146,7 +146,7 @@ Y de nuevo deseamos las derivadas de las salidas respecto de las entradas.
 \end{align}
 
 
-\subsubsection{Método directo contínuo}
+\subsubsection{Método directo continuo}
 
 Para hallar la derivada total de los estados respecto de las entradas,
 derivamos la ODE \eqref{eq:ode_adjoint} con su condición inicial \eqref{eq:ode_adjoint_iv}:
@@ -165,17 +165,17 @@ variable de estado ahora sería $\frac{dy}{dx_i}$:
 \end{align}
 
 por tanto tendremos $n_x$ ODE's que resolver. Este es el método directo
-contínuo. Contínuo, porque como veremos a continuación, existe otra forma de
+continuo. Continuo, porque como veremos a continuación, existe otra forma de
 alcanzar las derivadas a partir de la versión discretizada de la ODE (e.g. con
 euler implícito).
 
 
-\subsubsection{Método adjunto contínuo}
+\subsubsection{Método adjunto continuo}
 
 En caso de tener muchas variables de diseño $x$, el método directo tiene un
 alto coste computacional, por lo que acudimos al método adjunto.
 
-Para lograr las derivadas adjuntas, aquí empleamos el método de la lagrangiana
+Para lograr las derivadas adjuntas, aquí empleamos el método de la Lagrangiana
 para su derivación.
 
 Como si formuláramos el siguiente problema de optimización:
@@ -185,14 +185,14 @@ Como si formuláramos el siguiente problema de optimización:
 	\text{sujeto a}\quad & \frac{dy}{dt}  = j(y, t, x)  \label{eq:ode_as_optimization}
 \end{align}
 
-la correspondiente lagrangiana sería:
+la correspondiente Lagrangiana sería:
 
 \begin{align}
 	\mathcal{L}(y, x, \lambda) & = F(y, x) + \int_0^T \lambda(t)^T(j - \frac{dy}{dt})dt \nonumber                                   \\
 	                           & = \int_0^T g(y, x) + \lambda(t)^T (j - \frac{dy}{dt}) dt  \label{eq:continuous_adjoint_lagrangian}
 \end{align}
 
-Derivamos la lagrangiana respecto de las variables de diseño y agrupamos por
+Derivamos la Lagrangiana respecto de las variables de diseño y agrupamos por
 $\frac{dy}{dx}$:
 
 \begin{align}
@@ -244,7 +244,7 @@ donde
 	\frac{dF}{d x} = \frac{d \mathcal{L}}{d x}
 \end{equation}
 
-porque el término de la integral en la lagrangiana
+porque el término de la integral en la Lagrangiana
 \eqref{eq:continuous_adjoint_lagrangian} se hace nulo cuando la ODE se
 satisface:
 
@@ -296,7 +296,7 @@ que aplicamos como restricciones de igualdad en el problema de optimización:
 	                                                & y_{1} - y_{0} - h \cdot (j(x, y_{1}, u_{1}, t_{1})) = 0
 \end{align}
 
-Con lagrangiana:
+Con Lagrangiana:
 
 
 \begin{align}
@@ -305,8 +305,8 @@ Con lagrangiana:
 \end{align}
 
 Notando que como las ecuaciones del sistema discretizado se cumplen a cada
-paso, las derivadas de la lagrangiana respecto de las variables $x$ y $u$ son
-iguales a las derivadas de la función objectivo $F$ respecto de $x$ y $u$:
+paso, las derivadas de la Lagrangiana respecto de las variables $x$ y $u$ son
+iguales a las derivadas de la función objetivo $F$ respecto de $x$ y $u$:
 
 \begin{align}
 	\frac{dF}{dx} = \frac{d\mathcal{L}}{dx} \nonumber \\
@@ -356,7 +356,7 @@ y en el problema de optimización se discretizan igualmente:
 	                                                & x_n - x_{n-1} = 0 \quad \forall n
 \end{align}
 
-se conoce también como el sistema aumentado, y la lagrangiana entonces es:
+se conoce también como el sistema aumentado, y la Lagrangiana entonces es:
 
 \begin{align}
 	\mathcal{L} & = F(x, y, u) \nonumber                                                             \\
@@ -392,16 +392,16 @@ Supone un ahorro porque no requerimos los vectores $\lambda$ y $\mu$ en
 memoria, solo $\lambda_{n+1}$ y $\mu_{n+1}$ a cada instante $t_n$.
 
 
-\subsubsection{Diferencias entre el método contínuo y discreto}
+\subsubsection{Diferencias entre el método continuo y discreto}
 
 Tratando únicamente el modo adjunto, podemos observar ciertas diferencias y
-características de los métodos contínuos y discretos.
+características de los métodos continuos y discretos.
 
-Como vimos con el método contínuo adjunto, se alcanza un nuevo sistema ODE para
+Como vimos con el método continuo adjunto, se alcanza un nuevo sistema ODE para
 las variables adjuntas $\lambda$, y esta se resuelve hacia atrás en el tiempo,
-con una condición final $\lambda(T)$. De esta forma, el método contínuo también
+con una condición final $\lambda(T)$. De esta forma, el método continuo también
 se conoce como "diferenciación y discretización", porque primero diferenciamos
-la lagrangiana para formular la ODE de valor final, y después discretizamos el
+la Lagrangiana para formular la ODE de valor final, y después discretizamos el
 problema adjunto con algún esquema numérico.
 
 Podemos elegir un esquema de discretización independiente del usado para
@@ -416,7 +416,7 @@ los puntos coincidan.
 	\centering
 	\includegraphics[width=1\textwidth]{./capitulos/metodologia/images/ode_adjoint_checkpointing_sundials.png}
 	\caption{Checkpointing realizado por el paquete sundials para obtener las
-		derivadas adjoint contínuas a través de un sistema ODE. Fuente:
+		derivadas adjoint continuas a través de un sistema ODE. Fuente:
 		\url{https://sundials.readthedocs.io/en/v6.6.0/idas/Mathematics_link.html}}
 	\label{fig:ode_adjoint_checkpointing_sundials}
 \end{figure}
@@ -428,7 +428,7 @@ computacional.
 
 Por contra, en el método discreto, primero discretizamos el sistema de
 ecuaciones diferenciales con algún esquema, y después diferenciamos la
-lagrangiana para averiguar las derivadas.
+Lagrangiana para averiguar las derivadas.
 
 La formulación es dependiente del esquema empleado en el problema directo, pero
 a cambio no es preciso interpolar puntos en la pasada hacia atrás, y por tanto
@@ -498,7 +498,7 @@ Si tuviéramos un sistema como el siguiente:
 \end{align}
 
 entonces discretizaríamos de la misma forma las ecuaciones, para luego obtener
-la lagrangiana, y con las condiciones de primer orden de esta, resolver las
+la Lagrangiana, y con las condiciones de primer orden de esta, resolver las
 variables adjuntas desde $t_N$ hasta $t_0$ hacia atrás.
 
 \begin{align}
@@ -516,6 +516,6 @@ variables adjuntas desde $t_N$ hasta $t_0$ hacia atrás.
 	            & - \sum_n \lambda_{2_n} \cdot (y_n - y_{n-1} - h \cdot (y_{2_n} - 1 + y_{0_n} + y_{1_n}))
 \end{align}
 
-Con la diferencia que en la lagrangiana anterior \eqref{eq:ode_lagrangian}
+Con la diferencia de que en la Lagrangiana anterior \eqref{eq:ode_lagrangian}
 tratábamos con un vector de variables adjuntas $\lambda$, y aquí aparecen
 individualmente, para cada ecuación del sistema.

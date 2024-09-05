@@ -1,8 +1,8 @@
 Ahora queremos optimizar las dimensiones de los elementos que componen nuestra
 instalación solar además de los controles para su funcionamiento. Esto es, qué
-potencia de paneles solares debemos de instalar, qué capacidad para la batería,
+potencia de paneles solares debemos instalar, qué capacidad para la batería,
 potencia a contratar con la comercializadora, potencia máxima de la bomba de
-calor y cómo de voluminoso ha de ser el depósito de agua caliente.
+calor y qué tan voluminoso ha de ser el depósito de agua caliente.
 
 La formulación es similar a \eqref{eq:sand_control_optimization}, pero entonces
 las dimensiones las tratábamos como parámetros fijos, y ahora serán variables
@@ -14,13 +14,13 @@ de la temperatura de la habitación de la objetivo de 20ºC
 
 En invierno no se hace realmente necesaria imponerla, porque de forma natural
 el calentar el hogar supone un gasto, y siempre tratamos de minimizar el gasto.
-Pero puede darse que en unas horas de calor el optimizador piense en calentar
+Pero puede darse que en unas horas de calor, el optimizador piense en calentar
 la casa, incluso por encima de los 30 grados, porque posteriormente tendremos
 un periodo donde la energía eléctrica será cara, y de esta forma es más
 económico mantener la habitación siempre por encima de la temperatura objetivo.
 En alguna ocasión el optimizador incluso decide encender la calefacción en
-verano, donde inevitablemente nos encontramos por encima de la temperatura
-ideal, ya que no disponemos de aire acondicionado.
+verano, donde inevitablemente estamos por encima de la temperatura ideal, ya
+que no disponemos de aire acondicionado.
 
 Para evitar este comportamiento indeseado, introducimos la penalización.
 
@@ -234,9 +234,9 @@ solares produzcan.
 \clearpage
 \subsection{Autoconsumo con compensación ilimitada}
 
-Usando la función objectivo \eqref{eq:cost_free} en la misma formulación usada
+Usando la función objetivo \eqref{eq:cost_free} en la misma formulación usada
 previamente \eqref{eq:regulated_sizing_optimization}, y añadiendo el término
-para penalizar la diferencia con la temperatura objectivo
+para penalizar la diferencia con la temperatura objetivo
 \eqref{eq:temperature_penalization}.
 
 Por tanto, la optimización para el año completo (2022), se muestran en la

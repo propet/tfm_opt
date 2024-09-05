@@ -5,12 +5,13 @@
 	\label{fig:thermal_diagram}
 \end{figure}
 
-Una bomba de calor produce agua caliente sanitaria que se vuelca en un depósito acumulador.
-De este se extraen dos flujos, uno de vuelta al intercambiador de calor del condensador
-de la bomba de calor ($\dot{m}_{cond}$), y otro que se dirige al suelo radiante ($\dot{m}_{cale}$).
+Una bomba de calor produce agua caliente sanitaria que se almacena en un
+depósito acumulador. De este se extraen dos flujos, uno de vuelta al
+intercambiador de calor del condensador de la bomba de calor
+($\dot{m}_{cond}$), y otro que se dirige al suelo radiante ($\dot{m}_{cale}$).
 
 Estos dos caudales se controlan a través de dos bombas de circulación y
-posiblemente también con el uso de válvulas de estrangulación, si las bombas no
+posiblemente también mediante válvulas de estrangulación, si las bombas no
 fueran de velocidad variable (VFD, Variable Frequency Drive).
 
 La temperatura del tanque de agua es $T_{tanque}$, a la salida de la calefacción
@@ -26,11 +27,11 @@ condensador, denominada $T_{cond}$.
 
 Según los datos de una bomba de calor comercial
 \footnote{\url{https://www.daikin.es/content/dam/DACS/document-library/Pdfs-subidos-2022/Monobloc\%20EBLA\%209-11\%20-\%2014-16.pdf}}
-el COP es 4.8 para una temperatura de 35°C y 3.4 para 55°C.
-Se ha asumido una variación lineal del COP entre estos puntos, con un valor
-mínimo de 0 y un máximo de 4.8.
+el COP es 4.8 para una temperatura de 35°C y 3.4 para 55°C. Se ha considerado
+una variación lineal del COP entre estos puntos, con un valor mínimo de 0 y un
+máximo de 4.8.
 
-La función por tramos que describe el COP es:
+La función por partes que describe el COP es:
 
 \begin{equation}
 	\text{\text{cop}}(T) =
@@ -55,9 +56,9 @@ que se muestra en la figura \ref{fig:heat_pump_cop}
 
 \subsection{Tanque de agua}
 
-Desde el depósito de agua aislado, tenemos dos flujos de entrada y salida
-controlados por dos bombas de circulación. Un caudal para la bomba de calor
-$\dot{m}_{cond}$, y otro para el suelo radiante $\dot{m}_{suelo}$.
+Desde el depósito de agua aislado térmicamente, tenemos dos flujos de entrada y
+salida controlados por dos bombas de circulación. Un caudal para la bomba de
+calor $\dot{m}_{cond}$, y otro para el suelo radiante $\dot{m}_{suelo}$.
 
 La ecuación de conservación de la energía para el tanque con pérdidas de calor
 por conducción con el ambiente (suponemos que se encuentra en el exterior de la
@@ -159,9 +160,9 @@ Mean Temperature Difference):
 
 pero en nuestro caso hemos tomado que la temperatura del suelo se mantiene
 constante a lo largo del recorrido de los tubos (figura
-\ref{fig:floor_temperatures}), lo que nos aproxima más al caso de un
-intercambiador de calor con cambio de fase, y por tanto hemos tomado la
-diferencia de temperaturas media como la representativa
+\ref{fig:floor_temperatures}). Esto se asemeja más al caso de un intercambiador
+de calor con cambio de fase, y por tanto hemos tomado la diferencia de
+temperaturas media como la representativa:
 
 \begin{equation} \label{eq:mean_delta_T}
 	\Delta T_{tubos} = \frac{(T_{tanque} - T_{suelo}) + (T_{cale} - T_{suelo})}{2}
@@ -193,7 +194,7 @@ y a su vez el coeficiente de película $h_{tubo}$ lo averiguamos del número de
 Nusselt, y la ecuación de Dittus-Boelter \eqref{eq:dittus-boelter} que
 relaciona los números de Prandtl, Reynolds y el Nusselt en flujo turbulento
 para tubos circulares (encontrada en Incropera et al.
-\cite{incropera1996fundamentals}). De forma que también asumimos que estaremos
+\cite{incropera1996fundamentals}). De forma que también suponemos que estaremos
 siempre en régimen turbulento.
 
 \begin{align}

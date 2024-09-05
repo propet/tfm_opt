@@ -2,7 +2,7 @@ Se optimiza de manera conjunta el control y dimensionamiento de un sistema
 energético para una vivienda equipada con bomba de calor, paneles fotovoltaicos
 y almacenamiento en forma de baterías y tanque de agua.
 
-Para un año completo, se determinan las señales de control y dimensiones
+Para un año completo se determinan las señales de control y las dimensiones
 óptimas de los equipos (potencia de la bomba de calor, capacidad instalada de
 paneles solares, potencia máxima contratada con la comercializadora, capacidad
 de la batería y volumen del tanque de agua) que minimizan el coste total,
@@ -10,14 +10,14 @@ manteniendo la temperatura de la vivienda en torno a los 20°C.
 
 El problema resultante es de gran escala, con cientos de miles de variables de
 diseño, por lo que necesitamos obtener las derivadas de forma eficiente y
-utilizar matrices dispersas para la representación de las jacobianas.
+utilizar matrices dispersas para la representar las jacobianas.
 
-El sistema se modela como un conjunto de ecuaciones diferenciales algebraicas,
-y sus derivadas se obtienen mediante el método de gradientes adjuntos
-discretos, implementado en Python.
+El sistema se modela como un conjunto de ecuaciones diferenciales algebraicas y
+sus derivadas se obtienen mediante el método de gradientes adjuntos discretos,
+implementado en Python.
 
 Además se optimiza y analiza simultáneamente este problema a través de la
-técnica SAND (Simultaneous ANalysis and Design), también conocida como
+técnica SAND (Simultaneous Analysis and Design), también conocida como
 'all-at-once', comparando ambos enfoques.
 
 Para las funciones objetivo, se evalúa la vivienda bajo tres escenarios:
