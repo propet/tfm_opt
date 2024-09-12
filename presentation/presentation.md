@@ -367,6 +367,7 @@ $$
 ## Conclusiones
 
 - Modelo imperfecto
+- Suponiendo información perfecta (e.g. precios futuros)
 - Éxito en la aplicación de la metodología
 
   Apropiada para problemas de diseño de gran escala, restringidos por ecuaciones en derivadas parciales o sistemas dinámicos
