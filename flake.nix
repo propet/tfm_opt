@@ -51,6 +51,7 @@
 
         devShell = pkgs.mkShell {
           buildInputs = [
+            pkgs.marp-cli  # presentations
             pkgs-22.petsc
             pkgs.mpi
             pkgs.gcc
