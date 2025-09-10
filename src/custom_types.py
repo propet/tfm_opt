@@ -1,8 +1,9 @@
 import numpy as np
-from typing import TypedDict, Dict, List, Union, Optional, Callable, Any, NotRequired
+from typing import TypedDict, Dict, List, Union, Optional, Callable, Any
 from typing_extensions import NotRequired
 from numpy.typing import NDArray
 import scipy.sparse as sp
+
 # from opt import Opt
 
 
@@ -12,8 +13,8 @@ Plot types: PlotData its dependencies
 
 
 class ArrayData(TypedDict):
-    x: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float_]]
-    y: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float_]]
+    x: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float64]]
+    y: Union[List[int], List[float], NDArray[np.int_], NDArray[np.float64]]
     label: Union[str, None]
 
 
@@ -59,4 +60,3 @@ class ConstraintInfo(TypedDict):
     wrt: NotRequired[List[str]]
     # jac: NotRequired[Dict[str, Union[np.ndarray, sp.spmatrix]]]
     jac: NotRequired[Dict[str, Any]]
-
