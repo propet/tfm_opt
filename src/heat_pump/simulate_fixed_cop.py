@@ -12,6 +12,7 @@ It's not reasonable, because in a real heat pump you can't reach more than
 ~70º, so the COP would tend to 0 as you approximate those temperatures.
 """
 
+
 def dae_system(y, y_prev, p, u_prev, h):
     r"""
     Solve the following system of non-linear equations
@@ -160,6 +161,7 @@ def solve(y_0, p, u, h, n_steps):
 #     plt.grid(True)
 #     plt.show()
 
+
 def plot(y, u, n_steps, h):
     # Create time array
     t = np.linspace(0, n_steps * h, n_steps + 1)
@@ -180,7 +182,7 @@ def plot(y, u, n_steps, h):
     axes[0].grid(True)
 
     # Second subplot for Q_dot_load
-    axes[1].plot(t, y[3], label="Q_dot_load", color='tab:orange')
+    axes[1].plot(t, y[3], label="Q_dot_load", color="tab:orange")
     axes[1].set_xlabel("Time (s)")
     axes[1].set_ylabel("Q_dot_load (W)")
     axes[1].set_title("Heat Load")
@@ -199,19 +201,18 @@ def plot(y, u, n_steps, h):
     axes[2].plot(t[:-1], u[0], label="P_comp")
     axes[2].set_ylabel("Compressor power")
     axes[2].set_title("Control Variables")
-    axes[2].legend(loc='upper left')
+    axes[2].legend(loc="upper left")
     axes[2].grid(True)
 
     # Create a secondary y-axis for u[1] and u[2]
     ax2 = axes[2].twinx()
-    ax2.plot(t[:-1], u[1], label="m_dot_cond", color='tab:red')
-    ax2.plot(t[:-1], u[2], label="m_dot_load", color='tab:green')
+    ax2.plot(t[:-1], u[1], label="m_dot_cond", color="tab:red")
+    ax2.plot(t[:-1], u[2], label="m_dot_load", color="tab:green")
     ax2.set_ylabel("Mass flow rates")
-    ax2.legend(loc='upper right')
+    ax2.legend(loc="upper right")
 
     # Set common x-axis label
     axes[2].set_xlabel("Time (s)")
-
 
     # Show the plots
     plt.tight_layout()
@@ -219,10 +220,10 @@ def plot(y, u, n_steps, h):
 
 
 def main():
-    time = 1000000 # s
+    time = 1000000  # s
     h = 1000  # timestep
     # n_steps = int(1e5)
-    n_steps = int(time/h)
+    n_steps = int(time / h)
     # n_steps = int(5)
     y0, p, u = get_inputs(n_steps, h)
     y = solve(y0, p, u, h, n_steps)
@@ -273,10 +274,10 @@ def get_inputs(n_steps, h):
     # P_comp = P_comp_max * np.sin(2 * np.pi * desired_frequency * time_steps) + P_comp_max
     P_comp = np.ones((n_steps)) * P_comp_max
     # P_comp = P_comp_max * np.sin(2 * np.pi * f * 100 * np.arange(n_steps)) + P_comp_max
-    P_comp[-int(n_steps/3):] = 0
+    P_comp[-int(n_steps / 3) :] = 0
     m_dot_cond = np.ones((n_steps)) * 0.3  # kg/s
     # m_dot_cond[:20000] = 0.3
-    m_dot_load = np.ones((n_steps)) * 0.1 # kg/s
+    m_dot_load = np.ones((n_steps)) * 0.1  # kg/s
     u = np.zeros((3, n_steps))
     u[0, :] = P_comp  # P_comp
     u[1, :] = m_dot_cond  # m_dot_cond

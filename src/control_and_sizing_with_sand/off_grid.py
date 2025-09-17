@@ -90,13 +90,13 @@ def obj_fun(
         jnp.sum(h * diesel_price * p_diesel)
         # ∘ depreciate generator by time or usage
         + jnp.maximum(
-           jnp.sum(h * p_grid * get_generator_depreciation_by_joule(p_grid_max)),
-           jnp.sum(h * get_generator_depreciation_by_second(p_grid_max)),
+            jnp.sum(h * p_grid * get_generator_depreciation_by_joule(p_grid_max)),
+            jnp.sum(h * get_generator_depreciation_by_second(p_grid_max)),
         )
         # ∘ depreciate battery by time or usage
         + jnp.maximum(
-           jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
-           jnp.sum(h * get_battery_depreciation_by_second(e_bat_max)),
+            jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
+            jnp.sum(h * get_battery_depreciation_by_second(e_bat_max)),
         )
         # ∘ depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
@@ -943,6 +943,7 @@ def dae4_constraint_sens(opt, design_variables: DesignVariables):
     ]
     return (dae4_jac, dae4_wrt)
 
+
 def battery_soc_fun(
     e_bat,
     e_bat_max,
@@ -1685,7 +1686,9 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT_10KWH"] * parameters["SOC_MIN"],
+        "initial_value": (
+            history["e_bat"][-1] if history else parameters["E_BAT_MAX_LIMIT_10KWH"] * parameters["SOC_MIN"]
+        ),
         "scale": 1 / parameters["E_BAT_MAX_LIMIT_10KWH"],
     }
     opt.add_design_variables_info(e_bat)

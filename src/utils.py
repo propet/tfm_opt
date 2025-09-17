@@ -127,6 +127,7 @@ def get_hp_depreciation_by_second(hp_power):
     depreciation_by_second = cost / seconds_in_lifespan
     return depreciation_by_second
 
+
 def get_tank_depreciation_by_second(tank_volume):
     """
     tank_volume [m3]
@@ -154,7 +155,9 @@ def get_battery_depreciation_by_joule(e_bat_max):
     dod = 0.7
 
     # Depreciate by how much energy has been transferred
-    total_lifespan_energy_transferred = n_cycles * 2 * dod * e_bat_max  # times 2 because in a cycle we charge and discharge
+    total_lifespan_energy_transferred = (
+        n_cycles * 2 * dod * e_bat_max
+    )  # times 2 because in a cycle we charge and discharge
     depreciation_by_joule = cost / total_lifespan_energy_transferred
     return depreciation_by_joule
 
@@ -271,7 +274,7 @@ def cop_jax(t):
     cop_3 = 0
     m = (cop_1 - cop_2) / (t_1 - t_2)
     cop_0 = cop_1 - m * t_1
-    t_3 = - cop_0 / m
+    t_3 = -cop_0 / m
 
     conditions = [t < t_1, (t >= t_1) & (t < t_3), t >= t_3]
     choices = [cop_1, cop_0 + m * t, cop_3]
@@ -289,7 +292,7 @@ def cop_np(t):
     cop_3 = 0
     m = (cop_1 - cop_2) / (t_1 - t_2)
     cop_0 = cop_1 - m * t_1
-    t_3 = - cop_0 / m
+    t_3 = -cop_0 / m
 
     conditions = [t < t_1, (t >= t_1) & (t < t_3), t >= t_3]
     functions = [lambda t: cop_1, lambda t: cop_0 + m * t, lambda t: cop_3]
@@ -307,7 +310,7 @@ def get_dcopdT(t):
     cop_3 = 0
     m = (cop_1 - cop_2) / (t_1 - t_2)
     cop_0 = cop_1 - m * t_1
-    t_3 = - cop_0 / m
+    t_3 = -cop_0 / m
 
     conditions = [t < t_1, (t >= t_1) & (t < t_3), t >= t_3]
     functions = [lambda t: 0, lambda t: m, lambda t: 0]
@@ -701,6 +704,7 @@ def jax_to_numpy(jax_func):
 def sparse_to_required_format(mat):
     return {"csr": [mat.indptr, mat.indices, mat.data], "shape": list(mat.shape)}
 
+
 def plot_prices():
     t0 = 0
     # t0 = 24 * 3600 * 90
@@ -728,6 +732,7 @@ def plot_prices():
     plt.ylabel(r"€$/kWh$")
     plt.grid(True)
     plt.show()
+
 
 def plot_dynamic_parameters():
     t0 = 0
@@ -766,7 +771,7 @@ def plot_dynamic_parameters():
     # plt.grid(True)
     # plt.show()
 
-    parameters["p_required"] = parameters["p_required"] / 1000 # W to kW
+    parameters["p_required"] = parameters["p_required"] / 1000  # W to kW
     parameters["t_amb"] = parameters["t_amb"] - 273
     # plt.plot(time / 3600 / 24, parameters["p_required"], **plot_styles[0], linewidth=0.5)
     # plt.plot(time / 3600 / 24, parameters["w_solar_per_w_installed"], **plot_styles[0], linewidth=0.5)

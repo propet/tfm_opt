@@ -417,6 +417,8 @@ def dae_adjoints(y, u, dae_p, n_steps, parameters):
 
 
 fig = None
+
+
 def plot(y, u, n_steps, parameters, show=True, block=True, save=True):
     print("plotting...")
     global fig
@@ -702,7 +704,6 @@ def plot_history(hist, only_last=True):
             plot(y, u, n_steps, parameters, show=False)
 
     plot_film("saves/sand_wo_finn.gif")  # create animation with pictures from tmp folder
-
 
 
 def main(hist=None):

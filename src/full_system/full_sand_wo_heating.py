@@ -420,7 +420,7 @@ def get_constraint_sparse_jacs(parameters, design_variables):
 
     dbattery_energy_dp_bat = sp.lil_matrix((n_steps - 1, n_steps))
     for i in range(1, n_steps):
-        dbattery_energy_dp_bat[i - 1, i] = - bat_eta * h
+        dbattery_energy_dp_bat[i - 1, i] = -bat_eta * h
     dbattery_energy_dp_bat = dbattery_energy_dp_bat.tocsr()
     dbattery_energy_dp_bat = to_required_format(dbattery_energy_dp_bat)
 
@@ -864,7 +864,7 @@ def run_optimization(parameters, plot=True):
         # "acceptable_obj_change_tol": 1e-4,
         "mu_strategy": "adaptive",
         # "alpha_red_factor": 0.2
-        "alpha_for_y": "safer-min-dual-infeas"
+        "alpha_for_y": "safer-min-dual-infeas",
         # "alpha_for_y": "primal-and-full"
         # "alpha_for_y": "dual-and-full"
         # "alpha_for_y": "full"

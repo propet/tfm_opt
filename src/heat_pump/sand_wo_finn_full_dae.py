@@ -721,7 +721,6 @@ if __name__ == "__main__":
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
     print("w_solar_per_w_installed: ", parameters["w_solar_per_w_installed"].shape)
 
- 
     y0 = {
         "p_compressor": 900,  # up to P_COMPRESSOR_MAX
         "m_dot_cond": 4.98853131e-01,

@@ -193,10 +193,7 @@ def adjoint_gradients(y, p, h, steps):
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n)^T]
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n)^T]
             #                           [μ_n]
-            A = np.block([
-                [dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))],
-                [dfdp_n.T, dgdp_n.T, np.eye(n_params)]
-            ])
+            A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
             b = np.concatenate([drdy_n, drdp_n])
             adjs = np.linalg.solve(A, b)
             adj_lambda[:, n] = adjs[:n_odes]
@@ -213,21 +210,16 @@ def adjoint_gradients(y, p, h, steps):
             # [∂f/∂y_n^T  ∂g/∂y_n^T  0] [λ_n]   [(∂r/∂y_n - λ_{n+1} ∂f(y_{n+1}, y_n, p_{n+1})/∂y_n)^T]
             # [∂f/∂p_n^T  ∂g/∂p_n^T  I] [ν_n] = [(∂r/∂p_n + μ_{n+1})^T                               ]
             #                           [μ_n]
-            dfdy_prev = get_dfdy_prev(y[:, n+1], y[:, n], p, h)
-            A = np.block([
-                [dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))],
-                [dfdp_n.T, dgdp_n.T, np.eye(n_params)]
-            ])
-            b = np.concatenate([
-                drdy_n - np.dot(adj_lambda[:, n+1].T, dfdy_prev),
-                drdp_n + adj_mu[:, n+1]
-            ])
+            dfdy_prev = get_dfdy_prev(y[:, n + 1], y[:, n], p, h)
+            A = np.block([[dfdy_n.T, dgdy_n.T, np.zeros((n_states, n_params))], [dfdp_n.T, dgdp_n.T, np.eye(n_params)]])
+            b = np.concatenate([drdy_n - np.dot(adj_lambda[:, n + 1].T, dfdy_prev), drdp_n + adj_mu[:, n + 1]])
             adjs = np.linalg.solve(A, b)
             adj_lambda[:, n] = adjs[:n_odes]
             adj_nu[:, n] = adjs[n_odes : (n_odes + n_algs)]
             adj_mu[:, n] = adjs[(n_odes + n_algs) :]
 
     return dCdy_0, dCdp_0
+
 
 def fd_gradients(y0, p, h, n_steps):
     delta = 1e-6

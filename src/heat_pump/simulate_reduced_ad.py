@@ -8,6 +8,7 @@ from utils import get_dynamic_parameters, plot_styles, jax_to_numpy
 import jax
 import jax.numpy as jnp
 from jax import jit, lax
+
 jax.config.update("jax_enable_x64", True)
 
 
@@ -45,6 +46,7 @@ def cop_np(T):
     conditions = [T < 273, (T >= 273) & (T < 343), T >= 343]
     choices = [3.0, 14.7 - (3.0 / 70.0) * T, 0.0]
     return np.select(conditions, choices)
+
 
 def cop_jax(T):
     conditions = [T < 273, (T >= 273) & (T < 343), T >= 343]
@@ -289,24 +291,24 @@ def adjoint_gradients(y, p, u, h, n_steps):
     # jax.jacobian will automatically
     # use jax.jacrev or jax.jacfwd
     # based on the number of inputs and outputs
-    get_drdy_jax      = jax.jit(jax.jacobian(r, argnums=0))
-    get_dfdy_jax      = jax.jit(jax.jacobian(f, argnums=0))
+    get_drdy_jax = jax.jit(jax.jacobian(r, argnums=0))
+    get_dfdy_jax = jax.jit(jax.jacobian(f, argnums=0))
     get_dfdy_prev_jax = jax.jit(jax.jacobian(f, argnums=1))
-    get_dfdp_jax      = jax.jit(jax.jacobian(f, argnums=2))
-    get_dfdu_jax      = jax.jit(jax.jacobian(f, argnums=3))
-    get_dgdy_jax      = jax.jit(jax.jacobian(g, argnums=0))
-    get_dgdp_jax      = jax.jit(jax.jacobian(g, argnums=1))
-    get_dgdu_jax      = jax.jit(jax.jacobian(g, argnums=2))
+    get_dfdp_jax = jax.jit(jax.jacobian(f, argnums=2))
+    get_dfdu_jax = jax.jit(jax.jacobian(f, argnums=3))
+    get_dgdy_jax = jax.jit(jax.jacobian(g, argnums=0))
+    get_dgdp_jax = jax.jit(jax.jacobian(g, argnums=1))
+    get_dgdu_jax = jax.jit(jax.jacobian(g, argnums=2))
 
     # Convert JAX jacobian functions to NumPy functions
-    get_drdy      = jax_to_numpy(get_drdy_jax)
-    get_dfdy      = jax_to_numpy(get_dfdy_jax)
+    get_drdy = jax_to_numpy(get_drdy_jax)
+    get_dfdy = jax_to_numpy(get_dfdy_jax)
     get_dfdy_prev = jax_to_numpy(get_dfdy_prev_jax)
-    get_dfdp      = jax_to_numpy(get_dfdp_jax)
-    get_dfdu      = jax_to_numpy(get_dfdu_jax)
-    get_dgdy      = jax_to_numpy(get_dgdy_jax)
-    get_dgdp      = jax_to_numpy(get_dgdp_jax)
-    get_dgdu      = jax_to_numpy(get_dgdu_jax)
+    get_dfdp = jax_to_numpy(get_dfdp_jax)
+    get_dfdu = jax_to_numpy(get_dfdu_jax)
+    get_dgdy = jax_to_numpy(get_dgdy_jax)
+    get_dgdp = jax_to_numpy(get_dgdp_jax)
+    get_dgdu = jax_to_numpy(get_dgdu_jax)
 
     # get_drdy_jax      = jax.jit(jax.jacobian(r, argnums=0))
     # get_dfdy_jax      = jax.jit(jax.jacobian(f, argnums=0))

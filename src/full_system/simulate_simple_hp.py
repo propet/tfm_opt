@@ -602,10 +602,7 @@ def plot_history(hist, only_last=True):
 
     # loop through histories
     for iter, i in enumerate(indices):
-        y0 = np.array([
-            histories["t_tank"][i][0],
-            histories["t_cond"][i][0]
-        ])
+        y0 = np.array([histories["t_tank"][i][0], histories["t_cond"][i][0]])
         parameters["y0"] = y0
 
         u = np.zeros((4, n_steps))

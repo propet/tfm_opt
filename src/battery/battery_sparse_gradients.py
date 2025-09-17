@@ -69,22 +69,17 @@ def get_constraint_sparse_jacs():
             dg1_dx_col.append(j)
             dg1_dx_data.append(1 / PARAMS["MAX_BAT_CAPACITY"])
 
-    dg1_dx = {
-        'coo': [np.array(dg1_dx_row), np.array(dg1_dx_col), np.array(dg1_dx_data)],
-        'shape': [N_HOURS, N_HOURS]
-    }
+    dg1_dx = {"coo": [np.array(dg1_dx_row), np.array(dg1_dx_col), np.array(dg1_dx_data)], "shape": [N_HOURS, N_HOURS]}
 
     # grid power constraints
     dg2_dx_row = np.arange(N_HOURS)
     dg2_dx_col = np.arange(N_HOURS)
     dg2_dx_data = np.ones(N_HOURS)
 
-    dg2_dx = {
-        'coo': [dg2_dx_row, dg2_dx_col, dg2_dx_data],
-        'shape': [N_HOURS, N_HOURS]
-    }
+    dg2_dx = {"coo": [dg2_dx_row, dg2_dx_col, dg2_dx_data], "shape": [N_HOURS, N_HOURS]}
 
     return dg1_dx, dg2_dx
+
 
 def sens(opt, design_variables: DesignVariables, func_values):
     grid_prices_kwh = PARAMS["grid_prices_kwh"]
@@ -136,7 +131,7 @@ def run_optimization(plot=True):
         "function": battery_soc_constraint_fun,
         "scale": 1,
         "wrt": ["p_bat"],
-        "jac": {"p_bat": dsoc_dx}
+        "jac": {"p_bat": dsoc_dx},
     }
     opt.add_constraint_info(battery_soc_constraint)
 
@@ -148,7 +143,7 @@ def run_optimization(plot=True):
         "function": grid_power_constraint_fun,
         "scale": 1 / PARAMS["P_GRID_MAX"],
         "wrt": ["p_bat"],
-        "jac": {"p_bat": dgrid_dx}
+        "jac": {"p_bat": dgrid_dx},
     }
     opt.add_constraint_info(grid_power_constraint)
 

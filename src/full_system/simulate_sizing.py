@@ -891,7 +891,6 @@ def save_plots(y, u, n_steps, dae_p, design_variables, parameters, title=None, s
     # p_grid = -p_solar + p_compressor + p_bat + p_required + p_waste
     p_grid = -p_solar + p_compressor + p_bat + p_required
 
-
     # A4: (8.27, 11.69)
 
     # Plot: prices

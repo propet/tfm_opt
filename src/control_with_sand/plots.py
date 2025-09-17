@@ -2,6 +2,7 @@ import time
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib.animation import FuncAnimation
 from parameters import PARAMS
 from pyoptsparse import History
@@ -15,6 +16,8 @@ from utils import (
     get_hp_depreciation_by_joule,
     get_tank_depreciation_by_second,
 )
+
+matplotlib.use("TkAgg")
 
 
 def get_costs(histories, parameters):

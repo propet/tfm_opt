@@ -4,7 +4,6 @@ from scipy.optimize import fsolve
 from matplotlib.animation import FuncAnimation
 
 
-
 # Define the DAE system
 def dae_system(y_next, y, h, p):
     r"""
@@ -15,8 +14,8 @@ def dae_system(y_next, y, h, p):
     """
     return [
         (y_next[0] - y[0]) / h + p[0] * y_next[0] - p[1] * y_next[1] * (1 - y_next[0] - y_next[1]),
-        (y_next[1] - y[1]) / h - p[1] * y_next[0]**2 + y_next[1],
-        y_next[2] - 1 + y_next[0] + y_next[1]
+        (y_next[1] - y[1]) / h - p[1] * y_next[0] ** 2 + y_next[1],
+        y_next[2] - 1 + y_next[0] + y_next[1],
     ]
 
 
@@ -47,18 +46,18 @@ def solve(y_0, p, h, steps):
 def get_ode_J_current(y, y_next, h, p):
     # Compute ∂Ω(y_n, y_{n+1}, p)/∂y_n
     J = np.zeros((3, 3))
-    J[0, 0] = -1/h
-    J[1, 1] = -1/h
+    J[0, 0] = -1 / h
+    J[1, 1] = -1 / h
     return J
 
 
 def get_ode_J_next(y, y_next, h, p):
     # Compute ∂Ω(y_n, y_{n+1}, p)/∂y_{n+1}
     J = np.zeros((3, 3))
-    J[0, 0] = 1/h + p[0] + p[1] * y_next[1]
+    J[0, 0] = 1 / h + p[0] + p[1] * y_next[1]
     J[0, 1] = -p[1] + p[1] * y_next[0] + 2 * p[1] * y_next[1]
     J[1, 0] = -2 * p[1] * y_next[0]
-    J[1, 1] = 1/h + 1
+    J[1, 1] = 1 / h + 1
     J[2, 0] = 1
     J[2, 1] = 1
     J[2, 2] = 1
@@ -70,7 +69,7 @@ def get_ode_Jp(y_next, p):
     Jp = np.zeros((3, 2))
     Jp[0, 0] = y_next[0]
     Jp[0, 1] = -y_next[1] * (1 - y_next[0] - y_next[1])
-    Jp[1, 1] = -y_next[0]**2
+    Jp[1, 1] = -y_next[0] ** 2
     return Jp
 
 
@@ -112,13 +111,12 @@ def adjoint_gradients(y, p, h, steps):
 
     # Backward propagation of adjoint variables
     for n in range(steps, 0, -1):
-        J_current = get_ode_J_current(y[:, n-1], y[:, n], h, p)
-        J_next = get_ode_J_next(y[:, n-1], y[:, n], h, p)
+        J_current = get_ode_J_current(y[:, n - 1], y[:, n], h, p)
+        J_next = get_ode_J_next(y[:, n - 1], y[:, n], h, p)
         dCdy = np.array([1, 0, 0])
 
         # Solve the adjoint equation using fsolve
-        lambd[:, n-1] = fsolve(adjoint_equation, lambd[:, n],
-                       args=(lambd[:, n], J_current, J_next, dCdy))
+        lambd[:, n - 1] = fsolve(adjoint_equation, lambd[:, n], args=(lambd[:, n], J_current, J_next, dCdy))
 
         # As linear systems of equations
         # lambd[:, n-1] = -np.linalg.solve(J_current.T, dCdy + J_next.T @ lambd[:, n])
@@ -129,16 +127,14 @@ def adjoint_gradients(y, p, h, steps):
 
         # lambd[:, n-1] = -np.linalg.lstsq(J_current.T, dCdy + J_next.T @ lambd[:, n], rcond=None)[0]
 
-
-
     print(lambd)
     # print(lambd[:, n])
 
     # Compute gradient with respect to parameters
     dCdp = np.zeros(2)
     for n in range(steps):
-        Jp = get_ode_Jp(y[:, n+1], p)
-        dCdp += np.dot(lambd[:, n+1], Jp)
+        Jp = get_ode_Jp(y[:, n + 1], p)
+        dCdp += np.dot(lambd[:, n + 1], Jp)
 
     return dCdp
 
@@ -181,6 +177,7 @@ def fd_gradients(y_0, p, h, steps):
 
     return [dfdy0_0, dfdy1_0, dfdy2_0, dfdp0, dfdp1]
 
+
 # def fd_central_gradients(y_0, p, h, steps):
 #     delta = 1e-6
 #     gradients = []
@@ -206,12 +203,12 @@ def plot(y, steps, h):
 
     # Plot the results
     plt.figure(figsize=(10, 6))
-    plt.plot(t, y[0], label='y_0')
-    plt.plot(t, y[1], label='y_1')
-    plt.plot(t, y[2], label='y_2')
-    plt.xlabel('Time')
-    plt.ylabel('Values')
-    plt.title('DAE Simulation Results')
+    plt.plot(t, y[0], label="y_0")
+    plt.plot(t, y[1], label="y_1")
+    plt.plot(t, y[2], label="y_2")
+    plt.xlabel("Time")
+    plt.ylabel("Values")
+    plt.title("DAE Simulation Results")
     plt.legend()
     plt.grid(True)
     plt.show()

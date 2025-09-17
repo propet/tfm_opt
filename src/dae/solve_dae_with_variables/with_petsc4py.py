@@ -2,6 +2,7 @@ import sys
 import petsc4py
 import numpy as np
 from petsc4py import PETSc
+
 # import pdb
 
 # Initialize PETSc and parse command-line options
@@ -80,7 +81,6 @@ class DAE(object):
         u.assemble()
         return u
 
-
     def create_adjoint_variables(self):
         # Derivatives of the cost function with respect the two states and two parameters
         adj_lambda = PETSc.Vec().createSeq(3, comm=self.comm)  # adjoint variables lambda: ∂Psi/∂u
@@ -105,7 +105,6 @@ class DAE(object):
 
         return adj_lambda, adj_mu
 
-
     def evalIFunction(self, ts, t, u, udot, f):
         r"""
         Implicit functions
@@ -115,7 +114,6 @@ class DAE(object):
         f[2] = u[2] - 1.0 + u[0] + u[1]
         f.assemble()
         return True
-
 
     def evalIJacobian(self, ts, t, u, udot, shift, Ju, P):
         r"""
@@ -139,7 +137,6 @@ class DAE(object):
         Ju.assemble()
         return True
 
-
     def evalIJacobianP(self, ts, t, u, udot, shift, Jp):
         r"""
         Compute the derivatives of the implicit function F with respect to parameters p
@@ -153,12 +150,10 @@ class DAE(object):
         Jp.assemble()
         return True
 
-
     def costIntegration(self, ts, t, u, r):
         r[0] = u[0] + u[1] + u[2]
         r.assemble()
         return True
-
 
     def costIntegrationJacobian(self, ts, t, u, drdu, P):
         drdu[0, 0] = 1.0
@@ -167,13 +162,11 @@ class DAE(object):
         drdu.assemble()
         return True
 
-
     def costIntegrationJacobianP(self, ts, t, u, drdp):
         drdp[0, 0] = 0.0
         drdp[0, 1] = 0.0
         drdp.assemble()
         return True
-
 
     def create_ts(self):
         ts = PETSc.TS().create(comm=self.comm)
@@ -184,7 +177,6 @@ class DAE(object):
         ts.setIJacobian(self.evalIJacobian, self.Ju, self.Ju)
         ts.setIJacobianP(self.evalIJacobianP, self.Jp)
         return ts
-
 
     def set_quadts(self):
         try:
@@ -212,7 +204,6 @@ class DAE(object):
             print(f"Error setting RHS JacobianP for quadrature TS: {e}")
             raise
 
-
     def run(self):
         self.ts.setTime(self.t0)
         self.ts.setMaxTime(self.tf)
@@ -224,6 +215,7 @@ class DAE(object):
         def monitor(ts, step, time, u):
             # print(f"Step {step}, Time {time}, Solution: {u.array}")
             return 0
+
         self.ts.setMonitor(monitor)
 
         # Solve
@@ -231,7 +223,6 @@ class DAE(object):
         print("Forward solve complete.")
         print(f"Final u: {self.u.getArray()}")
         print(f"self.r type: {type(self.r)}, size: {self.r.getSize()}")
-
 
     def get_adjoint(self):
         self.adj_lambda, self.adj_mu = self.create_adjoint_variables()

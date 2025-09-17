@@ -30,18 +30,14 @@ def main():
         starArr.append({"xStar": xStar, "objStar": objStar})
 
         # Get next y0
-        u = [
-            xStar["p_compressor"],
-            xStar["m_dot_cond"],
-            xStar["m_dot_load"]
-        ]
+        u = [xStar["p_compressor"], xStar["m_dot_cond"], xStar["m_dot_load"]]
         dae_p = [
             parameters["CP_WATER"],
             parameters["TANK_VOLUME"] * parameters["RHO_WATER"],  # tank mass
             parameters["U"],
             6 * np.pi * (parameters["TANK_VOLUME"] / (2 * np.pi)) ** (2 / 3),  # tank surface area (m2)
             parameters["t_amb"],
-            parameters["LOAD_HX_EFF"]
+            parameters["LOAD_HX_EFF"],
         ]
         n_steps = 1
         next_y = dae_forward(y0, dae_p, u, n_steps)

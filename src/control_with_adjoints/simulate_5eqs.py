@@ -1038,7 +1038,6 @@ def plot_history(hist, only_last=True):
             plot_thermals(y, u, n_steps, dae_p, parameters, save=False)
             # save_simulation_plots(y, u, n_steps, dae_p, parameters)
 
-
             # Print statistics
             costs = get_costs(histories, y, u, parameters)
             print(costs)

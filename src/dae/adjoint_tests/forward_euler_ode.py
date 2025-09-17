@@ -18,10 +18,7 @@ def explicit_solve_ode_system(y, h, p):
     ((y_next[0] - y[0]) / h) - p[0] * y[0] + p[1] * y[0] * y[1] = 0
     ((y_next[1] - y[1]) / h) + p[2] * y[1] - p[3] * y[0] * y[1] = 0
     """
-    return [
-        y[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1]),
-        y[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])
-    ]
+    return [y[0] + h * (p[0] * y[0] - p[1] * y[0] * y[1]), y[1] + h * (-p[2] * y[1] + p[3] * y[0] * y[1])]
 
 
 def get_dfdy(y, p):

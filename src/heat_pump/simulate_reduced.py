@@ -155,10 +155,10 @@ def dae_system(y, y_prev, p, u_prev, h):
     return [
         # f
         p[1] * p[0] * ((y[0] - y_prev[0]) / h)
-            - u_prev[1] * p[0] * y[1]
-            - u_prev[2] * p[0] * (y[0] - p[5] * (y[0] - p[4]))
-            + (u_prev[1] + u_prev[2]) * p[0] * y[0]
-            + p[2] * p[3] * (y[0] - p[4]),
+        - u_prev[1] * p[0] * y[1]
+        - u_prev[2] * p[0] * (y[0] - p[5] * (y[0] - p[4]))
+        + (u_prev[1] + u_prev[2]) * p[0] * y[0]
+        + p[2] * p[3] * (y[0] - p[4]),
         # g
         cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]),
     ]

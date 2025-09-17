@@ -1,0 +1,15 @@
+requests
+numpy
+pandas
+pyoptsparse@ git+https://github.com/mdolab/pyoptsparse.git
+matplotlib
+scienceplots
+pyright
+black
+mpi4py
+petsc4py
+click
+imageio>=2.37.0
+scikit-learn>=1.7.2
+jax>=0.7.1
+cyipopt>=1.6.1

@@ -2019,7 +2019,7 @@ def run_optimization(parameters, plot=True):
     # Optimizer
     slsqpoptOptions = {"IPRINT": -1}
     ipoptOptions = {
-        "print_level": 5, # up to 12
+        "print_level": 5,  # up to 12
         "max_iter": 2000,
         # "tol": 1e-5,
         # "obj_scaling_factor": 1e-1,  # tells IPOPT how to internally handle the scaling without distorting the gradients

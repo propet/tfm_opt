@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: src
+Version: 1.0.0
+Summary: my tool
+Requires-Dist: requests
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: pyoptsparse@ git+https://github.com/mdolab/pyoptsparse.git
+Requires-Dist: matplotlib
+Requires-Dist: scienceplots
+Requires-Dist: pyright
+Requires-Dist: black
+Requires-Dist: mpi4py
+Requires-Dist: petsc4py
+Requires-Dist: click
+Requires-Dist: imageio>=2.37.0
+Requires-Dist: scikit-learn>=1.7.2
+Requires-Dist: jax>=0.7.1
+Requires-Dist: cyipopt>=1.6.1

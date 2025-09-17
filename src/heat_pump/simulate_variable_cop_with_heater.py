@@ -60,71 +60,71 @@ def get_drdp(y, p, u, h):
 
 def dae_system(y, y_prev, p, u_prev, h):
     r"""
-    Solve the following system of non-linear equations
+        Solve the following system of non-linear equations
 
-    ∘ m_tank * cp_water * (dT_tank/dt)
-        = m_dot_cond * cp_water * T_cond
-        + m_dot_load * cp_water * T_load
-        - m_dot_tank * cp_water * T_tank
-        - Q_dot_loss
-    ∘ m_dot_tank = m_dot_cond + m_dot_load
-    ∘ COP = cop(T_cond)
-    ∘ Q_dot_cond = COP * P_comp # W
-    ∘ Q_dot_cond = m_dot_cond * cp_water * (T_cond - T_tank)
-    ∘ Q_dot_loss = U * A * (T_tank - T_amb)
-    ∘ Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
-    ∘ Q_dot_load = m_dot_load * cp_water * (T_tank - T_load)
-    ∘ Q_dot_required = Q_dot_load + P_heat
-
-
-    with unknowns:
-    T_tank, T_load, T_cond, P_heat
+        ∘ m_tank * cp_water * (dT_tank/dt)
+            = m_dot_cond * cp_water * T_cond
+            + m_dot_load * cp_water * T_load
+            - m_dot_tank * cp_water * T_tank
+            - Q_dot_loss
+        ∘ m_dot_tank = m_dot_cond + m_dot_load
+        ∘ COP = cop(T_cond)
+        ∘ Q_dot_cond = COP * P_comp # W
+        ∘ Q_dot_cond = m_dot_cond * cp_water * (T_cond - T_tank)
+        ∘ Q_dot_loss = U * A * (T_tank - T_amb)
+        ∘ Q_dot_load = load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb)
+        ∘ Q_dot_load = m_dot_load * cp_water * (T_tank - T_load)
+        ∘ Q_dot_required = Q_dot_load + P_heat
 
 
-    Discretized with Backward Euler
-    ∘ m_tank * cp_water * ((T_tank - T_tank_prev)/h)
-        - m_dot_cond * cp_water * T_cond
-        - m_dot_load * cp_water * T_load
-        + (m_dot_cond + m_dot_load) * cp_water * T_tank
-        + U * A * (T_tank - T_amb)
-        = 0
-    ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
-    ∘ (Q_dot_required - P_heat) - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = 0
-    ∘ (Q_dot_required - P_heat) - m_dot_load * cp_water * (T_tank - T_load) = 0
+        with unknowns:
+        T_tank, T_load, T_cond, P_heat
 
 
-    Making:
-    y[0] = T_tank
-    y[1] = T_cond
-    y[2] = T_load
-    y[3] = P_heat
-
-    p[0] = cp_water
-    p[1] = m_tank
-    p[2] = U
-    p[3] = A
-    p[4] = T_amb
-    p[5] = load_hx_eff
-
-    u_prev[0] = P_comp
-    u_prev[1] = m_dot_cond
-    u_prev[2] = m_dot_load
-    u_prev[3] = Q_dot_required
+        Discretized with Backward Euler
+        ∘ m_tank * cp_water * ((T_tank - T_tank_prev)/h)
+            - m_dot_cond * cp_water * T_cond
+            - m_dot_load * cp_water * T_load
+            + (m_dot_cond + m_dot_load) * cp_water * T_tank
+            + U * A * (T_tank - T_amb)
+            = 0
+        ∘ cop(T_cond) * P_comp - m_dot_cond * cp_water * (T_cond - T_tank) = 0
+        ∘ (Q_dot_required - P_heat) - load_hx_eff * m_dot_load * cp_water * (T_tank - T_amb) = 0
+        ∘ (Q_dot_required - P_heat) - m_dot_load * cp_water * (T_tank - T_load) = 0
 
 
-(Q_dot_required - P_heat)
-    ∘ p[1] * p[0] * ((y[0] - y_prev[0])/h)
-        - u_prev[1] * p[0] * y[1]
-        - u_prev[2] * p[0] * y[2]
-        + (u_prev[1] + u_prev[2]) * p[0] * y[0]
-        + p[2] * p[3] * (y[0] - p[4])
-        = 0
-    ∘ cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]) = 0
-    ∘ (u_prev[3] - y[3]) - p[5] * u_prev[2] * p[0] * (y[0] - p[4]) = 0
-    ∘ (u_prev[3] - y[3]) - u_prev[2] * p[0] * (y[0] - y[2]) = 0
+        Making:
+        y[0] = T_tank
+        y[1] = T_cond
+        y[2] = T_load
+        y[3] = P_heat
 
-    Which are divided in differential equations (f(y,y_prev,p,u_prev) = 0)
-    and algebraic equations (g(y,p,u_prev) = 0)
+        p[0] = cp_water
+        p[1] = m_tank
+        p[2] = U
+        p[3] = A
+        p[4] = T_amb
+        p[5] = load_hx_eff
+
+        u_prev[0] = P_comp
+        u_prev[1] = m_dot_cond
+        u_prev[2] = m_dot_load
+        u_prev[3] = Q_dot_required
+
+
+    (Q_dot_required - P_heat)
+        ∘ p[1] * p[0] * ((y[0] - y_prev[0])/h)
+            - u_prev[1] * p[0] * y[1]
+            - u_prev[2] * p[0] * y[2]
+            + (u_prev[1] + u_prev[2]) * p[0] * y[0]
+            + p[2] * p[3] * (y[0] - p[4])
+            = 0
+        ∘ cop(y[1]) * u_prev[0] - u_prev[1] * p[0] * (y[1] - y[0]) = 0
+        ∘ (u_prev[3] - y[3]) - p[5] * u_prev[2] * p[0] * (y[0] - p[4]) = 0
+        ∘ (u_prev[3] - y[3]) - u_prev[2] * p[0] * (y[0] - y[2]) = 0
+
+        Which are divided in differential equations (f(y,y_prev,p,u_prev) = 0)
+        and algebraic equations (g(y,p,u_prev) = 0)
     """
     return [
         # f
@@ -375,7 +375,7 @@ def adjoint_gradients(y, p, u, h, n_steps):
             adj_mu[:, n] = adjs[(n_odes + n_algs) :]
 
         # ∂L/∂u_n = ∂C/∂u_n = -λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_n)/∂u_n - ν_(n+1) ∂g(y_(n+1), p_(n+1), u_n)/∂u_n
-        dCdu[:, n - 1] = - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
+        dCdu[:, n - 1] = -adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
 
     return dCdy_0, dCdp_0, dCdu
 

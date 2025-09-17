@@ -40,7 +40,6 @@ class DAE(object):
         # TimeStep PETSc object
         self.ts = self.create_ts()
 
-
     def create_state_vector(self):
         u = PETSc.Vec().createSeq(2, comm=self.comm)  # states
         # Initial conditions
@@ -48,15 +47,13 @@ class DAE(object):
         u[1] = 0.8660254037
         return u
 
-
     def evalIFunction(self, ts, t, u, udot, f):
         r"""
         Implicit functions
         """
         f[0] = udot[0] + u[0] - u[1]
-        f[1] = u[0]**2 + u[1]**2 - 1
+        f[1] = u[0] ** 2 + u[1] ** 2 - 1
         return True
-
 
     def evalIJacobian(self, ts, t, u, udot, shift, Ju, Judot):
         r"""
@@ -81,12 +78,10 @@ class DAE(object):
         Judot.assemble()
         return True
 
-
     def monitor(self, ts, step, time, u):
         self.sol_t.append(time)
         self.sol_u.append(u.getArray().copy())
         return 0
-
 
     def create_ts(self):
         ts = PETSc.TS().create(comm=self.comm)
@@ -96,7 +91,6 @@ class DAE(object):
         ts.setIFunction(self.evalIFunction, self.u)
         ts.setIJacobian(self.evalIJacobian, self.Ju, self.Judot)
         return ts
-
 
     def run(self):
         self.ts.setTime(self.t0)
@@ -110,20 +104,21 @@ class DAE(object):
         snes = self.ts.getSNES()
         snes.setTolerances(rtol=1e-8, atol=1e-8, max_it=100)
         ksp = snes.getKSP()
-        ksp.setType('gmres')
+        ksp.setType("gmres")
         pc = ksp.getPC()
-        pc.setType('jacobi')
+        pc.setType("jacobi")
 
         # Solve the DAE
         try:
             self.ts.solve(self.u)
         except PETSc.Error as e:
             if e.ierr == 71:
-                print("PETSc Error 71: Likely a singular Jacobian. Try adjusting initial conditions or solver parameters.")
+                print(
+                    "PETSc Error 71: Likely a singular Jacobian. Try adjusting initial conditions or solver parameters."
+                )
             else:
                 print(f"PETSc Error {e.ierr}: {e}")
             sys.exit(1)
-
 
     def plot(self):
         # Convert solution to numpy arrays
@@ -136,11 +131,11 @@ class DAE(object):
 
         # Plot the solution
         plt.figure(figsize=(10, 6))
-        plt.plot(sol_t, sol_u[:, 0], label='x(t)')
-        plt.plot(sol_t, sol_u[:, 1], label='y(t)')
-        plt.xlabel('Time')
-        plt.ylabel('Solution')
-        plt.title('DAE Solution')
+        plt.plot(sol_t, sol_u[:, 0], label="x(t)")
+        plt.plot(sol_t, sol_u[:, 1], label="y(t)")
+        plt.xlabel("Time")
+        plt.ylabel("Solution")
+        plt.title("DAE Solution")
         plt.legend()
         plt.grid(True)
         plt.show()

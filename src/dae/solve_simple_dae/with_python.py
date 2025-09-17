@@ -15,10 +15,7 @@ def dae_system(y_next, y, h):
     \dot{y}_0(t) = -y_0(t) + y_1(t) \\
     0 = y_0(t)^2 + y_1(t)^2 - 1
     """
-    return [
-        (y_next[0] - y[0]) / h + y_next[0] - y_next[1],
-        y_next[0]**2 + y_next[1]**2 - 1  # Algebraic constraint
-    ]
+    return [(y_next[0] - y[0]) / h + y_next[0] - y_next[1], y_next[0] ** 2 + y_next[1] ** 2 - 1]  # Algebraic constraint
 
 
 def solve(y_0):
@@ -44,19 +41,19 @@ def animation(y):
     fig, ax = plt.subplots()
     ax.set_xlim(-1.5, 1.5)
     ax.set_ylim(-1.5, 1.5)
-    line, = ax.plot([], [], 'o-', lw=2)
-    circ = plt.Circle((0, 0), 1, color='r', fill=False)
+    (line,) = ax.plot([], [], "o-", lw=2)
+    circ = plt.Circle((0, 0), 1, color="r", fill=False)
     ax.add_patch(circ)
 
     def init():
         line.set_data([], [])
-        return line,
+        return (line,)
 
     def update(frame):
         line.set_data(y[0][:frame], y[1][:frame])
-        return line,
+        return (line,)
 
-    ani = FuncAnimation(fig, update, frames=NUM_STEPS+1, init_func=init, blit=True, interval=100)
+    ani = FuncAnimation(fig, update, frames=NUM_STEPS + 1, init_func=init, blit=True, interval=100)
 
     plt.show()
 

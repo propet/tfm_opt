@@ -366,7 +366,7 @@ def adjoint_gradients(y, p, u, h, n_steps):
             adj_mu[:, n] = adjs[(n_odes + n_algs) :]
 
         # ∂L/∂u_n = ∂C/∂u_n = -λ_(n+1) ∂f(y_(n+1), y_n, p_(n+1), u_n)/∂u_n - ν_(n+1) ∂g(y_(n+1), p_(n+1), u_n)/∂u_n
-        dCdu[:, n - 1] = - adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
+        dCdu[:, n - 1] = -adj_lambda[:, n].T @ dfdu_n - adj_nu[:, n].T @ dgdu_n
 
     return dCdy_0, dCdp_0, dCdu
 

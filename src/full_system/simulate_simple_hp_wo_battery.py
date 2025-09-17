@@ -8,6 +8,7 @@ from utils import get_dynamic_parameters, plot_styles, jax_to_numpy, plot_film, 
 from pyoptsparse import History
 import jax
 import jax.numpy as jnp
+
 jax.config.update("jax_enable_x64", True)
 
 
@@ -416,6 +417,8 @@ def dae_adjoints(y, u, dae_p, n_steps, parameters):
 
 
 fig = None
+
+
 def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True):
     print(f"plotting...{title}")
     global fig
@@ -436,7 +439,7 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     m_dot_load = u[2]
     t_tank = y[0]
     t_cond = y[1]
-    p_grid = - p_solar + p_compressor + p_required
+    p_grid = -p_solar + p_compressor + p_required
 
     # Create time array
     t = np.linspace(0, n_steps * h, n_steps)
@@ -480,7 +483,6 @@ def plot(y, u, n_steps, parameters, title=None, show=True, block=True, save=True
     ax1.plot(t, q_dot_load, label="Q_dot_load", **plot_styles[4])
     ax1.set_ylabel("Ws")
     ax1.legend(loc="upper right")
-
 
     axes[2].plot(t, p_compressor, label="P_comp", **plot_styles[0])
     axes[2].plot(t, p_grid, label="P_grid", **plot_styles[1])
@@ -566,7 +568,6 @@ def plot_history(hist, only_last=True):
     parameters["w_solar_per_w_installed"] = dynamic_parameters["w_solar_per_w_installed"]
     parameters["y0"] = y0
 
-
     storeHistory = History(hist)
     histories = storeHistory.getValues()
 
@@ -612,7 +613,6 @@ def plot_history(hist, only_last=True):
             plot(y, u, n_steps, parameters, title=title, show=False)
 
     plot_film("saves/simulate_simple_hp_wo_battery.gif")  # create animation with pictures from tmp folder
-
 
 
 def main(hist=None):

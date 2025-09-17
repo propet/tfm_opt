@@ -67,8 +67,8 @@ def obj_fun(
         + jnp.sum(h * get_fixed_energy_cost_by_second(p_grid_max))
         # ∘ depreciate battery by time or usage
         + jnp.maximum(
-           jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
-           jnp.sum(h * get_battery_depreciation_by_second(e_bat_max)),
+            jnp.sum(h * jnp.abs(p_bat) * get_battery_depreciation_by_joule(e_bat_max)),
+            jnp.sum(h * get_battery_depreciation_by_second(e_bat_max)),
         )
         # ∘ depreciate solar panels by time
         + jnp.sum(h * get_solar_panels_depreciation_by_second(solar_size))
@@ -1658,7 +1658,9 @@ def run_optimization(parameters, plot=True):
         "type": "c",
         "lower": None,
         "upper": None,
-        "initial_value": history["e_bat"][-1] if history else ( parameters["E_BAT_MAX_LIMIT_1KWH"] * 4) * parameters["SOC_MIN"],
+        "initial_value": (
+            history["e_bat"][-1] if history else (parameters["E_BAT_MAX_LIMIT_1KWH"] * 4) * parameters["SOC_MIN"]
+        ),
         "scale": 1 / parameters["E_BAT_MAX_LIMIT_1KWH"],
     }
     opt.add_design_variables_info(e_bat)
